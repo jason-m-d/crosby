@@ -233,99 +233,121 @@ function MessageBlock({ message, isLatest, onArtifactClick, onCopy, onEdit }: { 
       {/* Action Items */}
       {message.actionItemEvents && message.actionItemEvents.length > 0 && (
         <div className="mt-3 space-y-1.5">
-          {message.actionItemEvents.map((evt: any, i: number) => (
-            <ActionItemCard key={i} event={evt} />
-          ))}
+          <CollapsibleCards count={message.actionItemEvents.length}>
+            {message.actionItemEvents.map((evt: any, i: number) => (
+              <ActionItemCard key={i} event={evt} />
+            ))}
+          </CollapsibleCards>
         </div>
       )}
 
       {/* Add to Project */}
       {message.addToProjectEvents && message.addToProjectEvents.length > 0 && (
         <div className="mt-3 space-y-1.5">
-          {message.addToProjectEvents.map((evt: any, i: number) => (
-            <AddToProjectCard key={i} event={evt} />
-          ))}
+          <CollapsibleCards count={message.addToProjectEvents.length}>
+            {message.addToProjectEvents.map((evt: any, i: number) => (
+              <AddToProjectCard key={i} event={evt} />
+            ))}
+          </CollapsibleCards>
         </div>
       )}
 
       {/* Gmail Search */}
       {message.gmailSearchEvents && message.gmailSearchEvents.length > 0 && (
         <div className="mt-3 space-y-1.5">
-          {message.gmailSearchEvents.map((evt: any, i: number) => (
-            <GmailSearchCard key={i} event={evt} />
-          ))}
+          <CollapsibleCards count={message.gmailSearchEvents.length}>
+            {message.gmailSearchEvents.map((evt: any, i: number) => (
+              <GmailSearchCard key={i} event={evt} />
+            ))}
+          </CollapsibleCards>
         </div>
       )}
 
       {/* Email Drafts */}
       {message.emailDraftEvents && message.emailDraftEvents.length > 0 && (
         <div className="mt-3 space-y-1.5">
-          {message.emailDraftEvents.map((evt: any, i: number) => (
-            <EmailDraftCard key={i} event={evt} />
-          ))}
+          <CollapsibleCards count={message.emailDraftEvents.length}>
+            {message.emailDraftEvents.map((evt: any, i: number) => (
+              <EmailDraftCard key={i} event={evt} />
+            ))}
+          </CollapsibleCards>
         </div>
       )}
 
       {/* Artifacts */}
       {message.artifactEvents && message.artifactEvents.length > 0 && (
         <div className="mt-3 space-y-1.5">
-          {message.artifactEvents.map((evt: any, i: number) => (
-            <ArtifactCard key={i} event={evt} onClick={onArtifactClick} />
-          ))}
+          <CollapsibleCards count={message.artifactEvents.length}>
+            {message.artifactEvents.map((evt: any, i: number) => (
+              <ArtifactCard key={i} event={evt} onClick={onArtifactClick} />
+            ))}
+          </CollapsibleCards>
         </div>
       )}
 
       {/* Projects */}
       {message.projectEvents && message.projectEvents.length > 0 && (
         <div className="mt-3 space-y-1.5">
-          {message.projectEvents.map((evt: any, i: number) => (
-            <ProjectCard key={i} event={evt} />
-          ))}
+          <CollapsibleCards count={message.projectEvents.length}>
+            {message.projectEvents.map((evt: any, i: number) => (
+              <ProjectCard key={i} event={evt} />
+            ))}
+          </CollapsibleCards>
         </div>
       )}
 
       {/* Bookmarks */}
       {message.bookmarkEvents && message.bookmarkEvents.length > 0 && (
         <div className="mt-3 space-y-1.5">
-          {message.bookmarkEvents.map((evt: any, i: number) => (
-            <BookmarkCard key={i} event={evt} />
-          ))}
+          <CollapsibleCards count={message.bookmarkEvents.length}>
+            {message.bookmarkEvents.map((evt: any, i: number) => (
+              <BookmarkCard key={i} event={evt} />
+            ))}
+          </CollapsibleCards>
         </div>
       )}
 
       {/* Dashboard Cards */}
       {message.dashboardCardEvents && message.dashboardCardEvents.length > 0 && (
         <div className="mt-3 space-y-1.5">
-          {message.dashboardCardEvents.map((evt: any, i: number) => (
-            <DashboardCardCard key={i} event={evt} />
-          ))}
+          <CollapsibleCards count={message.dashboardCardEvents.length}>
+            {message.dashboardCardEvents.map((evt: any, i: number) => (
+              <DashboardCardCard key={i} event={evt} />
+            ))}
+          </CollapsibleCards>
         </div>
       )}
 
       {/* Notification Rules */}
       {message.notificationRuleEvents && message.notificationRuleEvents.length > 0 && (
         <div className="mt-3 space-y-1.5">
-          {message.notificationRuleEvents.map((evt: any, i: number) => (
-            <NotificationRuleCard key={i} event={evt} />
-          ))}
+          <CollapsibleCards count={message.notificationRuleEvents.length}>
+            {message.notificationRuleEvents.map((evt: any, i: number) => (
+              <NotificationRuleCard key={i} event={evt} />
+            ))}
+          </CollapsibleCards>
         </div>
       )}
 
       {/* Preferences */}
       {message.preferenceEvents && message.preferenceEvents.length > 0 && (
         <div className="mt-3 space-y-1.5">
-          {message.preferenceEvents.map((evt: any, i: number) => (
-            <PreferenceCard key={i} event={evt} />
-          ))}
+          <CollapsibleCards count={message.preferenceEvents.length}>
+            {message.preferenceEvents.map((evt: any, i: number) => (
+              <PreferenceCard key={i} event={evt} />
+            ))}
+          </CollapsibleCards>
         </div>
       )}
 
       {/* Training */}
       {message.trainingEvents && message.trainingEvents.length > 0 && (
         <div className="mt-3 space-y-1.5">
-          {message.trainingEvents.map((evt: any, i: number) => (
-            <TrainingCard key={i} event={evt} />
-          ))}
+          <CollapsibleCards count={message.trainingEvents.length}>
+            {message.trainingEvents.map((evt: any, i: number) => (
+              <TrainingCard key={i} event={evt} />
+            ))}
+          </CollapsibleCards>
         </div>
       )}
 
@@ -471,6 +493,27 @@ function ActionItemCard({ event }: { event: any }) {
         <span className="text-[0.625rem] uppercase tracking-wider text-red-500/70 ml-auto shrink-0">high</span>
       )}
     </div>
+  )
+}
+
+function CollapsibleCards({ children, count }: { children: React.ReactNode[]; count: number }) {
+  const [expanded, setExpanded] = useState(false)
+  const MAX = 2
+  if (count <= MAX) {
+    return <>{children}</>
+  }
+  return (
+    <>
+      {children.slice(0, MAX)}
+      {expanded && children.slice(MAX)}
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className="flex items-center gap-1 text-[0.7rem] text-muted-foreground/50 hover:text-muted-foreground transition-colors mt-0.5"
+      >
+        <ChevronDown className={cn("size-3 transition-transform duration-200", expanded && "rotate-180")} />
+        {expanded ? 'Show less' : `${count - MAX} more`}
+      </button>
+    </>
   )
 }
 
