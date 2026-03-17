@@ -20,7 +20,7 @@ export async function GET() {
 
   const results = await sendPushNotification(
     sub.user_id,
-    'J.DRG Test',
+    'Crosby Test',
     'Push notifications are working!',
     '/dashboard'
   )

@@ -10,13 +10,13 @@ const supabase = createClient(
 )
 
 async function main() {
-  console.log('\n=== J.DRG Seed ===\n')
+  console.log('\n=== Crosby Seed ===\n')
 
   // Create user
   console.log('Creating admin user...')
   const { data, error } = await supabase.auth.admin.createUser({
     email: 'jason@hungry.llc',
-    password: 'JDRG2026!',
+    password: 'Crosby2026!',
     email_confirm: true,
   })
   if (error) {

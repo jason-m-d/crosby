@@ -14,13 +14,13 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "J.DRG - DeMayo Restaurant Group",
+  title: "Crosby - DeMayo Restaurant Group",
   description: "Private AI workspace for DeMayo Restaurant Group",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "J.DRG",
+    title: "Crosby",
   },
   other: {
     "apple-touch-icon": "/apple-touch-icon.png",

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 const EMAIL = 'jason@hungry.llc'
-const PASSWORD = 'JDRG2026!'
+const PASSWORD = 'Crosby2026!'
 
 async function login(page: any) {
   await page.goto('/login')

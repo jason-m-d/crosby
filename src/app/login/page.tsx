@@ -35,7 +35,7 @@ export default function LoginPage() {
         {/* Mark */}
         <div className="mb-12 text-center">
           <h1 className="text-[1.75rem] font-semibold tracking-tight text-foreground">
-            J.DRG
+            Crosby
           </h1>
           <div className="w-6 h-px bg-border mx-auto mt-3 mb-3" />
           <p className="text-[0.6875rem] uppercase tracking-[0.2em] text-muted-foreground/50">

@@ -628,7 +628,7 @@ export default function ProjectPage() {
                       value={contextContent}
                       onChange={(e) => setContextContent(e.target.value)}
                       placeholder="Context content..."
-                      className="w-full bg-transparent border border-border px-2 py-1.5 text-[0.6875rem] outline-none focus:border-foreground/30 transition-colors min-h-[80px] resize-y leading-relaxed"
+                      className="w-full bg-transparent border border-border px-2 py-1.5 text-[0.6875rem] outline-none focus:border-foreground/30 transition-colors min-h-[200px] resize-y leading-relaxed"
                     />
                     <div className="flex gap-1.5">
                       <button
@@ -680,7 +680,7 @@ export default function ProjectPage() {
                             <textarea
                               value={contextContent}
                               onChange={(e) => setContextContent(e.target.value)}
-                              className="w-full bg-transparent border border-border px-2 py-1.5 text-[0.6875rem] outline-none focus:border-foreground/30 transition-colors min-h-[80px] resize-y leading-relaxed"
+                              className="w-full bg-transparent border border-border px-2 py-1.5 text-[0.6875rem] outline-none focus:border-foreground/30 transition-colors min-h-[200px] resize-y leading-relaxed"
                             />
                             <div className="flex gap-1.5">
                               <button
@@ -733,7 +733,7 @@ export default function ProjectPage() {
                               <span className="text-[0.6875rem] font-medium truncate flex-1">{ctx.title}</span>
                               <Pencil className="size-2.5 text-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                             </div>
-                            <p className="text-[0.625rem] text-muted-foreground/40 mt-0.5 line-clamp-2 leading-relaxed">{ctx.content}</p>
+                            <p className="text-[0.625rem] text-muted-foreground/40 mt-0.5 line-clamp-4 leading-relaxed">{ctx.content}</p>
                           </div>
                         )}
                       </div>
@@ -768,7 +768,7 @@ export default function ProjectPage() {
             {panel === 'bookmarks' && (
               <div>
                 {bookmarks.length === 0 ? (
-                  <p className="text-[0.6875rem] text-muted-foreground/40 px-4 py-6 text-center">No bookmarks yet. Ask J.DRG to bookmark links for this project.</p>
+                  <p className="text-[0.6875rem] text-muted-foreground/40 px-4 py-6 text-center">No bookmarks yet. Ask Crosby to bookmark links for this project.</p>
                 ) : (
                   <div>
                     {bookmarks.map(bm => (

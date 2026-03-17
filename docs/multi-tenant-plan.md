@@ -7,7 +7,7 @@
 
 ## The Core Idea
 
-Turn JDRG from a single-user app hardcoded for Jason DeMayo into a multi-user platform where AI-powered onboarding replaces all the hardcoded context. The onboarding conversation IS the product demo — the app proves its value while setting itself up.
+Turn Crosby from a single-user app hardcoded for Jason DeMayo into a multi-user platform where AI-powered onboarding replaces all the hardcoded context. The onboarding conversation IS the product demo — the app proves its value while setting itself up.
 
 ---
 
@@ -18,7 +18,7 @@ Turn JDRG from a single-user app hardcoded for Jason DeMayo into a multi-user pl
 - Every tool description references "Jason" by name
 - Email scanning has hardcoded Wingstop/Mr. Pickle's parsers and store numbers
 - Briefing builder has hardcoded sales targets ($8k Wingstop, $3k MP)
-- UI branded as "J.DRG — DeMayo Restaurant Group"
+- UI branded as "Crosby — DeMayo Restaurant Group"
 - Settings pages have hardcoded store toggle lists
 
 **No user isolation in the database:**
@@ -374,7 +374,7 @@ Jason's data stays intact throughout:
 - Background job queue for email scanning (currently cron-based)
 
 ### Identity
-- What's the product called? "J.DRG" is personal. Need a product name.
+- What's the product called? "Crosby" is personal. Need a product name.
 - Domain, branding, marketing site
 
 ---

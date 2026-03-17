@@ -27,7 +27,7 @@ function ask(question: string): Promise<string> {
 }
 
 async function main() {
-  console.log('\n=== J.DRG Setup ===\n')
+  console.log('\n=== Crosby Setup ===\n')
 
   console.log('STEP 1: Run scripts/setup.sql in the Supabase SQL Editor first.')
   console.log('        Go to: https://supabase.com/dashboard/project/wzhdyfprmgalyvodwrxf/sql/new')

@@ -3,21 +3,15 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { Bell, Brain, Mail, User } from 'lucide-react'
-
-const settingsNav = [
-  { href: '/settings/memory', label: 'Memory', icon: Brain },
-  { href: '/settings/briefing', label: 'Briefing & Alerts', icon: Bell },
-  { href: '/settings/email', label: 'Email', icon: Mail },
-  { href: '/settings/account', label: 'Account', icon: User },
-]
+import { settingsNav } from './nav'
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
   return (
     <div className="flex h-full">
-      <nav className="w-48 border-r border-border p-4 space-y-0.5">
+      {/* Desktop sidebar — hidden on mobile */}
+      <nav className="hidden md:block w-48 border-r border-border p-4 space-y-0.5">
         <span className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium block px-3 mb-4">
           Settings
         </span>
@@ -37,7 +31,10 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           </Link>
         ))}
       </nav>
-      <div className="flex-1 overflow-auto p-6">{children}</div>
+
+      <div className="flex-1 overflow-auto">
+        <div className="p-5 md:p-6">{children}</div>
+      </div>
     </div>
   )
 }

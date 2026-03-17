@@ -1,4 +1,4 @@
-# JDRG Project Instructions
+# Crosby Project Instructions
 
 ## Dev Server
 - Claude is responsible for starting, stopping, and restarting the dev server as needed.
@@ -19,3 +19,9 @@
 
 ## Verification Rule
 - If you instruct the user to do something within the app (click a button, use a feature, navigate somewhere, etc.), you must first verify that the thing actually exists and is rendering in the UI. If it's not there, flag it immediately so we can build it out. Don't send the user on a hunt for something that doesn't exist yet.
+
+## App Manual (Living Document)
+- The Crosby App Manual is a RAG document that makes the in-app bot an expert on every feature. It lives in `scripts/seed-app-manual.ts` and gets chunked/embedded for vector search.
+- **When you add a meaningful feature, change how a feature works, or add a new tool/background process**, update the app manual content in `seed-app-manual.ts` to reflect the change. Then re-seed it by running `npx tsx scripts/seed-app-manual.ts`.
+- The manual covers: all tools, background processes, feature connections, proactive behavior guidelines, and how the app layout works. Keep it accurate.
+- Small UI tweaks and copy changes don't need a manual update — only changes that affect what the bot can do or how features work.

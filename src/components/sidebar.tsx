@@ -79,7 +79,7 @@ export function Sidebar() {
       <div className="flex items-center justify-between px-4 py-4">
         {!collapsed && (
           <Link href="/dashboard" className="text-sm font-semibold tracking-widest uppercase">
-            J.DRG
+            Crosby
           </Link>
         )}
         <button

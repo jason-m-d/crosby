@@ -170,7 +170,7 @@ export function buildContext(
     const ctxSection = contextChunks
       .map(
         (c, i) =>
-          `[Context ${i + 1}, similarity: ${c.similarity.toFixed(3)}]\n${c.content}`
+          `[Context ${i + 1}, context_id: ${c.context_id}, similarity: ${c.similarity.toFixed(3)}]\n${c.content}`
       )
       .join('\n\n')
     parts.push(`## Project Context\n${ctxSection}`)

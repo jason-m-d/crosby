@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { getSupabaseBrowser } from '@/lib/supabase-browser'
-import { Plus, Trash2, Edit2, Save, X, Loader2, Bell } from 'lucide-react'
+import { Plus, Trash2, Edit2, Save, X, Loader2, Bell, ChevronLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import Link from 'next/link'
 import { isPushSupported, requestNotificationPermission, unsubscribeFromPush, getPushSubscriptionState } from '@/lib/push-client'
 import { useAuth } from '@/components/auth-provider'
 
@@ -129,9 +130,12 @@ export default function BriefingSettingsPage() {
   return (
     <div className="max-w-2xl space-y-8 animate-in-fade">
       <div>
+        <Link href="/settings" className="md:hidden inline-flex items-center gap-1 text-[0.75rem] text-muted-foreground/50 hover:text-foreground transition-colors mb-3">
+          <ChevronLeft className="size-3" />Settings
+        </Link>
         <h1 className="text-[0.8125rem] font-medium uppercase tracking-[0.1em] mb-1">Briefing & Alerts</h1>
         <p className="text-[0.75rem] text-muted-foreground/50">
-          Teach J.DRG what matters. These preferences shape your morning briefing and real-time alerts.
+          Teach Crosby what matters. These preferences shape your morning briefing and real-time alerts.
         </p>
       </div>
 

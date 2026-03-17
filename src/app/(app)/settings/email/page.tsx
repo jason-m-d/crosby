@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { getSupabaseBrowser } from '@/lib/supabase-browser'
-import { Mail, RefreshCw, Plus, Loader2, Check, X } from 'lucide-react'
+import { Mail, RefreshCw, Plus, Loader2, Check, X, ChevronLeft } from 'lucide-react'
+import Link from 'next/link'
 
 export default function EmailSettingsPage() {
   const [accounts, setAccounts] = useState<any[]>([])
@@ -59,6 +60,9 @@ export default function EmailSettingsPage() {
   return (
     <div className="max-w-2xl space-y-8 animate-in-fade">
       <div>
+        <Link href="/settings" className="md:hidden inline-flex items-center gap-1 text-[0.75rem] text-muted-foreground/50 hover:text-foreground transition-colors mb-3">
+          <ChevronLeft className="size-3" />Settings
+        </Link>
         <h1 className="text-[0.8125rem] font-medium uppercase tracking-[0.1em] mb-1">Email Integration</h1>
         <p className="text-[0.75rem] text-muted-foreground/50 leading-relaxed">
           Connect Gmail accounts for automatic action item extraction and sales data parsing.

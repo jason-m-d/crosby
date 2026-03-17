@@ -6,7 +6,7 @@
       "Bash(npx shadcn@latest add --all --yes 2>&1 | tail -5)",
       "Bash(find /Users/jasond/jdrg/src/app/api/auth -type f 2>/dev/null; find /Users/jasond/jdrg/src/app/api/cron -type f 2>/dev/null; find /Users/jasond/jdrg/src/lib/gmail* -type f 2>/dev/null)",
       "Bash(npx next:*)",
-      "Bash(echo -e \"jason@hungry.llc\\\\nJDRG2026!\" | npx tsx scripts/setup.ts 2>&1)",
+      "Bash(echo -e \"jason@hungry.llc\\\\nCrosby2026!\" | npx tsx scripts/setup.ts 2>&1)",
       "Bash(npx tsx:*)",
       "Bash(npm run:*)",
       "Bash(curl -s -X POST http://localhost:3000/api/documents/upload -F \"file=@/Users/jasond/jdrg/package.json\" 2>&1)",

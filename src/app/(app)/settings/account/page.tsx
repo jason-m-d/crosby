@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { getSupabaseBrowser } from '@/lib/supabase-browser'
 import { useAuth } from '@/components/auth-provider'
-import { Check, Loader2 } from 'lucide-react'
+import { Check, Loader2, ChevronLeft } from 'lucide-react'
+import Link from 'next/link'
 
 export default function AccountPage() {
   const { user } = useAuth()
@@ -43,6 +44,9 @@ export default function AccountPage() {
   return (
     <div className="max-w-md space-y-8 animate-in-fade">
       <div>
+        <Link href="/settings" className="md:hidden inline-flex items-center gap-1 text-[0.75rem] text-muted-foreground/50 hover:text-foreground transition-colors mb-3">
+          <ChevronLeft className="size-3" />Settings
+        </Link>
         <h1 className="text-[0.8125rem] font-medium uppercase tracking-[0.1em] mb-1">Account</h1>
         <p className="text-[0.75rem] text-muted-foreground/50">{user?.email}</p>
       </div>

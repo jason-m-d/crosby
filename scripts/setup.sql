@@ -1,4 +1,4 @@
--- J.DRG Database Setup
+-- Crosby Database Setup
 -- Run this in the Supabase SQL Editor (Database > SQL Editor)
 
 -- Enable pgvector

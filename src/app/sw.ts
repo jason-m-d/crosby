@@ -31,7 +31,7 @@ self.addEventListener("push", (event) => {
     data: { url: data.url || "/dashboard" },
   };
 
-  event.waitUntil(self.registration.showNotification(data.title || "J.DRG", options));
+  event.waitUntil(self.registration.showNotification(data.title || "Crosby", options));
 });
 
 // Notification click handler — open the app

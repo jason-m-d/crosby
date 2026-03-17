@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { getSupabaseBrowser } from '@/lib/supabase-browser'
-import { Plus, Trash2, Edit2, Save, X, Search, Loader2 } from 'lucide-react'
+import { Plus, Trash2, Edit2, Save, X, Search, Loader2, ChevronLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import Link from 'next/link'
 
 export default function MemoryPage() {
   const [memories, setMemories] = useState<any[]>([])
@@ -62,8 +63,11 @@ export default function MemoryPage() {
   return (
     <div className="max-w-2xl space-y-6 animate-in-fade">
       <div>
+        <Link href="/settings" className="md:hidden inline-flex items-center gap-1 text-[0.75rem] text-muted-foreground/50 hover:text-foreground transition-colors mb-3">
+          <ChevronLeft className="size-3" />Settings
+        </Link>
         <h1 className="text-[0.8125rem] font-medium uppercase tracking-[0.1em] mb-1">Memory</h1>
-        <p className="text-[0.75rem] text-muted-foreground/50">J.DRG remembers these facts across all conversations.</p>
+        <p className="text-[0.75rem] text-muted-foreground/50">Crosby remembers these facts across all conversations.</p>
       </div>
 
       {/* Add new memory */}

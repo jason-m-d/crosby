@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 const EMAIL = 'jason@hungry.llc'
-const PASSWORD = 'JDRG2026!'
+const PASSWORD = 'Crosby2026!'
 
 // Helper: login and return authenticated page
 async function login(page: any) {
@@ -15,7 +15,7 @@ async function login(page: any) {
 test.describe('Auth', () => {
   test('unauthenticated user sees login page', async ({ page }) => {
     await page.goto('/login')
-    await expect(page.locator('text=J.DRG')).toBeVisible()
+    await expect(page.locator('text=Crosby')).toBeVisible()
     await expect(page.locator('input[type="email"]')).toBeVisible()
     await expect(page.locator('input[type="password"]')).toBeVisible()
   })
@@ -312,6 +312,6 @@ test.describe('Sign Out', () => {
     await login(page)
     await page.click('button:has-text("Sign Out")')
     await page.waitForURL('**/login', { timeout: 10000 })
-    await expect(page.locator('text=J.DRG')).toBeVisible()
+    await expect(page.locator('text=Crosby')).toBeVisible()
   })
 })

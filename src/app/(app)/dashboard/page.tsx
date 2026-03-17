@@ -24,7 +24,7 @@ export default function HomePage() {
   const [messages, setMessages] = useState<any[]>([])
   const [conversationId, setConversationId] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('jdrg-main-conv-id') || null
+      return localStorage.getItem('crosby-main-conv-id') || null
     }
     return null
   })
@@ -47,7 +47,7 @@ export default function HomePage() {
   // Persist conversation ID to localStorage so it survives hot reloads
   useEffect(() => {
     if (conversationId) {
-      localStorage.setItem('jdrg-main-conv-id', conversationId)
+      localStorage.setItem('crosby-main-conv-id', conversationId)
     }
   }, [conversationId])
 
@@ -67,7 +67,7 @@ export default function HomePage() {
     const supabase = getSupabaseBrowser()
 
     // Use cached conversation ID if available, otherwise query for most recent
-    const cachedConvId = localStorage.getItem('jdrg-main-conv-id')
+    const cachedConvId = localStorage.getItem('crosby-main-conv-id')
 
     const [convResult, { data: cards }] = await Promise.all([
       cachedConvId
@@ -106,7 +106,7 @@ export default function HomePage() {
       if (arts && arts.length > 0) setArtifacts(arts)
     } else {
       // Cached conversation was deleted — clear it
-      localStorage.removeItem('jdrg-main-conv-id')
+      localStorage.removeItem('crosby-main-conv-id')
     }
 
     setInitialLoading(false)

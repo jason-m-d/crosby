@@ -85,9 +85,10 @@ const ARTIFACT_TOOL: Anthropic.Messages.Tool = {
 
 const MANAGE_PROJECT_CONTEXT_TOOL: Anthropic.Messages.Tool = {
   name: 'manage_project_context',
-  description: `Add, update, or archive context entries on a project. Use this to keep project knowledge current.
+  description: `Add, update, list, or archive context entries on a project. Use this to keep project knowledge current.
 - "create": Add new context from the conversation. Write a thorough summary - this will be retrieved in future conversations.
 - "update": Update an existing context entry when new information changes it (e.g. an initiative is completed, a decision changed, new details emerged). Provide the full updated content, not a diff.
+- "list": List all context entries for a project. Use this to see what exists before updating, merging, or cleaning up entries. Returns titles, IDs, and content previews.
 - "archive": Mark a context entry as outdated/completed so it stops surfacing in future conversations.
 Use proactively when the conversation is clearly relevant to a project - ask Jason first before adding.`,
   input_schema: {
@@ -95,7 +96,7 @@ Use proactively when the conversation is clearly relevant to a project - ask Jas
     properties: {
       operation: {
         type: 'string',
-        enum: ['create', 'update', 'archive'],
+        enum: ['create', 'update', 'list', 'archive'],
         description: 'The operation to perform',
       },
       project_name: {
@@ -469,6 +470,12 @@ export async function POST(req: NextRequest) {
           for await (const event of response) {
             if (event.type === 'content_block_start') {
               if (event.content_block.type === 'text') {
+                // If there's already text from a previous block (e.g. before a tool call),
+                // inject a space so the blocks don't run together in the output
+                if (fullResponse.length > 0 && !/\s$/.test(fullResponse)) {
+                  fullResponse += ' '
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: ' ' })}\n\n`))
+                }
                 currentTextBlock = ''
               } else if (event.content_block.type === 'tool_use') {
                 currentToolUse = {
@@ -908,6 +915,26 @@ async function executeManageProjectContext(
   const project = projects[0]
 
   switch (input.operation) {
+    case 'list': {
+      const { data: entries, error } = await supabaseAdmin
+        .from('project_context')
+        .select('id, title, content, created_at, updated_at')
+        .eq('project_id', project.id)
+        .order('created_at', { ascending: false })
+
+      if (error) return { status: 'error', message: error.message }
+
+      const items = (entries || []).map(e => ({
+        context_id: e.id,
+        title: e.title,
+        content: e.content,
+        created_at: e.created_at,
+        updated_at: e.updated_at,
+      }))
+
+      return { status: 'listed', project_name: project.name, project_id: project.id, entries: items } as any
+    }
+
     case 'create': {
       if (!input.summary_title || !input.summary_content) {
         return { status: 'error', message: 'summary_title and summary_content are required for create' }

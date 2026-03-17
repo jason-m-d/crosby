@@ -56,7 +56,7 @@ export function ChatMessages({ messages, streamingContent, loading, onArtifactCl
             {formatDate()}
           </div>
           <h2 className="text-2xl font-light tracking-tight text-foreground/80">
-            J.DRG
+            Crosby
           </h2>
           <div className="w-8 h-px bg-border mx-auto" />
           <p className="text-[0.8125rem] text-muted-foreground/60">What are you working on?</p>
@@ -91,7 +91,7 @@ export function ChatMessages({ messages, streamingContent, loading, onArtifactCl
         {loading && !streamingContent && (
           <div className="py-6 animate-in-up">
             <div className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium mb-1.5">
-              J.DRG
+              Crosby
             </div>
             <div className="flex items-center gap-2 text-muted-foreground/60">
               <span className="inline-block size-1 bg-muted-foreground/40" style={{ animation: 'pulse-subtle 1.5s ease-in-out infinite' }} />
@@ -176,7 +176,7 @@ function MessageBlock({ message, isLatest, onArtifactClick, onCopy, onEdit }: { 
       {/* Role + timestamp */}
       <div className={cn("flex items-baseline gap-2 mb-1.5", isUser && "flex-row-reverse")}>
         <span className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">
-          {isUser ? 'You' : 'J.DRG'}
+          {isUser ? 'You' : 'Crosby'}
         </span>
         {isBriefing && (
           <span className="text-[0.625rem] uppercase tracking-wider text-amber-500/60">Briefing</span>

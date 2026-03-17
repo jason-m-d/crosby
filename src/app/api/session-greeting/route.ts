@@ -80,6 +80,9 @@ export async function GET(req: NextRequest) {
       briefingCheckResult,
       salesResult,
       preferences,
+      dashboardCardsResult,
+      notificationRulesResult,
+      projectsResult,
     ] = await Promise.all([
       // Active action items (excluding snoozed)
       supabaseAdmin
@@ -136,6 +139,23 @@ export async function GET(req: NextRequest) {
         .eq('report_date', new Date().toISOString().split('T')[0]),
       // User preferences
       getUserPreferences(),
+      // Dashboard cards
+      supabaseAdmin
+        .from('dashboard_cards')
+        .select('title, content, card_type, updated_at')
+        .eq('is_active', true)
+        .order('position'),
+      // Active notification rules
+      supabaseAdmin
+        .from('notification_rules')
+        .select('description, is_active')
+        .eq('is_active', true),
+      // Active projects
+      supabaseAdmin
+        .from('projects')
+        .select('name')
+        .order('updated_at', { ascending: false })
+        .limit(5),
     ])
 
     const actionItems = actionItemsResult.data || []
@@ -144,6 +164,9 @@ export async function GET(req: NextRequest) {
     const recentMessages = recentMessagesResult || []
     const hasBriefingToday = (briefingCheckResult.data || []).length > 0
     const salesData = salesResult.data || []
+    const dashboardCards = dashboardCardsResult.data || []
+    const notificationRules = notificationRulesResult.data || []
+    const recentProjects = projectsResult.data || []
 
     // Identify stale items (pending/approved, no due date, created > 14 days ago, not surfaced in > 7 days)
     const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000
@@ -266,6 +289,20 @@ FORMATTING (critical):
     if (recentMessages.length > 0) {
       const summary = recentMessages.map((m: any) => `${m.role}: ${m.content.slice(0, 100)}`).join('\n')
       prompt += `\nRecent conversation context (so you don't repeat):\n${summary}\n`
+    }
+
+    // Dashboard cards context - mention stale ones or if they're relevant to today's items
+    if (dashboardCards.length > 0) {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      const staleCards = dashboardCards.filter((c: any) => new Date(c.updated_at) < sevenDaysAgo)
+      if (staleCards.length > 0) {
+        prompt += `\nDashboard cards that haven't been updated in 7+ days (briefly mention if relevant):\n${staleCards.map((c: any) => `- "${c.title}"`).join('\n')}\n`
+      }
+    }
+
+    // Active projects - for context awareness
+    if (recentProjects.length > 0) {
+      prompt += `\nActive projects: ${recentProjects.map((p: any) => p.name).join(', ')}\n`
     }
 
     if (preferences.length > 0) {
