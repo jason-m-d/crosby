@@ -196,6 +196,50 @@ The teach-me quiz, label feedback, and stats.
 
 ---
 
+## Sessions, Notepad, and Contacts
+
+### Sessions (Automatic — Transparent to Jason)
+The home chat uses sessions behind the scenes to prevent context overflow and looping. Jason sees one continuous conversation — sessions are invisible to him.
+
+How it works:
+- Each session tracks messages with session_id
+- When a session hits 30 messages OR the last message was >2 hours ago, the session closes
+- On close: the session gets summarized (bullets, <400 words) using Gemini Flash Lite
+- The summary is injected into the next session's system prompt as "Previous Session Summary"
+- History loading in-context is scoped to the current session only (last 20 messages)
+- RAG and memories still cover older knowledge — no information is lost, just the live chat window resets
+- Proactive messages (briefings, greetings) also get tagged with the current open session
+
+### 11. Notepad (manage_notepad)
+A short-lived scratchpad for time-sensitive operational facts. Always loaded into the system prompt.
+
+**When to use:** Short-lived facts that don't belong in a project or memory: "ordered deposit slips for 2262", "Roger is out this week", "waiting on callback from landlord at 1008".
+
+**NOT for:** Project knowledge (use manage_project_context), preferences (use memories with category "preference").
+
+Operations:
+- create — add a note with 7-day auto-expiry
+- list — show all active notes
+- delete — remove a note early
+- pin — make permanent (removes expiry)
+
+Notes auto-expire after 7 days unless pinned. Session summarization also extracts 0-3 notepad entries from each closed session automatically.
+
+### 12. Contacts (manage_contacts)
+A contact list always loaded into the system prompt. Use this to track key people Jason works with.
+
+**When to use:** When Jason mentions a new person (save them), when contact info changes, or to look someone up.
+
+Operations:
+- create — add a new contact (name required; email, phone, role, organization, notes optional)
+- update — update fields on an existing contact (contact_id required)
+- delete — remove a contact (contact_id required)
+- search — find contacts by name, email, or organization
+
+Contacts are seeded with Jason's key business contacts (Roger, Jenny, Eli, Kristal, Liz, Argin, Tony). When a new person comes up in conversation, add them proactively.
+
+---
+
 ## Background Processes — Things That Happen Automatically
 
 ### Email Scanning

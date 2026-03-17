@@ -8,7 +8,7 @@ import { buildSystemPrompt } from '@/lib/system-prompt'
 import { searchEmails, createDraft } from '@/lib/gmail'
 import { buildFewShotBlock, storeTrainingExample, getTrainingStats } from '@/lib/training'
 import { fetchEmails } from '@/lib/gmail'
-import type { ActionItem, Artifact, DashboardCard, NotificationRule, Bookmark, UIPreference } from '@/lib/types'
+import type { ActionItem, Artifact, DashboardCard, NotificationRule, Bookmark, UIPreference, Note, Contact } from '@/lib/types'
 import { sendPushToAll } from '@/lib/push'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, baseURL: process.env.ANTHROPIC_BASE_URL, defaultHeaders: { 'X-OR-Models': 'claude-sonnet-4-20250514,google/gemini-3.1-pro-preview' } })
@@ -332,6 +332,41 @@ const DRAFT_EMAIL_TOOL: Anthropic.Messages.Tool = {
   },
 }
 
+const MANAGE_NOTEPAD_TOOL: Anthropic.Messages.Tool = {
+  name: 'manage_notepad',
+  description: `Add, list, delete, or pin notes on the operational notepad. Always loaded into context. Use for time-sensitive operational facts that don't belong in a project: "ordered deposit slips for 2262", "Roger is out this week", "waiting on callback from landlord at 1008". Notes expire in 7 days unless pinned. NOT for project knowledge (use manage_project_context) or preferences (those go in memories).`,
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      operation: { type: 'string', enum: ['create', 'list', 'delete', 'pin'], description: 'create = add (7-day expiry), list = show all, delete = remove early, pin = make permanent' },
+      content: { type: 'string', description: 'Note content (required for create)' },
+      title: { type: 'string', description: 'Optional short title' },
+      note_id: { type: 'string', description: 'Required for delete and pin' },
+    },
+    required: ['operation'],
+  },
+}
+
+const MANAGE_CONTACTS_TOOL: Anthropic.Messages.Tool = {
+  name: 'manage_contacts',
+  description: `Create, update, delete, or search contacts. Contacts are always loaded into context. Use when Jason mentions a new person, when info changes, or to look someone up.`,
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      operation: { type: 'string', enum: ['create', 'update', 'delete', 'search'], description: 'The operation to perform' },
+      contact_id: { type: 'string', description: 'Required for update and delete' },
+      name: { type: 'string' },
+      email: { type: 'string' },
+      phone: { type: 'string' },
+      role: { type: 'string', description: 'Job title or role' },
+      organization: { type: 'string' },
+      notes: { type: 'string', description: 'Internal notes about this person' },
+      query: { type: 'string', description: 'Search query (name, email, or org) — for search operation' },
+    },
+    required: ['operation'],
+  },
+}
+
 const TRAINING_TOOL: Anthropic.Messages.Tool = {
   name: 'manage_training',
   description: 'Manage action item training. Use "teach_me" to start a quiz session with real email snippets. Use "label" to record feedback when Jason says something is or isn\'t an action item. Use "stats" to check training progress.',
@@ -368,18 +403,23 @@ export async function POST(req: NextRequest) {
     convId = conv.id
   }
 
+  // Get or create session
+  const { sessionId, previousSummary } = await getOrCreateSession(convId)
+
   // Save user message
   await supabaseAdmin.from('messages').insert({
     conversation_id: convId,
     role: 'user',
     content: message,
+    session_id: sessionId,
   })
 
-  // Load conversation history (last 20 messages)
+  // Load conversation history for current session only (last 20 messages)
   const { data: history } = await supabaseAdmin
     .from('messages')
     .select('role, content')
     .eq('conversation_id', convId)
+    .eq('session_id', sessionId)
     .order('created_at', { ascending: true })
     .limit(20)
 
@@ -393,7 +433,7 @@ export async function POST(req: NextRequest) {
     : undefined
 
   // RAG retrieval + action items + artifacts + all projects + training context in parallel
-  const [chunks, pinnedDocs, memories, actionItemsResult, projectResult, contextChunks, artifactsResult, allProjectsResult, dashboardCardsResult, notificationRulesResult, uiPreferencesResult, trainingContext] = await Promise.all([
+  const [chunks, pinnedDocs, memories, actionItemsResult, projectResult, contextChunks, artifactsResult, allProjectsResult, dashboardCardsResult, notificationRulesResult, uiPreferencesResult, trainingContext, notesResult, contactsResult] = await Promise.all([
     isSubstantiveMessage ? retrieveRelevantChunks(message, project_id, 8, 0.7, queryEmbedding).catch(e => { console.error('RAG retrieval failed:', e.message); return [] }) : Promise.resolve([]),
     project_id ? getPinnedDocuments(project_id) : Promise.resolve([]),
     isSubstantiveMessage ? getRelevantMemories(message) : Promise.resolve([]),
@@ -415,6 +455,8 @@ export async function POST(req: NextRequest) {
     supabaseAdmin.from('notification_rules').select('*').eq('is_active', true).order('created_at', { ascending: false }),
     supabaseAdmin.from('ui_preferences').select('*'),
     isSubstantiveMessage ? buildFewShotBlock(message, queryEmbedding).catch(e => { console.error('Training context failed:', e.message); return null }) : Promise.resolve(null),
+    supabaseAdmin.from('notes').select('*').or('expires_at.is.null,expires_at.gt.' + new Date().toISOString()).order('created_at', { ascending: false }),
+    supabaseAdmin.from('contacts').select('*').order('name'),
   ])
 
   const actionItems: ActionItem[] = actionItemsResult.data || []
@@ -440,6 +482,9 @@ export async function POST(req: NextRequest) {
     notificationRules,
     uiPreferences,
     trainingContext,
+    previousSessionSummary: previousSummary,
+    notes: (notesResult.data || []) as Note[],
+    contacts: (contactsResult.data || []) as Contact[],
   })
 
   // Build messages array for Claude
@@ -466,7 +511,7 @@ export async function POST(req: NextRequest) {
             max_tokens: 4096,
             system: systemPrompt,
             messages: currentMessages,
-            tools: [ACTION_ITEM_TOOL, MANAGE_PROJECT_CONTEXT_TOOL, ARTIFACT_TOOL, SEARCH_GMAIL_TOOL, DRAFT_EMAIL_TOOL, MANAGE_PROJECT_TOOL, MANAGE_BOOKMARKS_TOOL, MANAGE_DASHBOARD_TOOL, MANAGE_NOTIFICATION_RULES_TOOL, MANAGE_PREFERENCES_TOOL, TRAINING_TOOL],
+            tools: [ACTION_ITEM_TOOL, MANAGE_PROJECT_CONTEXT_TOOL, ARTIFACT_TOOL, SEARCH_GMAIL_TOOL, DRAFT_EMAIL_TOOL, MANAGE_PROJECT_TOOL, MANAGE_BOOKMARKS_TOOL, MANAGE_DASHBOARD_TOOL, MANAGE_NOTIFICATION_RULES_TOOL, MANAGE_PREFERENCES_TOOL, TRAINING_TOOL, MANAGE_NOTEPAD_TOOL, MANAGE_CONTACTS_TOOL],
           })
 
           // Collect content blocks for this turn
@@ -608,6 +653,12 @@ export async function POST(req: NextRequest) {
                       result: toolResult,
                     },
                   })}\n\n`))
+                } else if (currentToolUse.name === 'manage_notepad') {
+                  toolResult = await executeNotepadTool(toolInput)
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ notepad: { operation: toolInput.operation, result: toolResult } })}\n\n`))
+                } else if (currentToolUse.name === 'manage_contacts') {
+                  toolResult = await executeContactsTool(toolInput)
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ contact: { operation: toolInput.operation, result: toolResult } })}\n\n`))
                 } else {
                   toolResult = await executeActionItemTool(toolInput, convId, actionItems)
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({
@@ -658,7 +709,11 @@ export async function POST(req: NextRequest) {
           role: 'assistant',
           content: fullResponse,
           sources,
+          session_id: sessionId,
         })
+
+        // Increment session message count (user + assistant = 2)
+        void supabaseAdmin.rpc('increment_session_message_count', { session_id_param: sessionId, increment_by: 2 })
 
         // Update conversation timestamp
         await supabaseAdmin
@@ -1408,6 +1463,253 @@ async function executeTrainingTool(
       } catch (e: any) {
         return { status: 'error', message: e.message }
       }
+    }
+
+    default:
+      return { status: 'error', message: `Unknown operation: ${input.operation}` }
+  }
+}
+
+async function getOrCreateSession(convId: string): Promise<{ sessionId: string; previousSummary: string | null }> {
+  // Look for open session
+  const { data: openSession } = await supabaseAdmin
+    .from('sessions')
+    .select('*')
+    .eq('conversation_id', convId)
+    .is('ended_at', null)
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .single()
+
+  const now = new Date()
+
+  if (openSession) {
+    // Check if we should close this session: 30+ messages OR last message > 2 hours ago
+    const { data: lastMsg } = await supabaseAdmin
+      .from('messages')
+      .select('created_at')
+      .eq('session_id', openSession.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    const lastMsgAge = lastMsg
+      ? (now.getTime() - new Date(lastMsg.created_at).getTime()) / (1000 * 60 * 60)
+      : 0
+
+    const shouldClose = openSession.message_count >= 30 || lastMsgAge > 2
+
+    if (!shouldClose) {
+      // Fetch previous closed session summary for injection
+      const { data: prevSession } = await supabaseAdmin
+        .from('sessions')
+        .select('summary')
+        .eq('conversation_id', convId)
+        .not('ended_at', 'is', null)
+        .order('ended_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      return { sessionId: openSession.id, previousSummary: prevSession?.summary || null }
+    }
+
+    // Close the open session
+    await supabaseAdmin
+      .from('sessions')
+      .update({ ended_at: now.toISOString() })
+      .eq('id', openSession.id)
+
+    // Fire-and-forget summarization
+    summarizeSession(openSession.id, convId).catch(e => console.error('Session summarization failed:', e))
+  }
+
+  // Fetch last closed session summary
+  const { data: lastClosed } = await supabaseAdmin
+    .from('sessions')
+    .select('summary')
+    .eq('conversation_id', convId)
+    .not('ended_at', 'is', null)
+    .order('ended_at', { ascending: false })
+    .limit(1)
+    .single()
+
+  // Create new session
+  const { data: newSession } = await supabaseAdmin
+    .from('sessions')
+    .insert({ conversation_id: convId })
+    .select()
+    .single()
+
+  return { sessionId: newSession!.id, previousSummary: lastClosed?.summary || null }
+}
+
+async function summarizeSession(sessionId: string, convId: string) {
+  // Load all messages for this session
+  const { data: messages } = await supabaseAdmin
+    .from('messages')
+    .select('role, content, created_at')
+    .eq('session_id', sessionId)
+    .order('created_at', { ascending: true })
+
+  if (!messages || messages.length === 0) return
+
+  const transcript = messages
+    .map(m => `${m.role === 'user' ? 'Jason' : 'Crosby'}: ${m.content.slice(0, 500)}`)
+    .join('\n\n')
+
+  const anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, baseURL: process.env.ANTHROPIC_BASE_URL, defaultHeaders: { 'X-OR-Models': 'claude-sonnet-4-20250514,google/gemini-3.1-pro-preview' } })
+
+  const response = await anthropicClient.messages.create({
+    model: 'google/gemini-3.1-flash-lite-preview',
+    max_tokens: 800,
+    system: `Summarize this conversation session for Jason DeMayo's AI workspace. Write bullet points under 400 words. Focus on: decisions made, information shared, action items created or discussed, open questions, and anything Crosby should remember for the next session. Be specific - include names, numbers, and dates.`,
+    messages: [{ role: 'user', content: transcript }],
+  })
+
+  const summary = response.content[0].type === 'text' ? response.content[0].text : ''
+  if (!summary) return
+
+  // Save summary
+  await supabaseAdmin
+    .from('sessions')
+    .update({ summary })
+    .eq('id', sessionId)
+
+  // Extract notepad entries from summary
+  extractNotepadEntriesFromSummary(summary).catch(e => console.error('Notepad extraction failed:', e))
+}
+
+async function extractNotepadEntriesFromSummary(summary: string) {
+  const anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, baseURL: process.env.ANTHROPIC_BASE_URL, defaultHeaders: { 'X-OR-Models': 'claude-sonnet-4-20250514,google/gemini-3.1-pro-preview' } })
+
+  const response = await anthropicClient.messages.create({
+    model: 'google/gemini-3.1-flash-lite-preview',
+    max_tokens: 400,
+    system: `Extract 0-3 time-sensitive operational facts from this session summary that should go on the notepad. These are short-lived facts like "ordered deposit slips for 2262", "Roger is out this week", "waiting on callback from landlord at 1008". NOT general business knowledge. Return JSON: {"entries": [{"content": "...", "title": "..."}]} or {"entries": []} if nothing fits.`,
+    messages: [{ role: 'user', content: summary }],
+  })
+
+  const text = response.content[0].type === 'text' ? response.content[0].text : ''
+  const parsed = parseJSON(text)
+  if (!parsed.entries || parsed.entries.length === 0) return
+
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+  for (const entry of parsed.entries) {
+    if (entry.content) {
+      await supabaseAdmin.from('notes').insert({
+        content: entry.content,
+        title: entry.title || null,
+        expires_at: expiresAt,
+      })
+    }
+  }
+}
+
+async function executeNotepadTool(
+  input: { operation: string; content?: string; title?: string; note_id?: string },
+): Promise<{ status: string; note?: Note; notes?: Note[]; message?: string }> {
+  switch (input.operation) {
+    case 'create': {
+      if (!input.content) return { status: 'error', message: 'content is required' }
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      const { data, error } = await supabaseAdmin
+        .from('notes')
+        .insert({ content: input.content, title: input.title || null, expires_at: expiresAt })
+        .select()
+        .single()
+      if (error) return { status: 'error', message: error.message }
+      return { status: 'created', note: data }
+    }
+
+    case 'list': {
+      const { data } = await supabaseAdmin
+        .from('notes')
+        .select('*')
+        .or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
+        .order('created_at', { ascending: false })
+      return { status: 'ok', notes: data || [] }
+    }
+
+    case 'delete': {
+      if (!input.note_id) return { status: 'error', message: 'note_id is required' }
+      const { error } = await supabaseAdmin.from('notes').delete().eq('id', input.note_id)
+      if (error) return { status: 'error', message: error.message }
+      return { status: 'deleted' }
+    }
+
+    case 'pin': {
+      if (!input.note_id) return { status: 'error', message: 'note_id is required' }
+      const { data, error } = await supabaseAdmin
+        .from('notes')
+        .update({ expires_at: null, updated_at: new Date().toISOString() })
+        .eq('id', input.note_id)
+        .select()
+        .single()
+      if (error) return { status: 'error', message: error.message }
+      return { status: 'pinned', note: data }
+    }
+
+    default:
+      return { status: 'error', message: `Unknown operation: ${input.operation}` }
+  }
+}
+
+async function executeContactsTool(
+  input: { operation: string; contact_id?: string; name?: string; email?: string; phone?: string; role?: string; organization?: string; notes?: string; query?: string },
+): Promise<{ status: string; contact?: Contact; contacts?: Contact[]; message?: string }> {
+  switch (input.operation) {
+    case 'create': {
+      if (!input.name) return { status: 'error', message: 'name is required' }
+      const { data, error } = await supabaseAdmin
+        .from('contacts')
+        .insert({
+          name: input.name,
+          email: input.email || null,
+          phone: input.phone || null,
+          role: input.role || null,
+          organization: input.organization || null,
+          notes: input.notes || null,
+        })
+        .select()
+        .single()
+      if (error) return { status: 'error', message: error.message }
+      return { status: 'created', contact: data }
+    }
+
+    case 'update': {
+      if (!input.contact_id) return { status: 'error', message: 'contact_id is required' }
+      const updates: Record<string, any> = { updated_at: new Date().toISOString() }
+      if (input.name !== undefined) updates.name = input.name
+      if (input.email !== undefined) updates.email = input.email
+      if (input.phone !== undefined) updates.phone = input.phone
+      if (input.role !== undefined) updates.role = input.role
+      if (input.organization !== undefined) updates.organization = input.organization
+      if (input.notes !== undefined) updates.notes = input.notes
+      const { data, error } = await supabaseAdmin
+        .from('contacts')
+        .update(updates)
+        .eq('id', input.contact_id)
+        .select()
+        .single()
+      if (error) return { status: 'error', message: error.message }
+      return { status: 'updated', contact: data }
+    }
+
+    case 'delete': {
+      if (!input.contact_id) return { status: 'error', message: 'contact_id is required' }
+      const { error } = await supabaseAdmin.from('contacts').delete().eq('id', input.contact_id)
+      if (error) return { status: 'error', message: error.message }
+      return { status: 'deleted' }
+    }
+
+    case 'search': {
+      if (!input.query) return { status: 'error', message: 'query is required' }
+      const { data } = await supabaseAdmin
+        .from('contacts')
+        .select('*')
+        .or(`name.ilike.%${input.query}%,email.ilike.%${input.query}%,organization.ilike.%${input.query}%`)
+        .order('name')
+      return { status: 'ok', contacts: data || [] }
     }
 
     default:

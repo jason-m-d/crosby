@@ -212,6 +212,36 @@ export interface UIPreference {
   updated_at: string
 }
 
+export interface Session {
+  id: string
+  conversation_id: string
+  started_at: string
+  ended_at: string | null
+  summary: string | null
+  message_count: number
+}
+
+export interface Note {
+  id: string
+  title: string | null
+  content: string
+  expires_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Contact {
+  id: string
+  name: string
+  email: string | null
+  phone: string | null
+  role: string | null
+  organization: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface ArtifactEvent {
   operation: 'create' | 'update'
   artifact: Artifact

@@ -1,4 +1,4 @@
-import type { ActionItem, Artifact, Memory, DashboardCard, NotificationRule, UIPreference } from './types'
+import type { ActionItem, Artifact, Memory, DashboardCard, NotificationRule, UIPreference, Note, Contact } from './types'
 
 export const BASE_SYSTEM_PROMPT = `You are Crosby, the private AI workspace for Jason DeMayo. Jason is CEO of DeMayo Restaurant Group (DRG), operating 8 Wingstop franchise locations in California, and Hungry Hospitality Group (HHG), operating 2 Mr. Pickle's franchise locations.
 
@@ -15,15 +15,6 @@ Wingstop stores:
 Mr. Pickle's stores:
 - 405 (Blackstone, Fresno)
 - 1008 (Sepulveda, Van Nuys)
-
-Key contacts:
-- Roger (DM, DRG): roger@demayorestaurantgroup.com
-- Jenny (Admin, DRG): admin@demayorestaurantgroup.com
-- Eli (HHG ops): eli@hungry.llc
-- Kristal (bookkeeper, Raymer Business): kristal@raymerbiz.com
-- Liz (HR/payroll, Raymer Business): liz@raymerbiz.com
-- Argin (CPA, The Accountancy): argin@theaccountancy.com
-- Tony (wealth manager, Traveka Wealth): Tony.Blagrove@travekawealth.com
 
 Jason's emails: jason@hungry.llc, jason@demayorestaurantgroup.com, jasondemayo@gmail.com
 
@@ -52,8 +43,15 @@ export function buildSystemPrompt(options?: {
   notificationRules?: NotificationRule[]
   uiPreferences?: UIPreference[]
   trainingContext?: string | null
+  previousSessionSummary?: string | null
+  notes?: Note[]
+  contacts?: Contact[]
 }): string {
   const parts: string[] = [BASE_SYSTEM_PROMPT]
+
+  if (options?.previousSessionSummary) {
+    parts.push(`\n\n--- Previous Session Summary ---\n${options.previousSessionSummary}`)
+  }
 
   // Project list and context management instructions
   if (options?.projects && options.projects.length > 0) {
@@ -96,6 +94,24 @@ RULES for managing projects (create/update/archive):
     parts.push(
       `\n\n--- Relevant Documents ---\n${options.documentContext}`
     )
+  }
+
+  if (options?.contacts && options.contacts.length > 0) {
+    const lines = options.contacts.map(c => {
+      const parts: string[] = [c.name]
+      if (c.role || c.organization) parts.push(`${c.role || ''}${c.role && c.organization ? ', ' : ''}${c.organization || ''}`)
+      if (c.email) parts.push(c.email)
+      if (c.notes) parts.push(`(${c.notes})`)
+      return `- ${parts.join(' | ')}`
+    })
+    parts.push(`\n\n--- Contacts ---\n${lines.join('\n')}\n\nUse manage_contacts to add, update, or delete contacts. When Jason mentions a new person, save them.`)
+  }
+
+  if (options?.notes && options.notes.length > 0) {
+    const lines = options.notes.map(n =>
+      `- ${n.title ? `[${n.title}] ` : ''}${n.content}${n.expires_at ? ` (expires ${new Date(n.expires_at).toLocaleDateString()})` : ' [pinned]'}`
+    )
+    parts.push(`\n\n--- Notepad ---\n${lines.join('\n')}\n\nThese are time-sensitive operational facts. Use manage_notepad to add, pin, or delete notes.`)
   }
 
   if (options?.actionItems && options.actionItems.length > 0) {
