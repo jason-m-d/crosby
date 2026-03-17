@@ -53,6 +53,12 @@ export async function POST(req: NextRequest) {
   let totalProcessed = 0
   let totalItems = 0
 
+  // Load active notification rules
+  const { data: notificationRules } = await supabaseAdmin
+    .from('notification_rules')
+    .select('description, match_type, match_value')
+    .eq('is_active', true)
+
   // Get all connected accounts
   const { data: accounts } = await supabaseAdmin.from('gmail_tokens').select('account')
   if (!accounts || accounts.length === 0) {
@@ -105,6 +111,33 @@ export async function POST(req: NextRequest) {
           await parseWingstopSales(email)
         } else if (email.subject.includes('[MP]') && email.subject.includes('Daily Sales')) {
           await parseMrPicklesSales(email)
+        }
+
+        // Check notification rules and push if matched
+        if (notificationRules?.length) {
+          for (const rule of notificationRules) {
+            const val = rule.match_value.toLowerCase()
+            let matched = false
+
+            if (rule.match_type === 'sender') {
+              matched = email.from.toLowerCase().includes(val)
+            } else if (rule.match_type === 'subject') {
+              matched = email.subject.toLowerCase().includes(val)
+            } else if (rule.match_type === 'keyword') {
+              matched = email.from.toLowerCase().includes(val) ||
+                email.subject.toLowerCase().includes(val) ||
+                email.body.toLowerCase().includes(val)
+            }
+
+            if (matched) {
+              await sendPushToAll(
+                rule.description,
+                `From: ${email.from}\nSubject: ${email.subject}`,
+                '/dashboard'
+              )
+              break // one notification per email max
+            }
+          }
         }
 
         // Extract action items via Claude

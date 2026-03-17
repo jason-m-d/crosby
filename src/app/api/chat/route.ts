@@ -245,7 +245,7 @@ const MANAGE_DASHBOARD_TOOL: Anthropic.Messages.Tool = {
 
 const MANAGE_NOTIFICATION_RULES_TOOL: Anthropic.Messages.Tool = {
   name: 'manage_notification_rules',
-  description: 'Create, list, delete, or toggle notification rules. Rules define what emails trigger alerts.',
+  description: 'Create, list, delete, or toggle notification rules. Rules trigger push notifications to Jason\'s phone when matching emails arrive. Use match_type "sender" for people (e.g. "john@example.com"), "subject" for subject line keywords, or "keyword" to match anywhere in the email.',
   input_schema: {
     type: 'object' as const,
     properties: {
