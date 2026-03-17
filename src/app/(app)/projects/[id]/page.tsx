@@ -46,6 +46,12 @@ export default function ProjectPage() {
   const [availableDocs, setAvailableDocs] = useState<any[]>([])
   const [loadingDocs, setLoadingDocs] = useState(false)
 
+  // Create document state
+  const [showCreateDoc, setShowCreateDoc] = useState(false)
+  const [newDocTitle, setNewDocTitle] = useState('')
+  const [newDocContent, setNewDocContent] = useState('')
+  const [creatingDoc, setCreatingDoc] = useState(false)
+
   // Context state
   const [contextEntries, setContextEntries] = useState<any[]>([])
   const [editingContextId, setEditingContextId] = useState<string | null>(null)
@@ -419,6 +425,31 @@ export default function ProjectPage() {
     setDocuments(prev => prev.filter(d => d.id !== docId))
   }
 
+  async function createDocInProject() {
+    if (!newDocTitle.trim()) return
+    setCreatingDoc(true)
+    const res = await fetch('/api/documents', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: newDocTitle.trim(),
+        content: newDocContent,
+        file_type: 'created',
+        project_id: id,
+      }),
+    })
+    if (res.ok) {
+      setShowCreateDoc(false)
+      setNewDocTitle('')
+      setNewDocContent('')
+      const { data: docs } = await getSupabaseBrowser()
+        .from('documents').select('*').eq('project_id', id)
+        .order('is_pinned', { ascending: false }).order('updated_at', { ascending: false })
+      setDocuments(docs || [])
+    }
+    setCreatingDoc(false)
+  }
+
   async function openAddDoc() {
     setShowAddDoc(true)
     setLoadingDocs(true)
@@ -570,6 +601,13 @@ export default function ProjectPage() {
                     Upload
                   </button>
                   <button
+                    onClick={() => { setShowCreateDoc(true); setNewDocTitle(''); setNewDocContent('') }}
+                    className="inline-flex items-center gap-1 px-2 py-1 text-[0.6875rem] border border-border text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <Pencil className="size-2.5" />
+                    Create
+                  </button>
+                  <button
                     onClick={openAddDoc}
                     className="inline-flex items-center gap-1 px-2 py-1 text-[0.6875rem] border border-border text-muted-foreground hover:text-foreground transition-colors"
                   >
@@ -578,7 +616,40 @@ export default function ProjectPage() {
                   </button>
                   <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.docx,.xlsx,.xls,.txt,.csv,.md" onChange={handleUpload} />
                 </div>
-                {documents.length === 0 ? (
+                {showCreateDoc && (
+                  <div className="p-3 border-b border-border space-y-2">
+                    <input
+                      value={newDocTitle}
+                      onChange={(e) => setNewDocTitle(e.target.value)}
+                      placeholder="Document title"
+                      className="w-full bg-transparent border border-border px-2 py-1 text-[0.6875rem] outline-none focus:border-foreground/30 transition-colors"
+                      autoFocus
+                    />
+                    <textarea
+                      value={newDocContent}
+                      onChange={(e) => setNewDocContent(e.target.value)}
+                      placeholder="Content..."
+                      className="w-full bg-transparent border border-border px-2 py-1.5 text-[0.6875rem] outline-none focus:border-foreground/30 transition-colors min-h-[120px] resize-y leading-relaxed"
+                    />
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={createDocInProject}
+                        disabled={creatingDoc || !newDocTitle.trim()}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-[0.6875rem] bg-foreground text-background disabled:opacity-30 transition-opacity"
+                      >
+                        {creatingDoc ? <Loader2 className="size-2.5 animate-spin" /> : <Check className="size-2.5" />}
+                        Save
+                      </button>
+                      <button
+                        onClick={() => setShowCreateDoc(false)}
+                        className="px-2 py-1 text-[0.6875rem] text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {documents.length === 0 && !showCreateDoc ? (
                   <p className="text-[0.6875rem] text-muted-foreground/40 px-4 py-6 text-center">No files</p>
                 ) : (
                   <div>
