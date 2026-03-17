@@ -76,6 +76,7 @@ export default function ConversationPage() {
       const addToProjectEvents: any[] = []
       const artifactEvents: any[] = []
       const gmailSearchEvents: any[] = []
+      const trainingEvents: any[] = []
 
       while (reader) {
         const { done, value } = await reader.read()
@@ -100,6 +101,9 @@ export default function ConversationPage() {
               }
               if (data.gmail_search) {
                 gmailSearchEvents.push(data.gmail_search)
+              }
+              if (data.training) {
+                trainingEvents.push(data.training)
               }
               if (data.artifact) {
                 artifactEvents.push(data.artifact)
@@ -132,6 +136,7 @@ export default function ConversationPage() {
         addToProjectEvents: addToProjectEvents.length > 0 ? addToProjectEvents : undefined,
         artifactEvents: artifactEvents.length > 0 ? artifactEvents : undefined,
         gmailSearchEvents: gmailSearchEvents.length > 0 ? gmailSearchEvents : undefined,
+        trainingEvents: trainingEvents.length > 0 ? trainingEvents : undefined,
       }])
       setStreamingContent('')
     } catch (err) {
@@ -178,18 +183,18 @@ export default function ConversationPage() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <div className="flex items-center gap-4 border-b border-border px-6 py-3">
-          <span className="text-[13px] font-medium uppercase tracking-[0.1em]">Chat</span>
+          <span className="text-[0.8125rem] font-medium uppercase tracking-[0.1em]">Chat</span>
           {convTitle && (
             <>
               <div className="w-px h-4 bg-border" />
-              <span className="text-[12px] text-muted-foreground/50 truncate">{convTitle}</span>
+              <span className="text-[0.75rem] text-muted-foreground/50 truncate">{convTitle}</span>
             </>
           )}
           <div className="w-px h-4 bg-border" />
           <select
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
-            className="bg-transparent text-[12px] text-muted-foreground outline-none"
+            className="bg-transparent text-[0.75rem] text-muted-foreground outline-none"
           >
             <option value="none">No project</option>
             {projects.map((p) => (

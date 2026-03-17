@@ -4,8 +4,10 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { retrieveRelevantChunks, getPinnedDocuments, getRelevantMemories, retrieveRelevantContextChunks, buildContext } from '@/lib/rag'
 import { chunkAndEmbedContext } from '@/lib/embed-context'
 import { buildSystemPrompt } from '@/lib/system-prompt'
-import { searchEmails } from '@/lib/gmail'
-import type { ActionItem, Artifact } from '@/lib/types'
+import { searchEmails, createDraft } from '@/lib/gmail'
+import { buildFewShotBlock, storeTrainingExample, getTrainingStats } from '@/lib/training'
+import { fetchEmails } from '@/lib/gmail'
+import type { ActionItem, Artifact, DashboardCard, NotificationRule, Bookmark, UIPreference } from '@/lib/types'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -17,8 +19,8 @@ const ACTION_ITEM_TOOL: Anthropic.Messages.Tool = {
     properties: {
       operation: {
         type: 'string',
-        enum: ['create', 'complete', 'update', 'list'],
-        description: 'The operation to perform',
+        enum: ['create', 'complete', 'update', 'list', 'dismiss', 'snooze'],
+        description: 'The operation to perform. dismiss = remove/not relevant. snooze = push back (default +3 days, or specify due_date).',
       },
       title: {
         type: 'string',
@@ -134,6 +136,219 @@ const SEARCH_GMAIL_TOOL: Anthropic.Messages.Tool = {
   },
 }
 
+const MANAGE_PROJECT_TOOL: Anthropic.Messages.Tool = {
+  name: 'manage_project',
+  description: 'Create, update, or archive (delete) projects. Use fuzzy name matching for update/archive.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      operation: {
+        type: 'string',
+        enum: ['create', 'update', 'archive'],
+        description: 'The operation to perform',
+      },
+      name: {
+        type: 'string',
+        description: 'Project name (required for create, used for fuzzy matching on update/archive)',
+      },
+      new_name: {
+        type: 'string',
+        description: 'New name for the project (update only, for renaming)',
+      },
+      description: {
+        type: 'string',
+        description: 'Project description',
+      },
+      color: {
+        type: 'string',
+        description: 'Hex color code (e.g. #3B82F6)',
+      },
+      system_prompt: {
+        type: 'string',
+        description: 'Custom system prompt for the project',
+      },
+    },
+    required: ['operation', 'name'],
+  },
+}
+
+const MANAGE_BOOKMARKS_TOOL: Anthropic.Messages.Tool = {
+  name: 'manage_bookmarks',
+  description: 'Create, list, or delete bookmarks on a project. Use fuzzy project name matching.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      operation: {
+        type: 'string',
+        enum: ['create', 'list', 'delete'],
+        description: 'The operation to perform',
+      },
+      project_name: {
+        type: 'string',
+        description: 'Project name (fuzzy match)',
+      },
+      url: {
+        type: 'string',
+        description: 'URL for create operation',
+      },
+      title: {
+        type: 'string',
+        description: 'Title for the bookmark',
+      },
+      description: {
+        type: 'string',
+        description: 'Description for the bookmark',
+      },
+      bookmark_id: {
+        type: 'string',
+        description: 'Bookmark ID for delete operation',
+      },
+    },
+    required: ['operation', 'project_name'],
+  },
+}
+
+const MANAGE_DASHBOARD_TOOL: Anthropic.Messages.Tool = {
+  name: 'manage_dashboard',
+  description: 'Create, update, or remove dashboard summary cards. Cards appear on the main dashboard as pinned info boxes.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      operation: {
+        type: 'string',
+        enum: ['create', 'update', 'remove'],
+        description: 'The operation to perform',
+      },
+      card_id: {
+        type: 'string',
+        description: 'Card ID for update/remove operations',
+      },
+      title: {
+        type: 'string',
+        description: 'Card title',
+      },
+      content: {
+        type: 'string',
+        description: 'Card content (markdown)',
+      },
+      card_type: {
+        type: 'string',
+        enum: ['summary', 'alert', 'custom'],
+        description: 'Type of card (default: summary)',
+      },
+    },
+    required: ['operation'],
+  },
+}
+
+const MANAGE_NOTIFICATION_RULES_TOOL: Anthropic.Messages.Tool = {
+  name: 'manage_notification_rules',
+  description: 'Create, list, delete, or toggle notification rules. Rules define what emails trigger alerts.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      operation: {
+        type: 'string',
+        enum: ['create', 'list', 'delete', 'toggle'],
+        description: 'The operation to perform',
+      },
+      rule_id: {
+        type: 'string',
+        description: 'Rule ID for delete/toggle operations',
+      },
+      description: {
+        type: 'string',
+        description: 'Human-readable description of the rule',
+      },
+      match_type: {
+        type: 'string',
+        enum: ['sender', 'subject', 'keyword'],
+        description: 'What to match against',
+      },
+      match_value: {
+        type: 'string',
+        description: 'The value to match (email address, subject text, keyword)',
+      },
+      match_field: {
+        type: 'string',
+        description: 'Which field to search (default: any)',
+      },
+    },
+    required: ['operation'],
+  },
+}
+
+const MANAGE_PREFERENCES_TOOL: Anthropic.Messages.Tool = {
+  name: 'manage_preferences',
+  description: 'Set, get, or list UI preferences. Supported keys: sidebar_collapsed, accent_color.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      operation: {
+        type: 'string',
+        enum: ['set', 'get', 'list'],
+        description: 'The operation to perform',
+      },
+      key: {
+        type: 'string',
+        description: 'Preference key (required for set/get)',
+      },
+      value: {
+        type: 'string',
+        description: 'Preference value (required for set)',
+      },
+    },
+    required: ['operation'],
+  },
+}
+
+const DRAFT_EMAIL_TOOL: Anthropic.Messages.Tool = {
+  name: 'draft_email',
+  description: 'Create a Gmail draft email. The draft will appear in Jason\'s Gmail drafts folder for review before sending. Use this to help delegate tasks, follow up with contacts, or compose messages Jason asks for.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      to: {
+        type: 'string',
+        description: 'Recipient email address(es), comma-separated for multiple',
+      },
+      subject: {
+        type: 'string',
+        description: 'Email subject line',
+      },
+      body: {
+        type: 'string',
+        description: 'Email body text (plain text)',
+      },
+      cc: {
+        type: 'string',
+        description: 'CC email address(es), comma-separated',
+      },
+    },
+    required: ['to', 'subject', 'body'],
+  },
+}
+
+const TRAINING_TOOL: Anthropic.Messages.Tool = {
+  name: 'manage_training',
+  description: 'Manage action item training. Use "teach_me" to start a quiz session with real email snippets. Use "label" to record feedback when Jason says something is or isn\'t an action item. Use "stats" to check training progress.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      operation: {
+        type: 'string',
+        enum: ['teach_me', 'label', 'stats'],
+        description: 'The operation to perform',
+      },
+      snippet: { type: 'string', description: 'The text being labeled (for label operation)' },
+      is_action_item: { type: 'boolean', description: 'Whether snippet is an action item (for label operation)' },
+      source_type: { type: 'string', enum: ['email', 'chat'], description: 'Source type for label operation' },
+      action_item_id: { type: 'string', description: 'Related action item ID if labeling from a dismiss/feedback' },
+    },
+    required: ['operation'],
+  },
+}
+
 export async function POST(req: NextRequest) {
   const { message, conversation_id, project_id, active_artifact_id } = await req.json()
 
@@ -164,8 +379,8 @@ export async function POST(req: NextRequest) {
     .order('created_at', { ascending: true })
     .limit(20)
 
-  // RAG retrieval + action items + artifacts + all projects in parallel
-  const [chunks, pinnedDocs, memories, actionItemsResult, projectResult, contextChunks, artifactsResult, allProjectsResult] = await Promise.all([
+  // RAG retrieval + action items + artifacts + all projects + training context in parallel
+  const [chunks, pinnedDocs, memories, actionItemsResult, projectResult, contextChunks, artifactsResult, allProjectsResult, dashboardCardsResult, notificationRulesResult, uiPreferencesResult, trainingContext] = await Promise.all([
     retrieveRelevantChunks(message, project_id).catch(e => { console.error('RAG retrieval failed:', e.message); return [] }),
     project_id ? getPinnedDocuments(project_id) : Promise.resolve([]),
     getRelevantMemories(message),
@@ -183,12 +398,19 @@ export async function POST(req: NextRequest) {
       ? supabaseAdmin.from('artifacts').select('*').eq('conversation_id', convId).order('updated_at', { ascending: false })
       : Promise.resolve({ data: [] }),
     supabaseAdmin.from('projects').select('id, name, description').order('name'),
+    supabaseAdmin.from('dashboard_cards').select('*').eq('is_active', true).order('position'),
+    supabaseAdmin.from('notification_rules').select('*').eq('is_active', true).order('created_at', { ascending: false }),
+    supabaseAdmin.from('ui_preferences').select('*'),
+    buildFewShotBlock(message).catch(e => { console.error('Training context failed:', e.message); return null }),
   ])
 
   const actionItems: ActionItem[] = actionItemsResult.data || []
   const artifacts: Artifact[] = artifactsResult.data || []
   const projectPrompt = projectResult.data?.system_prompt || ''
   const allProjects: { id: string; name: string; description: string | null }[] = allProjectsResult.data || []
+  const dashboardCards: DashboardCard[] = dashboardCardsResult.data || []
+  const notificationRules: NotificationRule[] = notificationRulesResult.data || []
+  const uiPreferences: UIPreference[] = uiPreferencesResult.data || []
 
   // Build context
   const context = buildContext(chunks, pinnedDocs, memories, contextChunks)
@@ -201,6 +423,10 @@ export async function POST(req: NextRequest) {
     activeArtifactId: active_artifact_id,
     projects: allProjects,
     currentProjectId: project_id,
+    dashboardCards,
+    notificationRules,
+    uiPreferences,
+    trainingContext,
   })
 
   // Build messages array for Claude
@@ -227,7 +453,7 @@ export async function POST(req: NextRequest) {
             max_tokens: 4096,
             system: systemPrompt,
             messages: currentMessages,
-            tools: [ACTION_ITEM_TOOL, MANAGE_PROJECT_CONTEXT_TOOL, ARTIFACT_TOOL, SEARCH_GMAIL_TOOL],
+            tools: [ACTION_ITEM_TOOL, MANAGE_PROJECT_CONTEXT_TOOL, ARTIFACT_TOOL, SEARCH_GMAIL_TOOL, DRAFT_EMAIL_TOOL, MANAGE_PROJECT_TOOL, MANAGE_BOOKMARKS_TOOL, MANAGE_DASHBOARD_TOOL, MANAGE_NOTIFICATION_RULES_TOOL, MANAGE_PREFERENCES_TOOL, TRAINING_TOOL],
           })
 
           // Collect content blocks for this turn
@@ -288,6 +514,80 @@ export async function POST(req: NextRequest) {
                   }
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                     gmail_search: { query: toolInput.query, result_count: toolResult.result_count || 0 },
+                  })}\n\n`))
+                } else if (currentToolUse.name === 'draft_email') {
+                  try {
+                    const result = await createDraft(toolInput.to, toolInput.subject, toolInput.body, toolInput.cc)
+                    toolResult = { status: 'drafted', draft_id: result.id, message: result.message }
+                  } catch (e: any) {
+                    toolResult = { status: 'error', message: e.message }
+                  }
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    email_draft: {
+                      to: toolInput.to,
+                      subject: toolInput.subject,
+                      status: toolResult.status,
+                      message: toolResult.message,
+                    },
+                  })}\n\n`))
+                } else if (currentToolUse.name === 'manage_project') {
+                  toolResult = await executeProjectTool(toolInput)
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    project: {
+                      operation: toolInput.operation,
+                      project: toolResult.project,
+                      status: toolResult.status,
+                      message: toolResult.message,
+                    },
+                  })}\n\n`))
+                } else if (currentToolUse.name === 'manage_bookmarks') {
+                  toolResult = await executeBookmarkTool(toolInput)
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    bookmark: {
+                      operation: toolInput.operation,
+                      bookmark: toolResult.bookmark,
+                      bookmarks: toolResult.bookmarks,
+                      status: toolResult.status,
+                      message: toolResult.message,
+                    },
+                  })}\n\n`))
+                } else if (currentToolUse.name === 'manage_dashboard') {
+                  toolResult = await executeDashboardCardTool(toolInput)
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    dashboard_card: {
+                      operation: toolInput.operation,
+                      card: toolResult.card,
+                      status: toolResult.status,
+                      message: toolResult.message,
+                    },
+                  })}\n\n`))
+                } else if (currentToolUse.name === 'manage_notification_rules') {
+                  toolResult = await executeNotificationRuleTool(toolInput)
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    notification_rule: {
+                      operation: toolInput.operation,
+                      rule: toolResult.rule,
+                      rules: toolResult.rules,
+                      status: toolResult.status,
+                      message: toolResult.message,
+                    },
+                  })}\n\n`))
+                } else if (currentToolUse.name === 'manage_preferences') {
+                  toolResult = await executePreferencesTool(toolInput)
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    preference: {
+                      key: toolInput.key,
+                      value: toolResult.value,
+                      status: toolResult.status,
+                    },
+                  })}\n\n`))
+                } else if (currentToolUse.name === 'manage_training') {
+                  toolResult = await executeTrainingTool(toolInput)
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    training: {
+                      operation: toolInput.operation,
+                      result: toolResult,
+                    },
                   })}\n\n`))
                 } else {
                   toolResult = await executeActionItemTool(toolInput, convId, actionItems)
@@ -410,6 +710,13 @@ async function executeActionItemTool(
         .single()
 
       if (error) return { status: 'error', message: error.message }
+
+      // Implicit training: record positive example if item has description context
+      if (input.description && input.description.length > 20) {
+        storeTrainingExample(input.description, true, 'implicit', 'chat', undefined, data.id)
+          .catch(e => console.error('Implicit training (create) failed:', e))
+      }
+
       return { status: 'created', item: data }
     }
 
@@ -431,6 +738,7 @@ async function executeActionItemTool(
       if (!input.item_id) return { status: 'error', message: 'item_id is required' }
 
       const updates: Record<string, any> = { updated_at: new Date().toISOString() }
+      if (input.title) updates.title = input.title
       if (input.description !== undefined) updates.description = input.description
       if (input.priority) updates.priority = input.priority
       if (input.due_date) updates.due_date = input.due_date
@@ -446,11 +754,51 @@ async function executeActionItemTool(
       return { status: 'updated', item: data }
     }
 
+    case 'dismiss': {
+      if (!input.item_id) return { status: 'error', message: 'item_id is required' }
+
+      const { data, error } = await supabaseAdmin
+        .from('action_items')
+        .update({ status: 'dismissed', updated_at: new Date().toISOString() })
+        .eq('id', input.item_id)
+        .select()
+        .single()
+
+      if (error) return { status: 'error', message: error.message }
+
+      // Implicit training: record negative example if item has a source snippet
+      if (data.source_snippet) {
+        storeTrainingExample(data.source_snippet, false, 'implicit', data.source || undefined, undefined, data.id)
+          .catch(e => console.error('Implicit training (dismiss) failed:', e))
+      }
+
+      return { status: 'dismissed', item: data }
+    }
+
+    case 'snooze': {
+      if (!input.item_id) return { status: 'error', message: 'item_id is required' }
+
+      const snoozeUntil = input.due_date
+        ? new Date(input.due_date).toISOString()
+        : new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+
+      const { data, error } = await supabaseAdmin
+        .from('action_items')
+        .update({ snoozed_until: snoozeUntil, updated_at: new Date().toISOString() })
+        .eq('id', input.item_id)
+        .select()
+        .single()
+
+      if (error) return { status: 'error', message: error.message }
+      return { status: 'snoozed', item: data, message: `Snoozed until ${new Date(snoozeUntil).toLocaleDateString()}` }
+    }
+
     case 'list': {
       const { data } = await supabaseAdmin
         .from('action_items')
         .select('*')
         .in('status', ['pending', 'approved'])
+        .or('snoozed_until.is.null,snoozed_until.lte.' + new Date().toISOString())
         .order('priority', { ascending: true })
         .order('created_at', { ascending: false })
         .limit(30)
@@ -611,6 +959,412 @@ async function executeManageProjectContext(
       if (error) return { status: 'error', message: error.message }
 
       return { status: 'archived', project_name: project.name, project_id: project.id, context_id: input.context_id }
+    }
+
+    default:
+      return { status: 'error', message: `Unknown operation: ${input.operation}` }
+  }
+}
+
+async function executeProjectTool(
+  input: { operation: string; name: string; new_name?: string; description?: string; color?: string; system_prompt?: string },
+): Promise<{ status: string; project?: any; message?: string }> {
+  switch (input.operation) {
+    case 'create': {
+      const { data, error } = await supabaseAdmin
+        .from('projects')
+        .insert({
+          name: input.name,
+          description: input.description || null,
+          color: input.color || '#3B82F6',
+          system_prompt: input.system_prompt || null,
+        })
+        .select()
+        .single()
+
+      if (error) return { status: 'error', message: error.message }
+      return { status: 'created', project: data }
+    }
+
+    case 'update': {
+      const { data: projects } = await supabaseAdmin
+        .from('projects')
+        .select('*')
+        .ilike('name', `%${input.name}%`)
+        .limit(5)
+
+      if (!projects || projects.length === 0) {
+        return { status: 'error', message: `No project found matching "${input.name}"` }
+      }
+      const project = projects[0]
+
+      const updates: Record<string, any> = { updated_at: new Date().toISOString() }
+      if (input.new_name) updates.name = input.new_name
+      if (input.description !== undefined) updates.description = input.description
+      if (input.color) updates.color = input.color
+      if (input.system_prompt !== undefined) updates.system_prompt = input.system_prompt
+
+      const { data, error } = await supabaseAdmin
+        .from('projects')
+        .update(updates)
+        .eq('id', project.id)
+        .select()
+        .single()
+
+      if (error) return { status: 'error', message: error.message }
+      return { status: 'updated', project: data }
+    }
+
+    case 'archive': {
+      const { data: projects } = await supabaseAdmin
+        .from('projects')
+        .select('id, name')
+        .ilike('name', `%${input.name}%`)
+        .limit(5)
+
+      if (!projects || projects.length === 0) {
+        return { status: 'error', message: `No project found matching "${input.name}"` }
+      }
+      const project = projects[0]
+
+      const { error } = await supabaseAdmin
+        .from('projects')
+        .delete()
+        .eq('id', project.id)
+
+      if (error) return { status: 'error', message: error.message }
+      return { status: 'archived', project: { id: project.id, name: project.name } }
+    }
+
+    default:
+      return { status: 'error', message: `Unknown operation: ${input.operation}` }
+  }
+}
+
+async function executeBookmarkTool(
+  input: { operation: string; project_name: string; url?: string; title?: string; description?: string; bookmark_id?: string },
+): Promise<{ status: string; bookmark?: Bookmark; bookmarks?: Bookmark[]; message?: string }> {
+  // Find project by fuzzy name
+  const { data: projects } = await supabaseAdmin
+    .from('projects')
+    .select('id, name')
+    .ilike('name', `%${input.project_name}%`)
+    .limit(5)
+
+  if (!projects || projects.length === 0) {
+    return { status: 'error', message: `No project found matching "${input.project_name}"` }
+  }
+  const project = projects[0]
+
+  switch (input.operation) {
+    case 'create': {
+      if (!input.url || !input.title) return { status: 'error', message: 'url and title are required' }
+
+      const { data, error } = await supabaseAdmin
+        .from('bookmarks')
+        .insert({
+          project_id: project.id,
+          url: input.url,
+          title: input.title,
+          description: input.description || null,
+        })
+        .select()
+        .single()
+
+      if (error) return { status: 'error', message: error.message }
+      return { status: 'created', bookmark: data }
+    }
+
+    case 'list': {
+      const { data } = await supabaseAdmin
+        .from('bookmarks')
+        .select('*')
+        .eq('project_id', project.id)
+        .order('created_at', { ascending: false })
+
+      return { status: 'ok', bookmarks: data || [] }
+    }
+
+    case 'delete': {
+      if (!input.bookmark_id) return { status: 'error', message: 'bookmark_id is required' }
+
+      const { error } = await supabaseAdmin
+        .from('bookmarks')
+        .delete()
+        .eq('id', input.bookmark_id)
+
+      if (error) return { status: 'error', message: error.message }
+      return { status: 'deleted' }
+    }
+
+    default:
+      return { status: 'error', message: `Unknown operation: ${input.operation}` }
+  }
+}
+
+async function executeDashboardCardTool(
+  input: { operation: string; card_id?: string; title?: string; content?: string; card_type?: string },
+): Promise<{ status: string; card?: DashboardCard; message?: string }> {
+  switch (input.operation) {
+    case 'create': {
+      if (!input.title || !input.content) return { status: 'error', message: 'title and content are required' }
+
+      // Get next position
+      const { data: existing } = await supabaseAdmin
+        .from('dashboard_cards')
+        .select('position')
+        .eq('is_active', true)
+        .order('position', { ascending: false })
+        .limit(1)
+
+      const nextPos = existing && existing.length > 0 ? existing[0].position + 1 : 0
+
+      const { data, error } = await supabaseAdmin
+        .from('dashboard_cards')
+        .insert({
+          title: input.title,
+          content: input.content,
+          card_type: input.card_type || 'summary',
+          position: nextPos,
+        })
+        .select()
+        .single()
+
+      if (error) return { status: 'error', message: error.message }
+      return { status: 'created', card: data }
+    }
+
+    case 'update': {
+      if (!input.card_id) return { status: 'error', message: 'card_id is required' }
+
+      const updates: Record<string, any> = { updated_at: new Date().toISOString() }
+      if (input.title) updates.title = input.title
+      if (input.content) updates.content = input.content
+      if (input.card_type) updates.card_type = input.card_type
+
+      const { data, error } = await supabaseAdmin
+        .from('dashboard_cards')
+        .update(updates)
+        .eq('id', input.card_id)
+        .select()
+        .single()
+
+      if (error) return { status: 'error', message: error.message }
+      return { status: 'updated', card: data }
+    }
+
+    case 'remove': {
+      if (!input.card_id) return { status: 'error', message: 'card_id is required' }
+
+      const { error } = await supabaseAdmin
+        .from('dashboard_cards')
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq('id', input.card_id)
+
+      if (error) return { status: 'error', message: error.message }
+      return { status: 'removed' }
+    }
+
+    default:
+      return { status: 'error', message: `Unknown operation: ${input.operation}` }
+  }
+}
+
+async function executeNotificationRuleTool(
+  input: { operation: string; rule_id?: string; description?: string; match_type?: string; match_value?: string; match_field?: string },
+): Promise<{ status: string; rule?: NotificationRule; rules?: NotificationRule[]; message?: string }> {
+  switch (input.operation) {
+    case 'create': {
+      if (!input.description || !input.match_type || !input.match_value) {
+        return { status: 'error', message: 'description, match_type, and match_value are required' }
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from('notification_rules')
+        .insert({
+          description: input.description,
+          match_type: input.match_type,
+          match_value: input.match_value,
+          match_field: input.match_field || 'any',
+        })
+        .select()
+        .single()
+
+      if (error) return { status: 'error', message: error.message }
+      return { status: 'created', rule: data }
+    }
+
+    case 'list': {
+      const { data } = await supabaseAdmin
+        .from('notification_rules')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      return { status: 'ok', rules: data || [] }
+    }
+
+    case 'delete': {
+      if (!input.rule_id) return { status: 'error', message: 'rule_id is required' }
+
+      const { error } = await supabaseAdmin
+        .from('notification_rules')
+        .delete()
+        .eq('id', input.rule_id)
+
+      if (error) return { status: 'error', message: error.message }
+      return { status: 'deleted' }
+    }
+
+    case 'toggle': {
+      if (!input.rule_id) return { status: 'error', message: 'rule_id is required' }
+
+      const { data: current } = await supabaseAdmin
+        .from('notification_rules')
+        .select('is_active')
+        .eq('id', input.rule_id)
+        .single()
+
+      if (!current) return { status: 'error', message: 'Rule not found' }
+
+      const { data, error } = await supabaseAdmin
+        .from('notification_rules')
+        .update({ is_active: !current.is_active })
+        .eq('id', input.rule_id)
+        .select()
+        .single()
+
+      if (error) return { status: 'error', message: error.message }
+      return { status: data.is_active ? 'enabled' : 'disabled', rule: data }
+    }
+
+    default:
+      return { status: 'error', message: `Unknown operation: ${input.operation}` }
+  }
+}
+
+async function executePreferencesTool(
+  input: { operation: string; key?: string; value?: string },
+): Promise<{ status: string; value?: string; preferences?: UIPreference[]; message?: string }> {
+  const validKeys = ['sidebar_collapsed', 'accent_color']
+
+  switch (input.operation) {
+    case 'set': {
+      if (!input.key || input.value === undefined) return { status: 'error', message: 'key and value are required' }
+      if (!validKeys.includes(input.key)) return { status: 'error', message: `Invalid key. Valid keys: ${validKeys.join(', ')}` }
+
+      const { data, error } = await supabaseAdmin
+        .from('ui_preferences')
+        .upsert(
+          { key: input.key, value: input.value, updated_at: new Date().toISOString() },
+          { onConflict: 'key' }
+        )
+        .select()
+        .single()
+
+      if (error) return { status: 'error', message: error.message }
+      return { status: 'set', value: data.value }
+    }
+
+    case 'get': {
+      if (!input.key) return { status: 'error', message: 'key is required' }
+
+      const { data } = await supabaseAdmin
+        .from('ui_preferences')
+        .select('*')
+        .eq('key', input.key)
+        .single()
+
+      if (!data) return { status: 'not_set', message: `No preference set for "${input.key}"` }
+      return { status: 'ok', value: data.value }
+    }
+
+    case 'list': {
+      const { data } = await supabaseAdmin
+        .from('ui_preferences')
+        .select('*')
+        .order('key')
+
+      return { status: 'ok', preferences: data || [] }
+    }
+
+    default:
+      return { status: 'error', message: `Unknown operation: ${input.operation}` }
+  }
+}
+
+async function executeTrainingTool(
+  input: { operation: string; snippet?: string; is_action_item?: boolean; source_type?: string; action_item_id?: string },
+): Promise<any> {
+  switch (input.operation) {
+    case 'teach_me': {
+      try {
+        // Reuse the teach-me logic: fetch recent emails and build snippets
+        const { data: tokenRow } = await supabaseAdmin
+          .from('gmail_tokens')
+          .select('account')
+          .limit(1)
+          .single()
+
+        if (!tokenRow) {
+          return { status: 'no_gmail', message: 'No Gmail account connected', snippets: [] }
+        }
+
+        const since = new Date(Date.now() - 3 * 24 * 3600000)
+        const emails = await fetchEmails(tokenRow.account, since)
+
+        if (emails.length === 0) {
+          return { status: 'no_emails', message: 'No recent emails found', snippets: [] }
+        }
+
+        const { data: existingItems } = await supabaseAdmin
+          .from('action_items')
+          .select('source_id')
+          .eq('source', 'email')
+          .not('source_id', 'is', null)
+
+        const flaggedEmailIds = new Set((existingItems || []).map((i: any) => i.source_id))
+
+        const snippets = emails.slice(0, 20).map(email => ({
+          text: `From: ${email.from}\nSubject: ${email.subject}\n\n${email.body.slice(0, 500)}`,
+          source_type: 'email' as const,
+          has_action_item: flaggedEmailIds.has(email.id),
+          metadata: { email_id: email.id, subject: email.subject, from: email.from },
+        }))
+
+        const shuffled = snippets.sort(() => Math.random() - 0.5).slice(0, 10)
+        return { status: 'ok', snippets: shuffled }
+      } catch (e: any) {
+        return { status: 'error', message: e.message || 'Failed to load snippets', snippets: [] }
+      }
+    }
+
+    case 'label': {
+      if (!input.snippet || input.is_action_item === undefined) {
+        return { status: 'error', message: 'snippet and is_action_item are required' }
+      }
+
+      try {
+        const result = await storeTrainingExample(
+          input.snippet,
+          input.is_action_item,
+          'feedback',
+          (input.source_type as 'email' | 'chat') || undefined,
+          undefined,
+          input.action_item_id,
+        )
+        return { status: 'labeled', id: result.id, is_action_item: input.is_action_item }
+      } catch (e: any) {
+        return { status: 'error', message: e.message }
+      }
+    }
+
+    case 'stats': {
+      try {
+        const stats = await getTrainingStats()
+        return { status: 'ok', ...stats }
+      } catch (e: any) {
+        return { status: 'error', message: e.message }
+      }
     }
 
     default:

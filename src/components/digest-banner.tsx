@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { ChevronDown, X } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase-browser'
-import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
 const WINGSTOP_STORES = [
@@ -56,22 +55,13 @@ function isStaleScanned(dateStr: string) {
   return Date.now() - new Date(dateStr).getTime() > 2 * 60 * 60 * 1000 // >2 hours
 }
 
-const PRIORITY_INDICATOR: Record<string, string> = {
-  high: 'bg-red-500',
-  medium: 'bg-yellow-500',
-  low: 'bg-muted-foreground',
-}
-
 export function DigestBanner() {
   const [expanded, setExpanded] = useState(false)
   const [dismissed, setDismissed] = useState(false)
   const [salesData, setSalesData] = useState<Record<string, number>>({})
   const [salesLoaded, setSalesLoaded] = useState(false)
-  const [actionItems, setActionItems] = useState<any[]>([])
-  const [actionCount, setActionCount] = useState(0)
   const [lastScanned, setLastScanned] = useState<string | null>(null)
   const [sinceLastVisit, setSinceLastVisit] = useState<{
-    newActions: number
     newSales: number
     newProactive: number
   } | null>(null)
@@ -88,13 +78,6 @@ export function DigestBanner() {
         setSalesLoaded(true)
       })
 
-    supabase.from('action_items').select('*').eq('status', 'pending')
-      .order('priority').order('created_at', { ascending: false }).limit(3)
-      .then(({ data }) => setActionItems(data || []))
-
-    supabase.from('action_items').select('id', { count: 'exact' }).eq('status', 'pending')
-      .then(({ count }) => setActionCount(count || 0))
-
     supabase.from('email_scans').select('last_scanned_at')
       .order('last_scanned_at', { ascending: false }).limit(1).single()
       .then(({ data }) => setLastScanned(data?.last_scanned_at || null))
@@ -105,9 +88,7 @@ export function DigestBanner() {
       .then(async ({ value }) => {
         const lastVisit = value?.timestamp || null
         if (lastVisit) {
-          const [actionsRes, salesRes, proactiveRes] = await Promise.all([
-            supabase.from('action_items').select('id', { count: 'exact', head: true })
-              .gte('created_at', lastVisit),
+          const [salesRes, proactiveRes] = await Promise.all([
             supabase.from('sales_data').select('id', { count: 'exact', head: true })
               .gte('parsed_at', lastVisit),
             supabase.from('messages').select('id', { count: 'exact', head: true })
@@ -115,10 +96,9 @@ export function DigestBanner() {
               .or('content.like.☀️ **Morning Briefing%,content.like.⚡ **Alert%')
               .gte('created_at', lastVisit),
           ])
-          const total = (actionsRes.count || 0) + (salesRes.count || 0) + (proactiveRes.count || 0)
+          const total = (salesRes.count || 0) + (proactiveRes.count || 0)
           if (total > 0) {
             setSinceLastVisit({
-              newActions: actionsRes.count || 0,
               newSales: salesRes.count || 0,
               newProactive: proactiveRes.count || 0,
             })
@@ -143,7 +123,7 @@ export function DigestBanner() {
     return (
       <button
         onClick={() => setDismissed(false)}
-        className="group flex items-center gap-1.5 px-5 py-1.5 text-[11px] text-muted-foreground/60 hover:text-muted-foreground border-b border-border transition-colors"
+        className="group flex items-center gap-1.5 px-5 py-1.5 text-[0.6875rem] text-muted-foreground/60 hover:text-muted-foreground border-b border-border transition-colors"
       >
         <ChevronDown className="size-3 opacity-0 group-hover:opacity-100 transition-opacity" />
         <span className="tracking-wide uppercase">Digest</span>
@@ -157,7 +137,7 @@ export function DigestBanner() {
       <div className="flex items-center justify-between px-5 h-9">
         <button
           onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-5 text-[11px] tracking-wide hover:text-foreground transition-colors flex-1 min-w-0"
+          className="flex items-center gap-5 text-[0.6875rem] tracking-wide hover:text-foreground transition-colors flex-1 min-w-0"
         >
           <span className="flex items-center gap-4 text-muted-foreground tabular-nums">
             <span className="flex items-center gap-1.5">
@@ -170,7 +150,7 @@ export function DigestBanner() {
               )}>
                 {salesLoaded && wsReporting > 0 ? fmt(wsTotal) : '--'}
               </span>
-              <span className="text-muted-foreground/40 text-[10px]">{wsReporting}/{WINGSTOP_STORES.length}</span>
+              <span className="text-muted-foreground/40 text-[0.625rem]">{wsReporting}/{WINGSTOP_STORES.length}</span>
             </span>
 
             <span className="w-px h-3 bg-border" />
@@ -185,21 +165,14 @@ export function DigestBanner() {
               )}>
                 {salesLoaded && mpReporting > 0 ? fmt(mpTotal) : '--'}
               </span>
-              <span className="text-muted-foreground/40 text-[10px]">{mpReporting}/{MP_STORES.length}</span>
-            </span>
-
-            <span className="w-px h-3 bg-border" />
-
-            <span className="flex items-center gap-1.5">
-              <span className="font-medium text-foreground/60">{actionCount}</span>
-              <span>action{actionCount !== 1 ? 's' : ''}</span>
+              <span className="text-muted-foreground/40 text-[0.625rem]">{mpReporting}/{MP_STORES.length}</span>
             </span>
 
             {lastScanned && (
               <>
                 <span className="w-px h-3 bg-border" />
                 <span className={cn(
-                  'text-[10px]',
+                  'text-[0.625rem]',
                   isStaleScanned(lastScanned) ? 'text-amber-500/70' : 'text-muted-foreground/40'
                 )}>
                   Scanned {timeAgo(lastScanned)}
@@ -210,9 +183,8 @@ export function DigestBanner() {
             {sinceLastVisit && (
               <>
                 <span className="w-px h-3 bg-border" />
-                <span className="text-[10px] text-blue-500/60">
+                <span className="text-[0.625rem] text-blue-500/60">
                   {[
-                    sinceLastVisit.newActions > 0 && `${sinceLastVisit.newActions} new action${sinceLastVisit.newActions !== 1 ? 's' : ''}`,
                     sinceLastVisit.newSales > 0 && `${sinceLastVisit.newSales} sales update${sinceLastVisit.newSales !== 1 ? 's' : ''}`,
                     sinceLastVisit.newProactive > 0 && `${sinceLastVisit.newProactive} briefing${sinceLastVisit.newProactive !== 1 ? 's' : ''}`,
                   ].filter(Boolean).join(', ')} since last visit
@@ -243,74 +215,43 @@ export function DigestBanner() {
             <div className="h-px bg-border mb-3" />
 
             <div className="grid grid-cols-2 gap-6">
-              {/* Sales column */}
-              <div className="space-y-3">
-                {/* Wingstop */}
-                <div>
-                  <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/70 mb-2">Wingstop</div>
-                  <div className="space-y-0.5">
-                    {WINGSTOP_STORES.map(store => {
-                      const sales = salesData[store.number] ?? null
-                      return (
-                        <div key={store.number} className="flex items-baseline justify-between text-[12px] py-px">
-                          <span className="text-muted-foreground">{store.name}</span>
-                          <span className={cn('font-medium tabular-nums', salesColor(sales, WINGSTOP_TARGET))}>
-                            {fmtFull(sales)}
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
+              {/* Wingstop */}
+              <div>
+                <div className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/70 mb-2">Wingstop</div>
+                <div className="space-y-0.5">
+                  {WINGSTOP_STORES.map(store => {
+                    const sales = salesData[store.number] ?? null
+                    return (
+                      <div key={store.number} className="flex items-baseline justify-between text-[0.75rem] py-px">
+                        <span className="text-muted-foreground">{store.name}</span>
+                        <span className={cn('font-medium tabular-nums', salesColor(sales, WINGSTOP_TARGET))}>
+                          {fmtFull(sales)}
+                        </span>
+                      </div>
+                    )
+                  })}
                 </div>
+              </div>
 
-                {/* Mr Pickle's */}
-                <div>
-                  <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/70 mb-2">Mr. Pickle&apos;s</div>
-                  <div className="space-y-0.5">
-                    {MP_STORES.map(store => {
-                      const sales = salesData[store.number] ?? null
-                      return (
-                        <div key={store.number} className="flex items-baseline justify-between text-[12px] py-px">
-                          <span className="text-muted-foreground">{store.name}</span>
-                          <span className={cn('font-medium tabular-nums', salesColor(sales, MP_TARGET))}>
-                            {fmtFull(sales)}
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
+              {/* Mr Pickle's */}
+              <div>
+                <div className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/70 mb-2">Mr. Pickle&apos;s</div>
+                <div className="space-y-0.5">
+                  {MP_STORES.map(store => {
+                    const sales = salesData[store.number] ?? null
+                    return (
+                      <div key={store.number} className="flex items-baseline justify-between text-[0.75rem] py-px">
+                        <span className="text-muted-foreground">{store.name}</span>
+                        <span className={cn('font-medium tabular-nums', salesColor(sales, MP_TARGET))}>
+                          {fmtFull(sales)}
+                        </span>
+                      </div>
+                    )
+                  })}
                 </div>
 
                 {salesLoaded && Object.keys(salesData).length === 0 && (
-                  <p className="text-[11px] text-muted-foreground/60">Waiting for today&apos;s reports.</p>
-                )}
-              </div>
-
-              {/* Actions column */}
-              <div>
-                <div className="flex items-baseline justify-between mb-2">
-                  <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/70">
-                    Actions
-                    {actionCount > 0 && <span className="ml-1.5 text-foreground/50">{actionCount}</span>}
-                  </span>
-                  <Link
-                    href="/action-items"
-                    className="text-[10px] text-muted-foreground/50 hover:text-foreground transition-colors tracking-wide uppercase"
-                  >
-                    View all
-                  </Link>
-                </div>
-                {actionItems.length === 0 ? (
-                  <p className="text-[11px] text-muted-foreground/60">No pending actions.</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {actionItems.map(item => (
-                      <div key={item.id} className="flex items-start gap-2 text-[12px]">
-                        <div className={cn('size-1.5 mt-[5px] shrink-0', PRIORITY_INDICATOR[item.priority])} />
-                        <span className="text-foreground/80 leading-snug">{item.title}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <p className="text-[0.6875rem] text-muted-foreground/60 mt-3">Waiting for today&apos;s reports.</p>
                 )}
               </div>
             </div>

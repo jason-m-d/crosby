@@ -16,3 +16,6 @@
 - Supabase (Postgres + auth + storage)
 - Anthropic Claude API for the AI chat
 - Voyage AI for embeddings (RAG)
+
+## Verification Rule
+- If you instruct the user to do something within the app (click a button, use a feature, navigate somewhere, etc.), you must first verify that the thing actually exists and is rendering in the UI. If it's not there, flag it immediately so we can build it out. Don't send the user on a hunt for something that doesn't exist yet.

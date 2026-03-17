@@ -34,11 +34,11 @@ export default function LoginPage() {
       <div className="w-full max-w-[320px] animate-in-fade">
         {/* Mark */}
         <div className="mb-12 text-center">
-          <h1 className="text-[28px] font-semibold tracking-tight text-foreground">
+          <h1 className="text-[1.75rem] font-semibold tracking-tight text-foreground">
             J.DRG
           </h1>
           <div className="w-6 h-px bg-border mx-auto mt-3 mb-3" />
-          <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground/50">
+          <p className="text-[0.6875rem] uppercase tracking-[0.2em] text-muted-foreground/50">
             DeMayo Restaurant Group
           </p>
         </div>
@@ -46,7 +46,7 @@ export default function LoginPage() {
         {/* Form */}
         <form onSubmit={handleLogin} className="space-y-5">
           <div className="space-y-1.5">
-            <label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 font-medium">
+            <label className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/60 font-medium">
               Email
             </label>
             <input
@@ -55,11 +55,11 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="jason@hungry.llc"
               required
-              className="w-full bg-transparent border border-border px-3 py-2.5 text-[14px] outline-none placeholder:text-muted-foreground/30 focus:border-foreground transition-colors"
+              className="w-full bg-transparent border border-border px-3 py-2.5 text-[0.875rem] outline-none placeholder:text-muted-foreground/30 focus:border-foreground transition-colors"
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 font-medium">
+            <label className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/60 font-medium">
               Password
             </label>
             <input
@@ -67,18 +67,18 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full bg-transparent border border-border px-3 py-2.5 text-[14px] outline-none placeholder:text-muted-foreground/30 focus:border-foreground transition-colors"
+              className="w-full bg-transparent border border-border px-3 py-2.5 text-[0.875rem] outline-none placeholder:text-muted-foreground/30 focus:border-foreground transition-colors"
             />
           </div>
 
           {error && (
-            <p className="text-[12px] text-destructive">{error}</p>
+            <p className="text-[0.75rem] text-destructive">{error}</p>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-foreground text-background py-2.5 text-[13px] font-medium tracking-wide disabled:opacity-40 transition-opacity flex items-center justify-center gap-2"
+            className="w-full bg-foreground text-background py-2.5 text-[0.8125rem] font-medium tracking-wide disabled:opacity-40 transition-opacity flex items-center justify-center gap-2"
           >
             {loading ? (
               <>

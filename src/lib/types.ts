@@ -77,8 +77,31 @@ export interface ActionItem {
   status: 'pending' | 'approved' | 'dismissed' | 'completed'
   priority: 'high' | 'medium' | 'low'
   due_date: string | null
+  confidence: number | null
+  snoozed_until: string | null
+  last_surfaced_at: string | null
   created_at: string
   updated_at: string
+}
+
+export interface TrainingExample {
+  id: string
+  snippet: string
+  is_action_item: boolean
+  label_source: 'teach_me' | 'feedback' | 'implicit'
+  action_item_id: string | null
+  source_type: 'email' | 'chat' | null
+  embedding: number[] | null
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
+export interface TrainingRule {
+  id: string
+  rule: string
+  category: 'always_flag' | 'never_flag' | 'conditional'
+  is_active: boolean
+  created_at: string
 }
 
 export interface EmailScan {
@@ -149,6 +172,44 @@ export interface ArtifactVersion {
   change_summary: string | null
   changed_by: 'user' | 'assistant'
   created_at: string
+}
+
+export interface DashboardCard {
+  id: string
+  title: string
+  content: string
+  card_type: 'summary' | 'alert' | 'custom'
+  position: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface NotificationRule {
+  id: string
+  description: string
+  match_type: 'sender' | 'subject' | 'keyword'
+  match_value: string
+  match_field: string
+  is_active: boolean
+  created_at: string
+}
+
+export interface Bookmark {
+  id: string
+  project_id: string | null
+  url: string
+  title: string
+  description: string | null
+  created_at: string
+}
+
+export interface UIPreference {
+  id: string
+  key: string
+  value: string
+  created_at: string
+  updated_at: string
 }
 
 export interface ArtifactEvent {

@@ -51,11 +51,11 @@ export default function NewDocumentPage() {
         <Link href="/documents" className="p-1 text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="size-4" />
         </Link>
-        <span className="text-[13px] font-medium uppercase tracking-[0.1em] flex-1">New Document</span>
+        <span className="text-[0.8125rem] font-medium uppercase tracking-[0.1em] flex-1">New Document</span>
         <button
           onClick={handleSave}
           disabled={saving || !title.trim()}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-foreground text-background disabled:opacity-30 transition-opacity"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.75rem] bg-foreground text-background disabled:opacity-30 transition-opacity"
         >
           {saving && <Loader2 className="size-3 animate-spin" />}
           Create
@@ -70,7 +70,7 @@ export default function NewDocumentPage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Untitled"
-              className="w-full bg-transparent text-[20px] font-medium tracking-tight outline-none placeholder:text-muted-foreground/20"
+              className="w-full bg-transparent text-[1.25rem] font-medium tracking-tight outline-none placeholder:text-muted-foreground/20"
             />
           </div>
           <div className="flex-1 px-6 pb-6">
@@ -78,7 +78,7 @@ export default function NewDocumentPage() {
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Start writing..."
-              className="w-full h-full resize-none bg-transparent text-[14px] leading-[1.8] font-[family-name:var(--font-geist-mono)] outline-none placeholder:text-muted-foreground/20"
+              className="w-full h-full resize-none bg-transparent text-[0.875rem] leading-[1.8] font-[family-name:var(--font-geist-mono)] outline-none placeholder:text-muted-foreground/20"
             />
           </div>
         </div>
@@ -86,13 +86,13 @@ export default function NewDocumentPage() {
         {/* Properties sidebar */}
         <div className="w-56 border-l border-border p-5 space-y-5">
           <div className="space-y-1.5">
-            <label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">
+            <label className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">
               Project
             </label>
             <select
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
-              className="w-full bg-transparent border border-border px-2.5 py-1.5 text-[12px] outline-none focus:border-foreground/30 transition-colors"
+              className="w-full bg-transparent border border-border px-2.5 py-1.5 text-[0.75rem] outline-none focus:border-foreground/30 transition-colors"
             >
               <option value="none">None</option>
               {projects.map(p => (
@@ -102,11 +102,11 @@ export default function NewDocumentPage() {
           </div>
 
           <div className="space-y-3 pt-2">
-            <label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium block">
+            <label className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium block">
               Options
             </label>
             <label className="flex items-center justify-between cursor-pointer group">
-              <span className="text-[12px] text-muted-foreground group-hover:text-foreground transition-colors">Living Document</span>
+              <span className="text-[0.75rem] text-muted-foreground group-hover:text-foreground transition-colors">Living Document</span>
               <button
                 onClick={() => setIsLiving(!isLiving)}
                 className={`w-8 h-[18px] border transition-colors ${isLiving ? 'bg-foreground border-foreground' : 'border-border'}`}
@@ -115,7 +115,7 @@ export default function NewDocumentPage() {
               </button>
             </label>
             <label className="flex items-center justify-between cursor-pointer group">
-              <span className="text-[12px] text-muted-foreground group-hover:text-foreground transition-colors">Pinned</span>
+              <span className="text-[0.75rem] text-muted-foreground group-hover:text-foreground transition-colors">Pinned</span>
               <button
                 onClick={() => setIsPinned(!isPinned)}
                 className={`w-8 h-[18px] border transition-colors ${isPinned ? 'bg-foreground border-foreground' : 'border-border'}`}
@@ -124,7 +124,7 @@ export default function NewDocumentPage() {
               </button>
             </label>
             <label className="flex items-center justify-between cursor-pointer group">
-              <span className="text-[12px] text-muted-foreground group-hover:text-foreground transition-colors">Template</span>
+              <span className="text-[0.75rem] text-muted-foreground group-hover:text-foreground transition-colors">Template</span>
               <button
                 onClick={() => setIsTemplate(!isTemplate)}
                 className={`w-8 h-[18px] border transition-colors ${isTemplate ? 'bg-foreground border-foreground' : 'border-border'}`}

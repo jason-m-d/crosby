@@ -81,7 +81,7 @@ export default function DocumentsPage() {
       {/* Header */}
       <div className="border-b border-border px-6 py-4 space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-[13px] font-medium uppercase tracking-[0.1em]">Documents</h1>
+          <h1 className="text-[0.8125rem] font-medium uppercase tracking-[0.1em]">Documents</h1>
           <div className="flex items-center gap-2">
             <label>
               <input
@@ -91,14 +91,14 @@ export default function DocumentsPage() {
                 accept=".pdf,.docx,.xlsx,.xls,.txt,.md"
                 onChange={(e) => handleUpload(e.target.files)}
               />
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors cursor-pointer">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.75rem] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors cursor-pointer">
                 {uploading ? <Loader2 className="size-3 animate-spin" /> : <Upload className="size-3" />}
                 Upload
               </span>
             </label>
             <button
               onClick={() => router.push('/documents/new')}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-foreground text-background transition-opacity hover:opacity-80"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.75rem] bg-foreground text-background transition-opacity hover:opacity-80"
             >
               <Plus className="size-3" />
               Create
@@ -112,13 +112,13 @@ export default function DocumentsPage() {
               placeholder="Search..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-transparent border border-border pl-8 pr-3 py-1.5 text-[13px] outline-none placeholder:text-muted-foreground/30 focus:border-foreground/30 transition-colors"
+              className="w-full bg-transparent border border-border pl-8 pr-3 py-1.5 text-[0.8125rem] outline-none placeholder:text-muted-foreground/30 focus:border-foreground/30 transition-colors"
             />
           </div>
           <select
             value={filterProject}
             onChange={(e) => setFilterProject(e.target.value)}
-            className="bg-transparent border border-border px-2.5 py-1.5 text-[12px] text-muted-foreground outline-none focus:border-foreground/30 transition-colors"
+            className="bg-transparent border border-border px-2.5 py-1.5 text-[0.75rem] text-muted-foreground outline-none focus:border-foreground/30 transition-colors"
           >
             <option value="all">All projects</option>
             {projects.map(p => (
@@ -128,7 +128,7 @@ export default function DocumentsPage() {
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            className="bg-transparent border border-border px-2.5 py-1.5 text-[12px] text-muted-foreground outline-none focus:border-foreground/30 transition-colors"
+            className="bg-transparent border border-border px-2.5 py-1.5 text-[0.75rem] text-muted-foreground outline-none focus:border-foreground/30 transition-colors"
           >
             <option value="all">All types</option>
             <option value="pdf">PDF</option>
@@ -165,7 +165,7 @@ export default function DocumentsPage() {
         <div className="absolute inset-0 z-50 bg-foreground/5 border-2 border-dashed border-foreground/20 flex items-center justify-center">
           <div className="text-center">
             <Upload className="size-5 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-[13px] text-muted-foreground">Drop files to upload</p>
+            <p className="text-[0.8125rem] text-muted-foreground">Drop files to upload</p>
           </div>
         </div>
       )}
@@ -179,8 +179,8 @@ export default function DocumentsPage() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 animate-in-fade">
             <div className="w-8 h-px bg-border mx-auto mb-4" />
-            <p className="text-[13px] text-muted-foreground/60">No documents yet</p>
-            <p className="text-[11px] text-muted-foreground/40 mt-1">Upload a file or create a new document</p>
+            <p className="text-[0.8125rem] text-muted-foreground/60">No documents yet</p>
+            <p className="text-[0.6875rem] text-muted-foreground/40 mt-1">Upload a file or create a new document</p>
           </div>
         ) : view === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-px bg-border">
@@ -188,21 +188,21 @@ export default function DocumentsPage() {
               <Link key={doc.id} href={`/documents/${doc.id}`}>
                 <div className="bg-background p-4 hover:bg-muted/30 transition-colors cursor-pointer h-full">
                   <div className="flex items-start justify-between gap-2 mb-3">
-                    <h3 className="text-[13px] font-medium line-clamp-2 leading-snug">{doc.title}</h3>
+                    <h3 className="text-[0.8125rem] font-medium line-clamp-2 leading-snug">{doc.title}</h3>
                   </div>
                   <div className="flex flex-wrap gap-2 mb-2">
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground/50">{doc.file_type}</span>
-                    {doc.is_living && <span className="text-[10px] uppercase tracking-wider text-green-600">Live</span>}
-                    {doc.is_pinned && <span className="text-[10px] uppercase tracking-wider text-muted-foreground/50">Pinned</span>}
-                    {doc.is_template && <span className="text-[10px] uppercase tracking-wider text-muted-foreground/50">Template</span>}
+                    <span className="text-[0.625rem] uppercase tracking-wider text-muted-foreground/50">{doc.file_type}</span>
+                    {doc.is_living && <span className="text-[0.625rem] uppercase tracking-wider text-green-600">Live</span>}
+                    {doc.is_pinned && <span className="text-[0.625rem] uppercase tracking-wider text-muted-foreground/50">Pinned</span>}
+                    {doc.is_template && <span className="text-[0.625rem] uppercase tracking-wider text-muted-foreground/50">Template</span>}
                   </div>
                   {doc.projects && (
                     <div className="flex items-center gap-1.5 mb-2">
                       <div className="size-1.5" style={{ backgroundColor: doc.projects.color }} />
-                      <span className="text-[11px] text-muted-foreground/50">{doc.projects.name}</span>
+                      <span className="text-[0.6875rem] text-muted-foreground/50">{doc.projects.name}</span>
                     </div>
                   )}
-                  <p className="text-[11px] text-muted-foreground/40 tabular-nums">{timeAgo(doc.updated_at)}</p>
+                  <p className="text-[0.6875rem] text-muted-foreground/40 tabular-nums">{timeAgo(doc.updated_at)}</p>
                 </div>
               </Link>
             ))}
@@ -213,18 +213,18 @@ export default function DocumentsPage() {
               <Link key={doc.id} href={`/documents/${doc.id}`}>
                 <div className="flex items-center gap-4 px-4 py-3 hover:bg-muted/30 transition-colors">
                   <FileText className="size-3.5 text-muted-foreground/40 shrink-0" />
-                  <span className="flex-1 text-[13px] font-medium truncate">{doc.title}</span>
+                  <span className="flex-1 text-[0.8125rem] font-medium truncate">{doc.title}</span>
                   <div className="flex items-center gap-3">
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground/40">{doc.file_type}</span>
-                    {doc.is_living && <span className="text-[10px] uppercase tracking-wider text-green-600">Live</span>}
+                    <span className="text-[0.625rem] uppercase tracking-wider text-muted-foreground/40">{doc.file_type}</span>
+                    {doc.is_living && <span className="text-[0.625rem] uppercase tracking-wider text-green-600">Live</span>}
                   </div>
                   {doc.projects && (
                     <div className="flex items-center gap-1.5">
                       <div className="size-1.5" style={{ backgroundColor: doc.projects.color }} />
-                      <span className="text-[11px] text-muted-foreground/40">{doc.projects.name}</span>
+                      <span className="text-[0.6875rem] text-muted-foreground/40">{doc.projects.name}</span>
                     </div>
                   )}
-                  <span className="text-[11px] text-muted-foreground/30 tabular-nums w-14 text-right">{timeAgo(doc.updated_at)}</span>
+                  <span className="text-[0.6875rem] text-muted-foreground/30 tabular-nums w-14 text-right">{timeAgo(doc.updated_at)}</span>
                 </div>
               </Link>
             ))}

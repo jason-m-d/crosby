@@ -5,7 +5,7 @@
 @layer base {
   :root {
     --background: 30 6% 12%;
-    --foreground: 40 10% 87%;
+    --foreground: 40 10% 90%;
     --card: 30 6% 14%;
     --card-foreground: 40 10% 87%;
     --popover: 30 6% 14%;
@@ -15,7 +15,7 @@
     --secondary: 30 5% 18%;
     --secondary-foreground: 40 10% 87%;
     --muted: 30 5% 18%;
-    --muted-foreground: 30 6% 55%;
+    --muted-foreground: 30 8% 68%;
     --accent: 30 5% 18%;
     --accent-foreground: 40 10% 87%;
     --destructive: 0 62.8% 40%;
@@ -35,6 +35,9 @@
 }
 
 @layer base {
+  html {
+    font-size: 18px;
+  }
   * {
     @apply border-border;
   }

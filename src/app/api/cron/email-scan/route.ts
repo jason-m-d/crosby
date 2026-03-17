@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '@/lib/supabase'
 import { fetchEmails } from '@/lib/gmail'
 import { getMainConversation, insertProactiveMessage, getUserPreferences } from '@/lib/proactive'
+import { buildFewShotBlock } from '@/lib/training'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -27,9 +28,12 @@ DO NOT extract items from:
 EXISTING ACTION ITEMS (do not create duplicates - if an email relates to an existing item, use "updates" to modify it instead):
 {EXISTING_ITEMS}
 
+For each action item, include a "confidence" score (0.0-1.0).
+1.0 = certain this is an action item. 0.7-0.9 = likely. 0.5-0.7 = uncertain. Below 0.5 = probably not, don't include.
+
 Return JSON:
 {
-  "action_items": [{"title": "...", "description": "...", "priority": "high|medium|low", "due_date": null, "source_snippet": "..."}],
+  "action_items": [{"title": "...", "description": "...", "priority": "high|medium|low", "due_date": null, "source_snippet": "...", "confidence": 0.9}],
   "updates": [{"item_id": "uuid", "description": "updated description", "priority": "high|medium|low", "due_date": "2026-01-20"}]
 }
 
@@ -89,13 +93,20 @@ export async function POST(req: NextRequest) {
 
         // Extract action items via Claude
         try {
+          // Build few-shot context from training examples
+          const emailText = `From: ${email.from}\nSubject: ${email.subject}\n\n${email.body.slice(0, 3000)}`
+          const fewShotBlock = await buildFewShotBlock(emailText).catch(() => null)
+          const fullSystemPrompt = fewShotBlock
+            ? `${systemPrompt}\n\n${fewShotBlock}`
+            : systemPrompt
+
           const response = await anthropic.messages.create({
             model: 'claude-sonnet-4-20250514',
             max_tokens: 1024,
-            system: systemPrompt,
+            system: fullSystemPrompt,
             messages: [{
               role: 'user',
-              content: `From: ${email.from}\nSubject: ${email.subject}\n\n${email.body.slice(0, 3000)}`,
+              content: emailText,
             }],
           })
 
@@ -127,6 +138,7 @@ export async function POST(req: NextRequest) {
                 source_snippet: item.source_snippet || email.subject,
                 priority: isHighPriority ? 'high' : (item.priority || 'medium'),
                 due_date: item.due_date || null,
+                confidence: typeof item.confidence === 'number' ? item.confidence : null,
               })
               itemsFound++
             }

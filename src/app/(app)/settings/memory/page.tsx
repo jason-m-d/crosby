@@ -62,8 +62,8 @@ export default function MemoryPage() {
   return (
     <div className="max-w-2xl space-y-6 animate-in-fade">
       <div>
-        <h1 className="text-[13px] font-medium uppercase tracking-[0.1em] mb-1">Memory</h1>
-        <p className="text-[12px] text-muted-foreground/50">J.DRG remembers these facts across all conversations.</p>
+        <h1 className="text-[0.8125rem] font-medium uppercase tracking-[0.1em] mb-1">Memory</h1>
+        <p className="text-[0.75rem] text-muted-foreground/50">J.DRG remembers these facts across all conversations.</p>
       </div>
 
       {/* Add new memory */}
@@ -72,13 +72,13 @@ export default function MemoryPage() {
           value={newContent}
           onChange={(e) => setNewContent(e.target.value)}
           placeholder="Add a new memory..."
-          className="w-full bg-transparent border border-border px-3 py-2 text-[13px] outline-none placeholder:text-muted-foreground/30 focus:border-foreground/30 transition-colors min-h-[60px] resize-none"
+          className="w-full bg-transparent border border-border px-3 py-2 text-[0.8125rem] outline-none placeholder:text-muted-foreground/30 focus:border-foreground/30 transition-colors min-h-[60px] resize-none"
         />
         <div className="flex items-center gap-2">
           <select
             value={newCategory}
             onChange={(e) => setNewCategory(e.target.value)}
-            className="bg-transparent border border-border px-2.5 py-1.5 text-[12px] text-muted-foreground outline-none focus:border-foreground/30 transition-colors"
+            className="bg-transparent border border-border px-2.5 py-1.5 text-[0.75rem] text-muted-foreground outline-none focus:border-foreground/30 transition-colors"
           >
             <option value="fact">Fact</option>
             <option value="preference">Preference</option>
@@ -87,7 +87,7 @@ export default function MemoryPage() {
           <button
             onClick={handleAdd}
             disabled={adding || !newContent.trim()}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-foreground text-background disabled:opacity-30 transition-opacity"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.75rem] bg-foreground text-background disabled:opacity-30 transition-opacity"
           >
             <Plus className="size-3" /> Add
           </button>
@@ -101,7 +101,7 @@ export default function MemoryPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search..."
-          className="w-full bg-transparent border border-border pl-8 pr-3 py-1.5 text-[13px] outline-none placeholder:text-muted-foreground/30 focus:border-foreground/30 transition-colors"
+          className="w-full bg-transparent border border-border pl-8 pr-3 py-1.5 text-[0.8125rem] outline-none placeholder:text-muted-foreground/30 focus:border-foreground/30 transition-colors"
         />
       </div>
 
@@ -113,7 +113,7 @@ export default function MemoryPage() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-16">
           <div className="w-8 h-px bg-border mx-auto mb-4" />
-          <p className="text-[13px] text-muted-foreground/60">No memories found</p>
+          <p className="text-[0.8125rem] text-muted-foreground/60">No memories found</p>
         </div>
       ) : (
         <div className="divide-y divide-border border border-border">
@@ -124,13 +124,13 @@ export default function MemoryPage() {
                   <textarea
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
-                    className="w-full bg-transparent border border-border px-3 py-2 text-[13px] outline-none focus:border-foreground/30 transition-colors min-h-[60px] resize-none"
+                    className="w-full bg-transparent border border-border px-3 py-2 text-[0.8125rem] outline-none focus:border-foreground/30 transition-colors min-h-[60px] resize-none"
                   />
                   <div className="flex items-center gap-2">
                     <select
                       value={editCategory}
                       onChange={(e) => setEditCategory(e.target.value)}
-                      className="bg-transparent border border-border px-2.5 py-1.5 text-[12px] text-muted-foreground outline-none"
+                      className="bg-transparent border border-border px-2.5 py-1.5 text-[0.75rem] text-muted-foreground outline-none"
                     >
                       <option value="fact">Fact</option>
                       <option value="preference">Preference</option>
@@ -155,11 +155,11 @@ export default function MemoryPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1.5">
                       <div className={cn('size-1.5', categoryIndicator[memory.category] || 'bg-muted-foreground/40')} />
-                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground/40">
+                      <span className="text-[0.625rem] uppercase tracking-wider text-muted-foreground/40">
                         {memory.category || 'general'}
                       </span>
                     </div>
-                    <p className="text-[13px] leading-relaxed">{memory.content}</p>
+                    <p className="text-[0.8125rem] leading-relaxed">{memory.content}</p>
                   </div>
                   <div className="flex gap-0.5 shrink-0">
                     <button

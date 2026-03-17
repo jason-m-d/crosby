@@ -143,7 +143,7 @@ export function ArtifactPanel({
               key={a.id}
               onClick={() => onSelectArtifact(a.id)}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-2.5 text-[11px] border-b-2 transition-colors shrink-0 max-w-[160px] group",
+                "flex items-center gap-1.5 px-3 py-2.5 text-[0.6875rem] border-b-2 transition-colors shrink-0 max-w-[160px] group",
                 a.id === activeArtifactId
                   ? 'border-foreground text-foreground'
                   : 'border-transparent text-muted-foreground/50 hover:text-muted-foreground'
@@ -172,16 +172,16 @@ export function ArtifactPanel({
         <div className="flex-1 flex flex-col min-h-0">
           {/* Toolbar */}
           <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border">
-            <span className={cn("text-[10px] uppercase tracking-wider font-medium", TYPE_COLORS[active.type] || TYPE_COLORS.freeform)}>
+            <span className={cn("text-[0.625rem] uppercase tracking-wider font-medium", TYPE_COLORS[active.type] || TYPE_COLORS.freeform)}>
               {active.type}
             </span>
             {active.project_id && (
-              <span className="text-[10px] text-emerald-500/70 flex items-center gap-0.5">
+              <span className="text-[0.625rem] text-emerald-500/70 flex items-center gap-0.5">
                 <FolderOpen className="size-2.5" /> saved
               </span>
             )}
             <div className="flex-1" />
-            <span className="text-[10px] text-muted-foreground/30 tabular-nums">v{active.version}</span>
+            <span className="text-[0.625rem] text-muted-foreground/30 tabular-nums">v{active.version}</span>
             <button
               onClick={() => setMode(mode === 'edit' ? 'view' : 'edit')}
               className={cn(
@@ -213,7 +213,7 @@ export function ArtifactPanel({
                 </button>
                 {showProjectPicker && (
                   <div className="absolute right-0 top-full mt-1 w-48 bg-background border border-border z-10 shadow-lg">
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground/40 px-3 py-2 border-b border-border">
+                    <div className="text-[0.625rem] uppercase tracking-wider text-muted-foreground/40 px-3 py-2 border-b border-border">
                       Save to project
                     </div>
                     {projects.map(p => (
@@ -221,7 +221,7 @@ export function ArtifactPanel({
                         key={p.id}
                         onClick={() => saveToProject(p.id)}
                         disabled={savingProject}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-[11px] hover:bg-muted/30 transition-colors text-left"
+                        className="w-full flex items-center gap-2 px-3 py-2 text-[0.6875rem] hover:bg-muted/30 transition-colors text-left"
                       >
                         <div className="size-2 shrink-0" style={{ backgroundColor: p.color || '#6B7280' }} />
                         <span className="truncate">{p.name}</span>
@@ -233,7 +233,7 @@ export function ArtifactPanel({
               </div>
             )}
             {active.project_id && projectId && active.project_id === projectId && (
-              <span className="flex items-center gap-0.5 text-[10px] text-emerald-500">
+              <span className="flex items-center gap-0.5 text-[0.625rem] text-emerald-500">
                 <Check className="size-2.5" />
               </span>
             )}
@@ -247,13 +247,13 @@ export function ArtifactPanel({
                   <Loader2 className="size-3 animate-spin text-muted-foreground/40" />
                 </div>
               ) : versions.length === 0 ? (
-                <p className="text-[11px] text-muted-foreground/40 py-4 text-center">No previous versions</p>
+                <p className="text-[0.6875rem] text-muted-foreground/40 py-4 text-center">No previous versions</p>
               ) : (
                 <div>
                   {versions.map(v => (
-                    <div key={v.id} className="flex items-center gap-2 px-3 py-2 text-[11px] border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                    <div key={v.id} className="flex items-center gap-2 px-3 py-2 text-[0.6875rem] border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                       <span className="text-muted-foreground/50 tabular-nums shrink-0">v{v.version}</span>
-                      <span className="text-muted-foreground/40 text-[10px] shrink-0">{v.changed_by}</span>
+                      <span className="text-muted-foreground/40 text-[0.625rem] shrink-0">{v.changed_by}</span>
                       <span className="text-muted-foreground/40 truncate flex-1">
                         {v.change_summary || v.content.slice(0, 60) + '...'}
                       </span>
@@ -277,13 +277,13 @@ export function ArtifactPanel({
               <input
                 value={editName}
                 onChange={(e) => handleNameChange(e.target.value)}
-                className="w-full bg-transparent text-[14px] font-semibold outline-none border-b border-border/50 pb-1 focus:border-foreground/30 transition-colors"
+                className="w-full bg-transparent text-[0.875rem] font-semibold outline-none border-b border-border/50 pb-1 focus:border-foreground/30 transition-colors"
                 placeholder="Artifact name"
               />
             </div>
           ) : (
             <div className="px-3 pt-3 pb-1">
-              <h3 className="text-[14px] font-semibold">{active.name}</h3>
+              <h3 className="text-[0.875rem] font-semibold">{active.name}</h3>
             </div>
           )}
 
@@ -293,11 +293,11 @@ export function ArtifactPanel({
               <textarea
                 value={editContent}
                 onChange={(e) => handleContentChange(e.target.value)}
-                className="w-full h-full bg-transparent px-3 py-2 text-[13px] leading-relaxed outline-none resize-none font-[family-name:var(--font-geist-mono)]"
+                className="w-full h-full bg-transparent px-3 py-2 text-[0.8125rem] leading-relaxed outline-none resize-none font-[family-name:var(--font-geist-mono)]"
                 placeholder="Write markdown content..."
               />
             ) : (
-              <div className="px-3 py-2 text-[13px] leading-[1.7] text-foreground/85">
+              <div className="px-3 py-2 text-[0.8125rem] leading-[1.7] text-foreground/85">
                 <FormattedContent content={active.content} />
               </div>
             )}

@@ -5,17 +5,17 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase-browser'
 import {
   Loader2, FileText, MessageSquare, Pin, PinOff, ArrowUp, Settings2,
-  Upload, Plus, Trash2, X, Check, PanelLeftClose, PanelLeftOpen, BookOpen, Pencil
+  Upload, Plus, Trash2, X, Check, PanelLeftClose, PanelLeftOpen, BookOpen, Pencil, Link2, ExternalLink
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { ChatMessages } from '@/components/chat-messages'
 import { ArtifactPanel } from '@/components/artifact-panel'
-import type { Artifact } from '@/lib/types'
+import type { Artifact, Bookmark } from '@/lib/types'
 
 const COLORS = ['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#EC4899', '#6B7280', '#06B6D4']
 
-type Panel = 'conversations' | 'files' | 'context' | 'settings'
+type Panel = 'conversations' | 'files' | 'context' | 'bookmarks' | 'settings'
 
 export default function ProjectPage() {
   const { id } = useParams<{ id: string }>()
@@ -53,6 +53,9 @@ export default function ProjectPage() {
   const [contextContent, setContextContent] = useState('')
   const [savingContext, setSavingContext] = useState(false)
   const [addingContext, setAddingContext] = useState(false)
+
+  // Bookmarks state
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
 
   // Artifact state
   const [artifacts, setArtifacts] = useState<Artifact[]>([])
@@ -186,12 +189,13 @@ export default function ProjectPage() {
 
   async function loadProject() {
     const supabase = getSupabaseBrowser()
-    const [{ data: proj }, { data: convos }, { data: docs }, { data: ctxEntries }, { data: projArts }] = await Promise.all([
+    const [{ data: proj }, { data: convos }, { data: docs }, { data: ctxEntries }, { data: projArts }, { data: bmarks }] = await Promise.all([
       supabase.from('projects').select('*').eq('id', id).single(),
       supabase.from('conversations').select('*').eq('project_id', id).order('updated_at', { ascending: false }),
       supabase.from('documents').select('*').eq('project_id', id).order('is_pinned', { ascending: false }).order('updated_at', { ascending: false }),
       supabase.from('project_context').select('*').eq('project_id', id).order('updated_at', { ascending: false }),
       supabase.from('artifacts').select('*').eq('project_id', id).order('updated_at', { ascending: false }),
+      supabase.from('bookmarks').select('*').eq('project_id', id).order('created_at', { ascending: false }),
     ])
 
     setProject(proj)
@@ -199,6 +203,7 @@ export default function ProjectPage() {
     setDocuments(docs || [])
     setContextEntries(ctxEntries || [])
     setProjectArtifacts(projArts || [])
+    setBookmarks(bmarks || [])
     setLoading(false)
 
     if (proj) {
@@ -464,7 +469,7 @@ export default function ProjectPage() {
     )
   }
 
-  if (!project) return <div className="p-6 text-[13px] text-muted-foreground">Project not found</div>
+  if (!project) return <div className="p-6 text-[0.8125rem] text-muted-foreground">Project not found</div>
 
   return (
     <div className="h-full flex animate-in-fade">
@@ -475,7 +480,7 @@ export default function ProjectPage() {
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <div className="flex items-center gap-2 min-w-0">
               <div className="size-2.5 shrink-0" style={{ backgroundColor: project.color }} />
-              <span className="text-[12px] font-medium truncate">{project.name}</span>
+              <span className="text-[0.75rem] font-medium truncate">{project.name}</span>
             </div>
             <button
               onClick={() => setPanel(null)}
@@ -491,6 +496,7 @@ export default function ProjectPage() {
               { key: 'conversations' as Panel, icon: MessageSquare },
               { key: 'files' as Panel, icon: FileText },
               { key: 'context' as Panel, icon: BookOpen },
+              { key: 'bookmarks' as Panel, icon: Link2 },
               { key: 'settings' as Panel, icon: Settings2 },
             ]).map(t => (
               <button
@@ -515,13 +521,13 @@ export default function ProjectPage() {
               <div>
                 <button
                   onClick={startNewChat}
-                  className="w-full flex items-center gap-2 px-4 py-3 text-[12px] text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors border-b border-border"
+                  className="w-full flex items-center gap-2 px-4 py-3 text-[0.75rem] text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors border-b border-border"
                 >
                   <Plus className="size-3" />
                   New conversation
                 </button>
                 {conversations.length === 0 ? (
-                  <p className="text-[11px] text-muted-foreground/40 px-4 py-6 text-center">No conversations yet</p>
+                  <p className="text-[0.6875rem] text-muted-foreground/40 px-4 py-6 text-center">No conversations yet</p>
                 ) : (
                   <div>
                     {conversations.map(conv => (
@@ -529,7 +535,7 @@ export default function ProjectPage() {
                         key={conv.id}
                         onClick={() => loadConversation(conv.id)}
                         className={cn(
-                          "w-full text-left px-4 py-2.5 text-[12px] transition-colors border-b border-border truncate",
+                          "w-full text-left px-4 py-2.5 text-[0.75rem] transition-colors border-b border-border truncate",
                           activeConvId === conv.id
                             ? 'bg-muted/50 text-foreground font-medium'
                             : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
@@ -550,14 +556,14 @@ export default function ProjectPage() {
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploading}
-                    className="inline-flex items-center gap-1 px-2 py-1 text-[11px] bg-foreground text-background transition-opacity hover:opacity-80 disabled:opacity-30"
+                    className="inline-flex items-center gap-1 px-2 py-1 text-[0.6875rem] bg-foreground text-background transition-opacity hover:opacity-80 disabled:opacity-30"
                   >
                     {uploading ? <Loader2 className="size-2.5 animate-spin" /> : <Upload className="size-2.5" />}
                     Upload
                   </button>
                   <button
                     onClick={openAddDoc}
-                    className="inline-flex items-center gap-1 px-2 py-1 text-[11px] border border-border text-muted-foreground hover:text-foreground transition-colors"
+                    className="inline-flex items-center gap-1 px-2 py-1 text-[0.6875rem] border border-border text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <Plus className="size-2.5" />
                     Add
@@ -565,13 +571,13 @@ export default function ProjectPage() {
                   <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.docx,.xlsx,.xls,.txt,.csv,.md" onChange={handleUpload} />
                 </div>
                 {documents.length === 0 ? (
-                  <p className="text-[11px] text-muted-foreground/40 px-4 py-6 text-center">No files</p>
+                  <p className="text-[0.6875rem] text-muted-foreground/40 px-4 py-6 text-center">No files</p>
                 ) : (
                   <div>
                     {documents.map(doc => (
                       <div key={doc.id} className="flex items-center gap-2 px-3 py-2 hover:bg-muted/30 transition-colors group border-b border-border">
                         <FileText className="size-3 text-muted-foreground/40 shrink-0" />
-                        <Link href={`/documents/${doc.id}`} className="text-[11px] truncate flex-1 text-muted-foreground hover:text-foreground">
+                        <Link href={`/documents/${doc.id}`} className="text-[0.6875rem] truncate flex-1 text-muted-foreground hover:text-foreground">
                           {doc.title}
                         </Link>
                         {doc.is_pinned && <Pin className="size-2.5 text-muted-foreground/40 shrink-0" />}
@@ -595,7 +601,7 @@ export default function ProjectPage() {
               <div>
                 <button
                   onClick={() => { setAddingContext(true); setContextTitle(''); setContextContent('') }}
-                  className="w-full flex items-center gap-2 px-4 py-3 text-[12px] text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors border-b border-border"
+                  className="w-full flex items-center gap-2 px-4 py-3 text-[0.75rem] text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors border-b border-border"
                 >
                   <Plus className="size-3" />
                   Add context
@@ -607,14 +613,14 @@ export default function ProjectPage() {
                       value={contextTitle}
                       onChange={(e) => setContextTitle(e.target.value)}
                       placeholder="Title"
-                      className="w-full bg-transparent border border-border px-2 py-1 text-[11px] outline-none focus:border-foreground/30 transition-colors"
+                      className="w-full bg-transparent border border-border px-2 py-1 text-[0.6875rem] outline-none focus:border-foreground/30 transition-colors"
                       autoFocus
                     />
                     <textarea
                       value={contextContent}
                       onChange={(e) => setContextContent(e.target.value)}
                       placeholder="Context content..."
-                      className="w-full bg-transparent border border-border px-2 py-1.5 text-[11px] outline-none focus:border-foreground/30 transition-colors min-h-[80px] resize-y leading-relaxed"
+                      className="w-full bg-transparent border border-border px-2 py-1.5 text-[0.6875rem] outline-none focus:border-foreground/30 transition-colors min-h-[80px] resize-y leading-relaxed"
                     />
                     <div className="flex gap-1.5">
                       <button
@@ -634,14 +640,14 @@ export default function ProjectPage() {
                           setSavingContext(false)
                         }}
                         disabled={savingContext || !contextTitle.trim()}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-[10px] bg-foreground text-background transition-opacity hover:opacity-80 disabled:opacity-30"
+                        className="inline-flex items-center gap-1 px-2 py-1 text-[0.625rem] bg-foreground text-background transition-opacity hover:opacity-80 disabled:opacity-30"
                       >
                         {savingContext ? <Loader2 className="size-2.5 animate-spin" /> : <Check className="size-2.5" />}
                         Save
                       </button>
                       <button
                         onClick={() => setAddingContext(false)}
-                        className="px-2 py-1 text-[10px] border border-border text-muted-foreground hover:text-foreground transition-colors"
+                        className="px-2 py-1 text-[0.625rem] border border-border text-muted-foreground hover:text-foreground transition-colors"
                       >
                         Cancel
                       </button>
@@ -650,7 +656,7 @@ export default function ProjectPage() {
                 )}
 
                 {contextEntries.length === 0 && !addingContext ? (
-                  <p className="text-[11px] text-muted-foreground/40 px-4 py-6 text-center">No context entries</p>
+                  <p className="text-[0.6875rem] text-muted-foreground/40 px-4 py-6 text-center">No context entries</p>
                 ) : (
                   <div>
                     {contextEntries.map(ctx => (
@@ -660,13 +666,13 @@ export default function ProjectPage() {
                             <input
                               value={contextTitle}
                               onChange={(e) => setContextTitle(e.target.value)}
-                              className="w-full bg-transparent border border-border px-2 py-1 text-[11px] font-medium outline-none focus:border-foreground/30 transition-colors"
+                              className="w-full bg-transparent border border-border px-2 py-1 text-[0.6875rem] font-medium outline-none focus:border-foreground/30 transition-colors"
                               autoFocus
                             />
                             <textarea
                               value={contextContent}
                               onChange={(e) => setContextContent(e.target.value)}
-                              className="w-full bg-transparent border border-border px-2 py-1.5 text-[11px] outline-none focus:border-foreground/30 transition-colors min-h-[80px] resize-y leading-relaxed"
+                              className="w-full bg-transparent border border-border px-2 py-1.5 text-[0.6875rem] outline-none focus:border-foreground/30 transition-colors min-h-[80px] resize-y leading-relaxed"
                             />
                             <div className="flex gap-1.5">
                               <button
@@ -686,14 +692,14 @@ export default function ProjectPage() {
                                   setSavingContext(false)
                                 }}
                                 disabled={savingContext || !contextTitle.trim()}
-                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] bg-foreground text-background transition-opacity hover:opacity-80 disabled:opacity-30"
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[0.625rem] bg-foreground text-background transition-opacity hover:opacity-80 disabled:opacity-30"
                               >
                                 {savingContext ? <Loader2 className="size-2.5 animate-spin" /> : <Check className="size-2.5" />}
                                 Save
                               </button>
                               <button
                                 onClick={() => setEditingContextId(null)}
-                                className="px-2 py-1 text-[10px] border border-border text-muted-foreground hover:text-foreground transition-colors"
+                                className="px-2 py-1 text-[0.625rem] border border-border text-muted-foreground hover:text-foreground transition-colors"
                               >
                                 Cancel
                               </button>
@@ -704,7 +710,7 @@ export default function ProjectPage() {
                                   setContextEntries(prev => prev.filter(c => c.id !== ctx.id))
                                   setEditingContextId(null)
                                 }}
-                                className="ml-auto px-2 py-1 text-[10px] text-muted-foreground/40 hover:text-destructive transition-colors"
+                                className="ml-auto px-2 py-1 text-[0.625rem] text-muted-foreground/40 hover:text-destructive transition-colors"
                               >
                                 Delete
                               </button>
@@ -716,10 +722,10 @@ export default function ProjectPage() {
                             onClick={() => { setEditingContextId(ctx.id); setContextTitle(ctx.title); setContextContent(ctx.content) }}
                           >
                             <div className="flex items-center gap-2">
-                              <span className="text-[11px] font-medium truncate flex-1">{ctx.title}</span>
+                              <span className="text-[0.6875rem] font-medium truncate flex-1">{ctx.title}</span>
                               <Pencil className="size-2.5 text-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                             </div>
-                            <p className="text-[10px] text-muted-foreground/40 mt-0.5 line-clamp-2 leading-relaxed">{ctx.content}</p>
+                            <p className="text-[0.625rem] text-muted-foreground/40 mt-0.5 line-clamp-2 leading-relaxed">{ctx.content}</p>
                           </div>
                         )}
                       </div>
@@ -730,7 +736,7 @@ export default function ProjectPage() {
                 {projectArtifacts.length > 0 && (
                   <>
                     <div className="px-4 py-2 border-b border-border">
-                      <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">Artifacts</span>
+                      <span className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">Artifacts</span>
                     </div>
                     {projectArtifacts.map(art => (
                       <button
@@ -739,13 +745,54 @@ export default function ProjectPage() {
                         className="w-full text-left px-3 py-2.5 hover:bg-muted/30 transition-colors border-b border-border"
                       >
                         <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-medium truncate flex-1">{art.name}</span>
-                          <span className="text-[9px] uppercase tracking-wider text-muted-foreground/40">{art.type}</span>
+                          <span className="text-[0.6875rem] font-medium truncate flex-1">{art.name}</span>
+                          <span className="text-[0.5625rem] uppercase tracking-wider text-muted-foreground/40">{art.type}</span>
                         </div>
-                        <p className="text-[10px] text-muted-foreground/40 mt-0.5 line-clamp-1 leading-relaxed">{art.content.slice(0, 80)}</p>
+                        <p className="text-[0.625rem] text-muted-foreground/40 mt-0.5 line-clamp-1 leading-relaxed">{art.content.slice(0, 80)}</p>
                       </button>
                     ))}
                   </>
+                )}
+              </div>
+            )}
+
+            {/* Bookmarks panel */}
+            {panel === 'bookmarks' && (
+              <div>
+                {bookmarks.length === 0 ? (
+                  <p className="text-[0.6875rem] text-muted-foreground/40 px-4 py-6 text-center">No bookmarks yet. Ask J.DRG to bookmark links for this project.</p>
+                ) : (
+                  <div>
+                    {bookmarks.map(bm => (
+                      <div key={bm.id} className="flex items-start gap-2 px-3 py-2.5 hover:bg-muted/30 transition-colors group border-b border-border">
+                        <Link2 className="size-3 text-muted-foreground/40 shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <a
+                            href={bm.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[0.6875rem] font-medium text-foreground/80 hover:text-foreground flex items-center gap-1 transition-colors"
+                          >
+                            <span className="truncate">{bm.title}</span>
+                            <ExternalLink className="size-2.5 shrink-0 text-muted-foreground/30" />
+                          </a>
+                          {bm.description && (
+                            <p className="text-[0.625rem] text-muted-foreground/40 mt-0.5 line-clamp-2 leading-relaxed">{bm.description}</p>
+                          )}
+                        </div>
+                        <button
+                          onClick={async () => {
+                            await getSupabaseBrowser().from('bookmarks').delete().eq('id', bm.id)
+                            setBookmarks(prev => prev.filter(b => b.id !== bm.id))
+                          }}
+                          className="p-0.5 text-muted-foreground/30 hover:text-destructive opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                          title="Remove bookmark"
+                        >
+                          <Trash2 className="size-2.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             )}
@@ -756,25 +803,25 @@ export default function ProjectPage() {
                 {editing ? (
                   <>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">Name</label>
+                      <label className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">Name</label>
                       <input
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
-                        className="w-full bg-transparent border border-border px-2.5 py-1.5 text-[12px] outline-none focus:border-foreground/30 transition-colors"
+                        className="w-full bg-transparent border border-border px-2.5 py-1.5 text-[0.75rem] outline-none focus:border-foreground/30 transition-colors"
                         autoFocus
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">Description</label>
+                      <label className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">Description</label>
                       <input
                         value={editDescription}
                         onChange={(e) => setEditDescription(e.target.value)}
                         placeholder="Brief description"
-                        className="w-full bg-transparent border border-border px-2.5 py-1.5 text-[12px] outline-none placeholder:text-muted-foreground/30 focus:border-foreground/30 transition-colors"
+                        className="w-full bg-transparent border border-border px-2.5 py-1.5 text-[0.75rem] outline-none placeholder:text-muted-foreground/30 focus:border-foreground/30 transition-colors"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">Color</label>
+                      <label className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">Color</label>
                       <div className="flex gap-1.5 flex-wrap">
                         {COLORS.map(c => (
                           <button
@@ -787,11 +834,11 @@ export default function ProjectPage() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={handleSave} disabled={saving || !editName.trim()} className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] bg-foreground text-background transition-opacity hover:opacity-80 disabled:opacity-30">
+                      <button onClick={handleSave} disabled={saving || !editName.trim()} className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[0.6875rem] bg-foreground text-background transition-opacity hover:opacity-80 disabled:opacity-30">
                         {saving ? <Loader2 className="size-2.5 animate-spin" /> : <Check className="size-2.5" />}
                         Save
                       </button>
-                      <button onClick={() => { setEditing(false); setEditName(project.name); setEditDescription(project.description || ''); setEditColor(project.color || '#3B82F6') }} className="px-2.5 py-1.5 text-[11px] border border-border text-muted-foreground hover:text-foreground transition-colors">
+                      <button onClick={() => { setEditing(false); setEditName(project.name); setEditDescription(project.description || ''); setEditColor(project.color || '#3B82F6') }} className="px-2.5 py-1.5 text-[0.6875rem] border border-border text-muted-foreground hover:text-foreground transition-colors">
                         Cancel
                       </button>
                     </div>
@@ -799,24 +846,24 @@ export default function ProjectPage() {
                 ) : (
                   <>
                     <div>
-                      <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium block mb-1">Project</span>
-                      <p className="text-[13px] font-medium">{project.name}</p>
-                      {project.description && <p className="text-[11px] text-muted-foreground/60 mt-0.5">{project.description}</p>}
+                      <span className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium block mb-1">Project</span>
+                      <p className="text-[0.8125rem] font-medium">{project.name}</p>
+                      {project.description && <p className="text-[0.6875rem] text-muted-foreground/60 mt-0.5">{project.description}</p>}
                     </div>
-                    <button onClick={() => setEditing(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] border border-border text-muted-foreground hover:text-foreground transition-colors">
+                    <button onClick={() => setEditing(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[0.6875rem] border border-border text-muted-foreground hover:text-foreground transition-colors">
                       <Settings2 className="size-2.5" /> Edit Details
                     </button>
                   </>
                 )}
 
                 <div className="pt-2 border-t border-border space-y-1.5">
-                  <label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium block">Instructions</label>
-                  <p className="text-[10px] text-muted-foreground/40 leading-relaxed">Custom system prompt for AI conversations in this project.</p>
+                  <label className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium block">Instructions</label>
+                  <p className="text-[0.625rem] text-muted-foreground/40 leading-relaxed">Custom system prompt for AI conversations in this project.</p>
                   <textarea
                     value={editPrompt}
                     onChange={(e) => setEditPrompt(e.target.value)}
                     placeholder="e.g. Focus on financial analysis..."
-                    className="w-full bg-transparent border border-border px-2.5 py-2 text-[11px] outline-none placeholder:text-muted-foreground/30 focus:border-foreground/30 transition-colors min-h-[120px] resize-y leading-relaxed"
+                    className="w-full bg-transparent border border-border px-2.5 py-2 text-[0.6875rem] outline-none placeholder:text-muted-foreground/30 focus:border-foreground/30 transition-colors min-h-[120px] resize-y leading-relaxed"
                   />
                   <button
                     onClick={async () => {
@@ -830,7 +877,7 @@ export default function ProjectPage() {
                       setSaving(false)
                     }}
                     disabled={saving || editPrompt === (project.system_prompt || '')}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] bg-foreground text-background transition-opacity hover:opacity-80 disabled:opacity-30"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[0.6875rem] bg-foreground text-background transition-opacity hover:opacity-80 disabled:opacity-30"
                   >
                     {saving ? <Loader2 className="size-2.5 animate-spin" /> : <Check className="size-2.5" />}
                     Save Instructions
@@ -838,7 +885,7 @@ export default function ProjectPage() {
                 </div>
 
                 <div className="pt-4 border-t border-border">
-                  <button onClick={handleDelete} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-destructive hover:bg-destructive/10 transition-colors border border-destructive/30">
+                  <button onClick={handleDelete} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[0.6875rem] text-destructive hover:bg-destructive/10 transition-colors border border-destructive/30">
                     <Trash2 className="size-2.5" /> Delete Project
                   </button>
                 </div>
@@ -858,11 +905,11 @@ export default function ProjectPage() {
             </button>
           )}
           <div className="size-2.5" style={{ backgroundColor: project.color }} />
-          <span className="text-[13px] font-medium">{project.name}</span>
+          <span className="text-[0.8125rem] font-medium">{project.name}</span>
           {activeConvId && (
             <>
               <div className="w-px h-4 bg-border" />
-              <span className="text-[12px] text-muted-foreground/50 truncate">
+              <span className="text-[0.75rem] text-muted-foreground/50 truncate">
                 {conversations.find(c => c.id === activeConvId)?.title || 'Untitled'}
               </span>
               <div className="ml-auto">
@@ -913,7 +960,7 @@ export default function ProjectPage() {
                 onKeyDown={handleKeyDown}
                 placeholder="Message..."
                 rows={1}
-                className="w-full resize-none bg-transparent px-3.5 py-3 pr-12 text-[14px] leading-relaxed outline-none placeholder:text-muted-foreground/40"
+                className="w-full resize-none bg-transparent px-3.5 py-3 pr-12 text-[0.875rem] leading-relaxed outline-none placeholder:text-muted-foreground/40"
                 style={{ minHeight: '46px', maxHeight: '200px' }}
               />
               <button
@@ -951,7 +998,7 @@ export default function ProjectPage() {
           <div className="absolute inset-0 bg-background/80" onClick={() => setShowAddDoc(false)} />
           <div className="relative bg-background border border-border w-full max-w-md max-h-[60vh] flex flex-col animate-in-up">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-              <h2 className="text-[13px] font-medium uppercase tracking-[0.1em]">Add Document</h2>
+              <h2 className="text-[0.8125rem] font-medium uppercase tracking-[0.1em]">Add Document</h2>
               <button onClick={() => setShowAddDoc(false)} className="p-1 text-muted-foreground/40 hover:text-foreground transition-colors">
                 <X className="size-3.5" />
               </button>
@@ -962,7 +1009,7 @@ export default function ProjectPage() {
                   <Loader2 className="size-4 animate-spin text-muted-foreground/40" />
                 </div>
               ) : availableDocs.length === 0 ? (
-                <p className="text-[12px] text-muted-foreground/40 py-8 text-center">No unassigned documents</p>
+                <p className="text-[0.75rem] text-muted-foreground/40 py-8 text-center">No unassigned documents</p>
               ) : (
                 <div className="divide-y divide-border">
                   {availableDocs.map(doc => (
@@ -972,8 +1019,8 @@ export default function ProjectPage() {
                       className="w-full flex items-center gap-3 px-5 py-3 hover:bg-muted/30 transition-colors text-left"
                     >
                       <FileText className="size-3.5 text-muted-foreground/40 shrink-0" />
-                      <span className="text-[13px] truncate flex-1">{doc.title}</span>
-                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground/40">{doc.file_type}</span>
+                      <span className="text-[0.8125rem] truncate flex-1">{doc.title}</span>
+                      <span className="text-[0.625rem] uppercase tracking-wider text-muted-foreground/40">{doc.file_type}</span>
                       <Plus className="size-3 text-muted-foreground/40" />
                     </button>
                   ))}

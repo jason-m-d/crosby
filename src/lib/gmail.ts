@@ -120,6 +120,46 @@ export async function fetchEmails(account: string, since: Date) {
   return emails
 }
 
+export async function createDraft(to: string, subject: string, body: string, cc?: string): Promise<{ id: string; message: string }> {
+  // Get first connected Gmail account
+  const { data: tokenRow } = await supabaseAdmin
+    .from('gmail_tokens')
+    .select('account')
+    .limit(1)
+    .single()
+
+  if (!tokenRow) throw new Error('No Gmail account connected')
+
+  const accessToken = await refreshAccessToken(tokenRow.account)
+
+  // Build RFC 2822 email
+  const headers = [
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    `Content-Type: text/plain; charset=utf-8`,
+  ]
+  if (cc) headers.push(`Cc: ${cc}`)
+
+  const rawEmail = headers.join('\r\n') + '\r\n\r\n' + body
+  const encodedEmail = Buffer.from(rawEmail).toString('base64url')
+
+  const res = await fetch('https://www.googleapis.com/gmail/v1/users/me/drafts', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      message: { raw: encodedEmail },
+    }),
+  })
+
+  const data = await res.json()
+  if (data.error) throw new Error(`Draft creation failed: ${data.error.message}`)
+
+  return { id: data.id, message: `Draft created: "${subject}" to ${to}` }
+}
+
 function getEmailBody(payload: any): string {
   if (!payload) return ''
 

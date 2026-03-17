@@ -109,18 +109,18 @@ export default function ActionItemsPage() {
       {/* Header */}
       <div className="border-b border-border px-6 py-4">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-[13px] font-medium uppercase tracking-[0.1em]">Action Items</h1>
+          <h1 className="text-[0.8125rem] font-medium uppercase tracking-[0.1em]">Action Items</h1>
           {tab === 'pending' && items.length > 0 && (
             <div className="flex gap-2">
               <button
                 onClick={() => bulkAction('approved')}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[0.6875rem] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
               >
                 <Check className="size-3" /> Approve All
               </button>
               <button
                 onClick={() => bulkAction('dismissed')}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[0.6875rem] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
               >
                 <X className="size-3" /> Dismiss All
               </button>
@@ -135,7 +135,7 @@ export default function ActionItemsPage() {
               key={t.value}
               onClick={() => setTab(t.value)}
               className={cn(
-                "px-4 py-2 text-[12px] transition-colors border-b-2",
+                "px-4 py-2 text-[0.75rem] transition-colors border-b-2",
                 tab === t.value
                   ? "text-foreground border-foreground font-medium"
                   : "text-muted-foreground/50 border-transparent hover:text-muted-foreground"
@@ -156,7 +156,7 @@ export default function ActionItemsPage() {
         ) : items.length === 0 ? (
           <div className="text-center py-16 animate-in-fade">
             <div className="w-8 h-px bg-border mx-auto mb-4" />
-            <p className="text-[13px] text-muted-foreground/60">No {tab} items</p>
+            <p className="text-[0.8125rem] text-muted-foreground/60">No {tab} items</p>
           </div>
         ) : (
           <div className="space-y-px">
@@ -168,26 +168,26 @@ export default function ActionItemsPage() {
                     <input
                       value={editTitle}
                       onChange={(e) => setEditTitle(e.target.value)}
-                      className="w-full bg-transparent border border-border px-3 py-2 text-[14px] font-medium outline-none focus:border-foreground/30 transition-colors"
+                      className="w-full bg-transparent border border-border px-3 py-2 text-[0.875rem] font-medium outline-none focus:border-foreground/30 transition-colors"
                       placeholder="Title"
                       autoFocus
                     />
                     <textarea
                       value={editDescription}
                       onChange={(e) => setEditDescription(e.target.value)}
-                      className="w-full bg-transparent border border-border px-3 py-2 text-[12px] outline-none focus:border-foreground/30 transition-colors min-h-[60px] resize-none leading-relaxed"
+                      className="w-full bg-transparent border border-border px-3 py-2 text-[0.75rem] outline-none focus:border-foreground/30 transition-colors min-h-[60px] resize-none leading-relaxed"
                       placeholder="Description (optional)"
                     />
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">Priority</span>
+                        <span className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">Priority</span>
                         <div className="flex gap-1">
                           {PRIORITIES.map(p => (
                             <button
                               key={p}
                               onClick={() => setEditPriority(p)}
                               className={cn(
-                                "px-2 py-0.5 text-[11px] border transition-colors capitalize",
+                                "px-2 py-0.5 text-[0.6875rem] border transition-colors capitalize",
                                 editPriority === p
                                   ? 'border-foreground/30 text-foreground'
                                   : 'border-border text-muted-foreground/40 hover:text-muted-foreground'
@@ -199,12 +199,12 @@ export default function ActionItemsPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">Due</span>
+                        <span className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">Due</span>
                         <input
                           type="date"
                           value={editDueDate}
                           onChange={(e) => setEditDueDate(e.target.value)}
-                          className="bg-transparent border border-border px-2 py-0.5 text-[11px] outline-none focus:border-foreground/30 transition-colors text-muted-foreground"
+                          className="bg-transparent border border-border px-2 py-0.5 text-[0.6875rem] outline-none focus:border-foreground/30 transition-colors text-muted-foreground"
                         />
                       </div>
                     </div>
@@ -212,20 +212,20 @@ export default function ActionItemsPage() {
                       <button
                         onClick={() => saveEdit(item.id)}
                         disabled={saving || !editTitle.trim()}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-foreground text-background transition-opacity hover:opacity-80 disabled:opacity-30"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.75rem] bg-foreground text-background transition-opacity hover:opacity-80 disabled:opacity-30"
                       >
                         {saving ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
                         Save
                       </button>
                       <button
                         onClick={cancelEdit}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-border text-muted-foreground hover:text-foreground transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.75rem] border border-border text-muted-foreground hover:text-foreground transition-colors"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={() => deleteItem(item.id)}
-                        className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-muted-foreground/40 hover:text-destructive transition-colors"
+                        className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.75rem] text-muted-foreground/40 hover:text-destructive transition-colors"
                       >
                         Delete
                       </button>
@@ -238,25 +238,25 @@ export default function ActionItemsPage() {
                       {/* Meta row */}
                       <div className="flex items-center gap-3 mb-1.5">
                         <div className={cn('size-1.5', priorityIndicator[item.priority])} />
-                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground/40">{item.priority}</span>
-                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground/30 flex items-center gap-1">
+                        <span className="text-[0.625rem] uppercase tracking-wider text-muted-foreground/40">{item.priority}</span>
+                        <span className="text-[0.625rem] uppercase tracking-wider text-muted-foreground/30 flex items-center gap-1">
                           {item.source === 'email' ? <Mail className="size-2.5" /> : <MessageSquare className="size-2.5" />}
                           {item.source}
                         </span>
                         {item.due_date && (
-                          <span className="text-[10px] text-muted-foreground/30 flex items-center gap-1 tabular-nums">
+                          <span className="text-[0.625rem] text-muted-foreground/30 flex items-center gap-1 tabular-nums">
                             <Clock className="size-2.5" /> {item.due_date}
                           </span>
                         )}
                       </div>
 
                       {/* Title + description */}
-                      <h3 className="text-[14px] font-medium leading-snug">{item.title}</h3>
+                      <h3 className="text-[0.875rem] font-medium leading-snug">{item.title}</h3>
                       {item.description && (
-                        <p className="text-[12px] text-muted-foreground/60 mt-1 leading-relaxed">{item.description}</p>
+                        <p className="text-[0.75rem] text-muted-foreground/60 mt-1 leading-relaxed">{item.description}</p>
                       )}
                       {item.source_snippet && (
-                        <p className="text-[11px] text-muted-foreground/40 mt-2 italic border-l-2 border-border pl-3 leading-relaxed">
+                        <p className="text-[0.6875rem] text-muted-foreground/40 mt-2 italic border-l-2 border-border pl-3 leading-relaxed">
                           {item.source_snippet}
                         </p>
                       )}

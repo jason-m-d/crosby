@@ -92,10 +92,10 @@ export default function DocumentEditorPage() {
         <input
           value={title}
           onChange={(e) => { setTitle(e.target.value); setHasChanges(true) }}
-          className="flex-1 bg-transparent text-[14px] font-medium outline-none placeholder:text-muted-foreground/30"
+          className="flex-1 bg-transparent text-[0.875rem] font-medium outline-none placeholder:text-muted-foreground/30"
         />
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground/40">
+          <div className="flex items-center gap-2 text-[0.625rem] uppercase tracking-wider text-muted-foreground/40">
             {doc?.is_living && <span className="text-green-600">Live</span>}
             <span>{doc?.file_type}</span>
             <span>v{doc?.version}</span>
@@ -106,7 +106,7 @@ export default function DocumentEditorPage() {
           <button
             onClick={() => setShowHistory(!showHistory)}
             className={cn(
-              "flex items-center gap-1.5 px-2 py-1 text-[11px] transition-colors",
+              "flex items-center gap-1.5 px-2 py-1 text-[0.6875rem] transition-colors",
               showHistory ? "text-foreground" : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -117,7 +117,7 @@ export default function DocumentEditorPage() {
           <button
             onClick={handleSave}
             disabled={saving || !hasChanges}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-foreground text-background disabled:opacity-20 transition-opacity"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.75rem] bg-foreground text-background disabled:opacity-20 transition-opacity"
           >
             {saving ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
             Save
@@ -140,7 +140,7 @@ export default function DocumentEditorPage() {
             <textarea
               value={content}
               onChange={(e) => { setContent(e.target.value); setHasChanges(true) }}
-              className="w-full h-full min-h-[calc(100vh-200px)] resize-none bg-transparent text-[14px] leading-[1.8] font-[family-name:var(--font-geist-mono)] outline-none placeholder:text-muted-foreground/20"
+              className="w-full h-full min-h-[calc(100vh-200px)] resize-none bg-transparent text-[0.875rem] leading-[1.8] font-[family-name:var(--font-geist-mono)] outline-none placeholder:text-muted-foreground/20"
               placeholder="Start writing..."
             />
           </div>
@@ -149,13 +149,13 @@ export default function DocumentEditorPage() {
         {/* Properties sidebar */}
         <div className="w-56 border-l border-border p-5 space-y-5 overflow-auto">
           <div className="space-y-1.5">
-            <label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">
+            <label className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">
               Project
             </label>
             <select
               value={projectId}
               onChange={(e) => { setProjectId(e.target.value); setHasChanges(true) }}
-              className="w-full bg-transparent border border-border px-2.5 py-1.5 text-[12px] outline-none focus:border-foreground/30 transition-colors"
+              className="w-full bg-transparent border border-border px-2.5 py-1.5 text-[0.75rem] outline-none focus:border-foreground/30 transition-colors"
             >
               <option value="none">None</option>
               {projects.map(p => (
@@ -165,11 +165,11 @@ export default function DocumentEditorPage() {
           </div>
 
           <div className="space-y-3 pt-2">
-            <label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium block">
+            <label className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium block">
               Options
             </label>
             <label className="flex items-center justify-between cursor-pointer group">
-              <span className="text-[12px] text-muted-foreground group-hover:text-foreground transition-colors">Living Document</span>
+              <span className="text-[0.75rem] text-muted-foreground group-hover:text-foreground transition-colors">Living Document</span>
               <button
                 onClick={() => { setIsLiving(!isLiving); setHasChanges(true) }}
                 className={`w-8 h-[18px] border transition-colors ${isLiving ? 'bg-foreground border-foreground' : 'border-border'}`}
@@ -178,7 +178,7 @@ export default function DocumentEditorPage() {
               </button>
             </label>
             <label className="flex items-center justify-between cursor-pointer group">
-              <span className="text-[12px] text-muted-foreground group-hover:text-foreground transition-colors">Pinned</span>
+              <span className="text-[0.75rem] text-muted-foreground group-hover:text-foreground transition-colors">Pinned</span>
               <button
                 onClick={() => { setIsPinned(!isPinned); setHasChanges(true) }}
                 className={`w-8 h-[18px] border transition-colors ${isPinned ? 'bg-foreground border-foreground' : 'border-border'}`}
@@ -187,7 +187,7 @@ export default function DocumentEditorPage() {
               </button>
             </label>
             <label className="flex items-center justify-between cursor-pointer group">
-              <span className="text-[12px] text-muted-foreground group-hover:text-foreground transition-colors">Template</span>
+              <span className="text-[0.75rem] text-muted-foreground group-hover:text-foreground transition-colors">Template</span>
               <button
                 onClick={() => { setIsTemplate(!isTemplate); setHasChanges(true) }}
                 className={`w-8 h-[18px] border transition-colors ${isTemplate ? 'bg-foreground border-foreground' : 'border-border'}`}
@@ -198,11 +198,11 @@ export default function DocumentEditorPage() {
           </div>
 
           <div className="pt-4 border-t border-border space-y-1.5">
-            <div className="flex justify-between text-[11px]">
+            <div className="flex justify-between text-[0.6875rem]">
               <span className="text-muted-foreground/40">Created</span>
               <span className="text-muted-foreground/60 tabular-nums">{new Date(doc?.created_at).toLocaleDateString()}</span>
             </div>
-            <div className="flex justify-between text-[11px]">
+            <div className="flex justify-between text-[0.6875rem]">
               <span className="text-muted-foreground/40">Updated</span>
               <span className="text-muted-foreground/60 tabular-nums">{new Date(doc?.updated_at).toLocaleDateString()}</span>
             </div>
@@ -213,29 +213,29 @@ export default function DocumentEditorPage() {
         {showHistory && (
           <div className="w-72 border-l border-border overflow-auto animate-in-fade">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">Version History</span>
+              <span className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">Version History</span>
               <button onClick={() => setShowHistory(false)} className="p-0.5 text-muted-foreground/40 hover:text-foreground transition-colors">
                 <X className="size-3" />
               </button>
             </div>
             <div className="p-4 space-y-3">
               {versions.length === 0 ? (
-                <p className="text-[12px] text-muted-foreground/40">No previous versions</p>
+                <p className="text-[0.75rem] text-muted-foreground/40">No previous versions</p>
               ) : (
                 versions.map(v => (
                   <div key={v.id} className="border border-border p-3 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-[12px] font-medium">v{v.version}</span>
-                      <span className="text-[10px] text-muted-foreground/40 tabular-nums">
+                      <span className="text-[0.75rem] font-medium">v{v.version}</span>
+                      <span className="text-[0.625rem] text-muted-foreground/40 tabular-nums">
                         {new Date(v.created_at).toLocaleDateString()}
                       </span>
                     </div>
                     {v.change_summary && (
-                      <p className="text-[11px] text-muted-foreground/60 leading-relaxed">{v.change_summary}</p>
+                      <p className="text-[0.6875rem] text-muted-foreground/60 leading-relaxed">{v.change_summary}</p>
                     )}
                     <button
                       onClick={() => { setContent(v.content); setHasChanges(true) }}
-                      className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-[0.6875rem] text-muted-foreground hover:text-foreground transition-colors"
                     >
                       Restore
                     </button>

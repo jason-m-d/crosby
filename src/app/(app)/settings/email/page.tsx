@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { getSupabaseBrowser } from '@/lib/supabase-browser'
-import { Mail, RefreshCw, Plus, Loader2, Check } from 'lucide-react'
+import { Mail, RefreshCw, Plus, Loader2, Check, X } from 'lucide-react'
 
 export default function EmailSettingsPage() {
   const [accounts, setAccounts] = useState<any[]>([])
@@ -59,8 +59,8 @@ export default function EmailSettingsPage() {
   return (
     <div className="max-w-2xl space-y-8 animate-in-fade">
       <div>
-        <h1 className="text-[13px] font-medium uppercase tracking-[0.1em] mb-1">Email Integration</h1>
-        <p className="text-[12px] text-muted-foreground/50 leading-relaxed">
+        <h1 className="text-[0.8125rem] font-medium uppercase tracking-[0.1em] mb-1">Email Integration</h1>
+        <p className="text-[0.75rem] text-muted-foreground/50 leading-relaxed">
           Connect Gmail accounts for automatic action item extraction and sales data parsing.
         </p>
       </div>
@@ -68,26 +68,39 @@ export default function EmailSettingsPage() {
       {/* Connected Accounts */}
       <div className="border border-border">
         <div className="flex items-center justify-between px-5 py-3 border-b border-border">
-          <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">
+          <span className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">
             Connected Accounts
           </span>
           <button
             onClick={handleConnect}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[0.6875rem] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
           >
             <Plus className="size-3" /> Connect Gmail
           </button>
         </div>
         <div className="p-5">
           {accounts.length === 0 ? (
-            <p className="text-[12px] text-muted-foreground/40">No accounts connected</p>
+            <p className="text-[0.75rem] text-muted-foreground/40">No accounts connected</p>
           ) : (
             <div className="space-y-2">
               {accounts.map((acc, i) => (
                 <div key={i} className="flex items-center gap-3 px-3 py-2.5 bg-muted/30">
                   <Mail className="size-3.5 text-muted-foreground/40" />
-                  <span className="text-[13px] font-medium flex-1">{acc.account}</span>
-                  <span className="text-[10px] uppercase tracking-wider text-green-600">Connected</span>
+                  <span className="text-[0.8125rem] font-medium flex-1">{acc.account}</span>
+                  <span className="text-[0.625rem] uppercase tracking-wider text-green-600">Connected</span>
+                  <button
+                    onClick={async () => {
+                      if (!confirm(`Disconnect ${acc.account}? You can reconnect anytime.`)) return
+                      const supabase = getSupabaseBrowser()
+                      await supabase.from('gmail_tokens').delete().eq('account', acc.account)
+                      await supabase.from('email_scans').delete().eq('account', acc.account)
+                      setAccounts(prev => prev.filter(a => a.account !== acc.account))
+                    }}
+                    className="p-1 text-muted-foreground/30 hover:text-red-500 transition-colors"
+                    title="Disconnect account"
+                  >
+                    <X className="size-3" />
+                  </button>
                 </div>
               ))}
             </div>
@@ -98,36 +111,36 @@ export default function EmailSettingsPage() {
       {/* Email Scanning */}
       <div className="border border-border">
         <div className="px-5 py-3 border-b border-border">
-          <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">
+          <span className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">
             Email Scanning
           </span>
         </div>
         <div className="p-5 space-y-4">
-          <p className="text-[12px] text-muted-foreground/50 leading-relaxed">
+          <p className="text-[0.75rem] text-muted-foreground/50 leading-relaxed">
             Emails are automatically scanned every hour. You can also trigger a manual scan.
           </p>
           <button
             onClick={handleManualScan}
             disabled={scanning}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.75rem] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors disabled:opacity-40"
           >
             {scanning ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
             {scanning ? 'Scanning...' : 'Scan Now'}
           </button>
           {scanResult && (
-            <p className="text-[12px] text-muted-foreground/60 flex items-center gap-1.5">
+            <p className="text-[0.75rem] text-muted-foreground/60 flex items-center gap-1.5">
               <Check className="size-3 text-green-600" /> {scanResult}
             </p>
           )}
 
           {scans.length > 0 && (
             <div className="pt-4 border-t border-border">
-              <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/40 font-medium block mb-3">
+              <span className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/40 font-medium block mb-3">
                 Recent Scans
               </span>
               <div className="space-y-1">
                 {scans.slice(0, 5).map(scan => (
-                  <div key={scan.id} className="flex items-center gap-4 text-[11px] text-muted-foreground/40 tabular-nums">
+                  <div key={scan.id} className="flex items-center gap-4 text-[0.6875rem] text-muted-foreground/40 tabular-nums">
                     <span className="text-muted-foreground/60">{scan.account}</span>
                     <span>{new Date(scan.last_scanned_at).toLocaleString()}</span>
                     <span>{scan.emails_processed} emails</span>

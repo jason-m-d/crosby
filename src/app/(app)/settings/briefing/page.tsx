@@ -120,21 +120,21 @@ export default function BriefingSettingsPage() {
   return (
     <div className="max-w-2xl space-y-8 animate-in-fade">
       <div>
-        <h1 className="text-[13px] font-medium uppercase tracking-[0.1em] mb-1">Briefing & Alerts</h1>
-        <p className="text-[12px] text-muted-foreground/50">
+        <h1 className="text-[0.8125rem] font-medium uppercase tracking-[0.1em] mb-1">Briefing & Alerts</h1>
+        <p className="text-[0.75rem] text-muted-foreground/50">
           Teach J.DRG what matters. These preferences shape your morning briefing and real-time alerts.
         </p>
       </div>
 
       {/* Quick toggles */}
       <div className="space-y-3">
-        <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">
+        <span className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">
           Quick Settings
         </span>
         <div className="border border-border divide-y divide-border">
           {QUICK_TOGGLES.map(toggle => (
             <label key={toggle.memory} className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors">
-              <span className="text-[13px]">{toggle.label}</span>
+              <span className="text-[0.8125rem]">{toggle.label}</span>
               <button
                 onClick={() => handleToggle(toggle.memory, !isToggleOn(toggle.memory))}
                 className={cn(
@@ -154,14 +154,14 @@ export default function BriefingSettingsPage() {
 
       {/* Per-store toggles */}
       <div className="space-y-3">
-        <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">
+        <span className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">
           Store Alerts
         </span>
         <div className="border border-border divide-y divide-border">
           {Object.entries(STORE_NAMES).map(([num, name]) => (
             <label key={num} className="flex items-center justify-between px-4 py-2.5 cursor-pointer hover:bg-muted/30 transition-colors">
-              <span className="text-[13px]">
-                <span className="text-muted-foreground/60 text-[11px] tabular-nums mr-2">#{num}</span>
+              <span className="text-[0.8125rem]">
+                <span className="text-muted-foreground/60 text-[0.6875rem] tabular-nums mr-2">#{num}</span>
                 {name}
               </span>
               <button
@@ -183,7 +183,7 @@ export default function BriefingSettingsPage() {
 
       {/* Add custom preference */}
       <div className="space-y-3">
-        <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">
+        <span className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">
           Custom Preferences
         </span>
         <div className="border border-border p-4 space-y-3">
@@ -191,12 +191,12 @@ export default function BriefingSettingsPage() {
             value={newContent}
             onChange={(e) => setNewContent(e.target.value)}
             placeholder="e.g. Don't include labor data in briefings"
-            className="w-full bg-transparent border border-border px-3 py-2 text-[13px] outline-none placeholder:text-muted-foreground/30 focus:border-foreground/30 transition-colors min-h-[50px] resize-none"
+            className="w-full bg-transparent border border-border px-3 py-2 text-[0.8125rem] outline-none placeholder:text-muted-foreground/30 focus:border-foreground/30 transition-colors min-h-[50px] resize-none"
           />
           <button
             onClick={handleAdd}
             disabled={adding || !newContent.trim()}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-foreground text-background disabled:opacity-30 transition-opacity"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.75rem] bg-foreground text-background disabled:opacity-30 transition-opacity"
           >
             <Plus className="size-3" /> Add Preference
           </button>
@@ -211,11 +211,11 @@ export default function BriefingSettingsPage() {
       ) : preferences.length === 0 ? (
         <div className="text-center py-12">
           <div className="w-8 h-px bg-border mx-auto mb-4" />
-          <p className="text-[13px] text-muted-foreground/60">No preferences set yet. Use the toggles above or add custom ones.</p>
+          <p className="text-[0.8125rem] text-muted-foreground/60">No preferences set yet. Use the toggles above or add custom ones.</p>
         </div>
       ) : (
         <div className="space-y-3">
-          <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">
+          <span className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">
             All Preferences ({preferences.length})
           </span>
           <div className="divide-y divide-border border border-border">
@@ -226,7 +226,7 @@ export default function BriefingSettingsPage() {
                     <textarea
                       value={editContent}
                       onChange={(e) => setEditContent(e.target.value)}
-                      className="flex-1 bg-transparent border border-border px-3 py-2 text-[13px] outline-none focus:border-foreground/30 transition-colors min-h-[40px] resize-none"
+                      className="flex-1 bg-transparent border border-border px-3 py-2 text-[0.8125rem] outline-none focus:border-foreground/30 transition-colors min-h-[40px] resize-none"
                     />
                     <button onClick={() => handleSaveEdit(pref.id)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
                       <Save className="size-3.5" />
@@ -237,7 +237,7 @@ export default function BriefingSettingsPage() {
                   </div>
                 ) : (
                   <div className="flex items-start gap-3">
-                    <p className="flex-1 text-[13px] leading-relaxed">{pref.content}</p>
+                    <p className="flex-1 text-[0.8125rem] leading-relaxed">{pref.content}</p>
                     <div className="flex gap-0.5 shrink-0">
                       <button
                         onClick={() => { setEditingId(pref.id); setEditContent(pref.content) }}

@@ -2,9 +2,22 @@
 
 import { useRef, useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { Check, ChevronDown, Copy, FileText, FolderOpen, Mail, NotebookPen, Pencil, PencilLine, Plus, RefreshCw, Send, X } from 'lucide-react'
+import { Bell, Check, ChevronDown, Clock, Copy, FileText, FolderOpen, FolderPen, FolderPlus, FolderX, GraduationCap, LayoutDashboard, Link2, Loader2, Mail, MailPlus, NotebookPen, Palette, Pencil, PencilLine, Plus, RefreshCw, Send, ThumbsDown, ThumbsUp, Trash2, X } from 'lucide-react'
 import Link from 'next/link'
 import { getSupabaseBrowser } from '@/lib/supabase-browser'
+import { GreetingCard } from '@/components/greeting-card'
+
+interface SurfacedItem {
+  id: string
+  title: string
+  priority: 'high' | 'medium' | 'low'
+  context: string
+}
+
+interface GreetingData {
+  text: string | null
+  items: SurfacedItem[]
+}
 
 interface ChatMessagesProps {
   messages: any[]
@@ -13,6 +26,8 @@ interface ChatMessagesProps {
   onArtifactClick?: (artifactId: string) => void
   onCopyMessage?: (content: string) => void
   onEditMessage?: (messageIndex: number, content: string) => void
+  greetingData?: GreetingData | null
+  onGreetingItemHandled?: (itemId: string) => void
 }
 
 function formatDate() {
@@ -26,25 +41,25 @@ function formatTime(dateStr?: string) {
   return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 }
 
-export function ChatMessages({ messages, streamingContent, loading, onArtifactClick, onCopyMessage, onEditMessage }: ChatMessagesProps) {
+export function ChatMessages({ messages, streamingContent, loading, onArtifactClick, onCopyMessage, onEditMessage, greetingData, onGreetingItemHandled }: ChatMessagesProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, streamingContent])
+  }, [messages, streamingContent, greetingData])
 
   if (messages.length === 0 && !loading) {
     return (
       <div className="flex-1 flex items-center justify-center animate-in-fade">
         <div className="text-center space-y-3">
-          <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground/50">
+          <div className="text-[0.6875rem] uppercase tracking-[0.2em] text-muted-foreground/50">
             {formatDate()}
           </div>
           <h2 className="text-2xl font-light tracking-tight text-foreground/80">
             J.DRG
           </h2>
           <div className="w-8 h-px bg-border mx-auto" />
-          <p className="text-[13px] text-muted-foreground/60">What are you working on?</p>
+          <p className="text-[0.8125rem] text-muted-foreground/60">What are you working on?</p>
         </div>
       </div>
     )
@@ -57,18 +72,25 @@ export function ChatMessages({ messages, streamingContent, loading, onArtifactCl
           <MessageBlock
             key={msg.id || i}
             message={msg}
-            isLatest={i === messages.length - 1 && !streamingContent}
+            isLatest={i === messages.length - 1 && !streamingContent && !greetingData}
             onArtifactClick={onArtifactClick}
             onCopy={msg.role === 'user' ? () => onCopyMessage?.(msg.content) : undefined}
             onEdit={msg.role === 'user' ? () => onEditMessage?.(i, msg.content) : undefined}
           />
         ))}
+        {greetingData && (
+          <GreetingCard
+            greeting={greetingData.text}
+            items={greetingData.items}
+            onItemHandled={onGreetingItemHandled}
+          />
+        )}
         {streamingContent && (
           <MessageBlock message={{ role: 'assistant', content: streamingContent }} isLatest />
         )}
         {loading && !streamingContent && (
           <div className="py-6 animate-in-up">
-            <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium mb-1.5">
+            <div className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium mb-1.5">
               J.DRG
             </div>
             <div className="flex items-center gap-2 text-muted-foreground/60">
@@ -106,7 +128,7 @@ function ProactiveFeedback({ messageContent }: { messageContent: string }) {
   }
 
   if (sent) {
-    return <span className="text-[11px] text-muted-foreground/40">Preference saved</span>
+    return <span className="text-[0.6875rem] text-muted-foreground/40">Preference saved</span>
   }
 
   if (showInput) {
@@ -117,7 +139,7 @@ function ProactiveFeedback({ messageContent }: { messageContent: string }) {
           onChange={(e) => setFeedback(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
           placeholder="What should change?"
-          className="flex-1 bg-transparent border border-border px-2.5 py-1 text-[12px] outline-none placeholder:text-muted-foreground/30 focus:border-foreground/30 transition-colors"
+          className="flex-1 bg-transparent border border-border px-2.5 py-1 text-[0.75rem] outline-none placeholder:text-muted-foreground/30 focus:border-foreground/30 transition-colors"
           autoFocus
         />
         <button onClick={handleSubmit} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
@@ -133,7 +155,7 @@ function ProactiveFeedback({ messageContent }: { messageContent: string }) {
   return (
     <button
       onClick={() => setShowInput(true)}
-      className="text-[11px] text-muted-foreground/40 hover:text-muted-foreground transition-colors mt-2"
+      className="text-[0.6875rem] text-muted-foreground/40 hover:text-muted-foreground transition-colors mt-2"
     >
       Adjust this
     </button>
@@ -153,24 +175,24 @@ function MessageBlock({ message, isLatest, onArtifactClick, onCopy, onEdit }: { 
     <div className={cn("py-5 group", isLatest && "animate-in-up", isUser && "flex flex-col items-end")}>
       {/* Role + timestamp */}
       <div className={cn("flex items-baseline gap-2 mb-1.5", isUser && "flex-row-reverse")}>
-        <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">
+        <span className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">
           {isUser ? 'You' : 'J.DRG'}
         </span>
         {isBriefing && (
-          <span className="text-[10px] uppercase tracking-wider text-amber-500/60">Briefing</span>
+          <span className="text-[0.625rem] uppercase tracking-wider text-amber-500/60">Briefing</span>
         )}
         {isAlert && (
-          <span className="text-[10px] uppercase tracking-wider text-red-500/60">Alert</span>
+          <span className="text-[0.625rem] uppercase tracking-wider text-red-500/60">Alert</span>
         )}
         {time && (
-          <span className="text-[10px] text-muted-foreground/30 tabular-nums">{time}</span>
+          <span className="text-[0.625rem] text-muted-foreground/30 tabular-nums">{time}</span>
         )}
       </div>
 
       {/* Content */}
       <div className={cn(
-        "text-[15px] leading-[1.7]",
-        isUser ? "text-foreground bg-muted/50 px-4 py-2.5 rounded-2xl rounded-tr-sm max-w-[85%]" : "text-foreground/85 tracking-[0.01em] font-light",
+        "text-[0.9375rem] leading-[1.7]",
+        isUser ? "text-foreground bg-muted/50 px-4 py-2.5 rounded-2xl rounded-tr-sm max-w-[85%]" : "text-foreground/95 tracking-[0.01em] font-light",
         isBriefing && "border-l-2 border-amber-500/30 pl-4",
         isAlert && "border-l-2 border-red-500/30 pl-4",
       )}>
@@ -235,6 +257,15 @@ function MessageBlock({ message, isLatest, onArtifactClick, onCopy, onEdit }: { 
         </div>
       )}
 
+      {/* Email Drafts */}
+      {message.emailDraftEvents && message.emailDraftEvents.length > 0 && (
+        <div className="mt-3 space-y-1.5">
+          {message.emailDraftEvents.map((evt: any, i: number) => (
+            <EmailDraftCard key={i} event={evt} />
+          ))}
+        </div>
+      )}
+
       {/* Artifacts */}
       {message.artifactEvents && message.artifactEvents.length > 0 && (
         <div className="mt-3 space-y-1.5">
@@ -244,12 +275,66 @@ function MessageBlock({ message, isLatest, onArtifactClick, onCopy, onEdit }: { 
         </div>
       )}
 
+      {/* Projects */}
+      {message.projectEvents && message.projectEvents.length > 0 && (
+        <div className="mt-3 space-y-1.5">
+          {message.projectEvents.map((evt: any, i: number) => (
+            <ProjectCard key={i} event={evt} />
+          ))}
+        </div>
+      )}
+
+      {/* Bookmarks */}
+      {message.bookmarkEvents && message.bookmarkEvents.length > 0 && (
+        <div className="mt-3 space-y-1.5">
+          {message.bookmarkEvents.map((evt: any, i: number) => (
+            <BookmarkCard key={i} event={evt} />
+          ))}
+        </div>
+      )}
+
+      {/* Dashboard Cards */}
+      {message.dashboardCardEvents && message.dashboardCardEvents.length > 0 && (
+        <div className="mt-3 space-y-1.5">
+          {message.dashboardCardEvents.map((evt: any, i: number) => (
+            <DashboardCardCard key={i} event={evt} />
+          ))}
+        </div>
+      )}
+
+      {/* Notification Rules */}
+      {message.notificationRuleEvents && message.notificationRuleEvents.length > 0 && (
+        <div className="mt-3 space-y-1.5">
+          {message.notificationRuleEvents.map((evt: any, i: number) => (
+            <NotificationRuleCard key={i} event={evt} />
+          ))}
+        </div>
+      )}
+
+      {/* Preferences */}
+      {message.preferenceEvents && message.preferenceEvents.length > 0 && (
+        <div className="mt-3 space-y-1.5">
+          {message.preferenceEvents.map((evt: any, i: number) => (
+            <PreferenceCard key={i} event={evt} />
+          ))}
+        </div>
+      )}
+
+      {/* Training */}
+      {message.trainingEvents && message.trainingEvents.length > 0 && (
+        <div className="mt-3 space-y-1.5">
+          {message.trainingEvents.map((evt: any, i: number) => (
+            <TrainingCard key={i} event={evt} />
+          ))}
+        </div>
+      )}
+
       {/* Sources */}
       {message.sources && message.sources.length > 0 && (
         <div className="mt-3">
           <button
             onClick={() => setShowSources(!showSources)}
-            className="flex items-center gap-1.5 text-[10px] tracking-wide uppercase text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+            className="flex items-center gap-1.5 text-[0.625rem] tracking-wide uppercase text-muted-foreground/40 hover:text-muted-foreground transition-colors"
           >
             <FileText className="size-3" />
             {message.sources.length} source{message.sources.length !== 1 ? 's' : ''}
@@ -261,8 +346,8 @@ function MessageBlock({ message, isLatest, onArtifactClick, onCopy, onEdit }: { 
           {showSources && (
             <div className="mt-2 space-y-1.5 animate-in-up">
               {message.sources.map((source: any, i: number) => (
-                <div key={i} className="text-[12px] border-l-2 border-border pl-3 py-1.5">
-                  <span className="text-muted-foreground/40 tabular-nums text-[10px]">
+                <div key={i} className="text-[0.75rem] border-l-2 border-border pl-3 py-1.5">
+                  <span className="text-muted-foreground/40 tabular-nums text-[0.625rem]">
                     {(source.similarity_score * 100).toFixed(0)}%
                   </span>
                   <p className="mt-0.5 text-foreground/60 leading-relaxed">{source.chunk_content}</p>
@@ -289,9 +374,9 @@ export function FormattedContent({ content }: { content: string }) {
         elements.push(
           <div key={i} className="my-3">
             {codeLang && (
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground/40 mb-1">{codeLang}</div>
+              <div className="text-[0.625rem] uppercase tracking-wider text-muted-foreground/40 mb-1">{codeLang}</div>
             )}
-            <pre className="bg-muted/60 p-3 overflow-x-auto text-[12px] leading-relaxed font-[family-name:var(--font-geist-mono)]">
+            <pre className="bg-muted/60 p-3 overflow-x-auto text-[0.75rem] leading-relaxed font-[family-name:var(--font-geist-mono)]">
               <code>{codeContent.trim()}</code>
             </pre>
           </div>
@@ -313,19 +398,19 @@ export function FormattedContent({ content }: { content: string }) {
 
     if (line.startsWith('### ')) {
       elements.push(
-        <h3 key={i} className="font-semibold text-[13px] mt-5 mb-1 tracking-tight">
+        <h3 key={i} className="font-semibold text-[0.8125rem] mt-5 mb-1 tracking-tight">
           {formatInline(line.slice(4))}
         </h3>
       )
     } else if (line.startsWith('## ')) {
       elements.push(
-        <h2 key={i} className="font-semibold text-[15px] mt-5 mb-1 tracking-tight">
+        <h2 key={i} className="font-semibold text-[0.9375rem] mt-5 mb-1 tracking-tight">
           {formatInline(line.slice(3))}
         </h2>
       )
     } else if (line.startsWith('# ')) {
       elements.push(
-        <h1 key={i} className="font-semibold text-[17px] mt-5 mb-1 tracking-tight">
+        <h1 key={i} className="font-semibold text-[1.0625rem] mt-5 mb-1 tracking-tight">
           {formatInline(line.slice(2))}
         </h1>
       )
@@ -366,6 +451,8 @@ function ActionItemCard({ event }: { event: any }) {
     create: { icon: Plus, label: 'Action item added', color: 'text-emerald-500' },
     complete: { icon: Check, label: 'Marked complete', color: 'text-blue-500' },
     update: { icon: RefreshCw, label: 'Updated', color: 'text-amber-500' },
+    dismiss: { icon: X, label: 'Dismissed', color: 'text-muted-foreground' },
+    snooze: { icon: Clock, label: 'Snoozed', color: 'text-blue-400' },
   }
   const config = configs[operation] || { icon: Plus, label: operation, color: 'text-muted-foreground' }
 
@@ -376,12 +463,12 @@ function ActionItemCard({ event }: { event: any }) {
   const Icon = config.icon
 
   return (
-    <div className="flex items-center gap-2 text-[12px] border border-border px-3 py-2">
+    <div className="flex items-center gap-2 text-[0.75rem] border border-border px-3 py-2">
       <Icon className={cn("size-3 shrink-0", config.color)} />
       <span className="text-muted-foreground">{config.label}:</span>
       <span className="text-foreground/80 truncate">{item?.title || 'Unknown'}</span>
       {item?.priority === 'high' && (
-        <span className="text-[10px] uppercase tracking-wider text-red-500/70 ml-auto shrink-0">high</span>
+        <span className="text-[0.625rem] uppercase tracking-wider text-red-500/70 ml-auto shrink-0">high</span>
       )}
     </div>
   )
@@ -390,7 +477,7 @@ function ActionItemCard({ event }: { event: any }) {
 function AddToProjectCard({ event }: { event: any }) {
   if (event.status === 'error') {
     return (
-      <div className="flex items-center gap-2 text-[12px] border border-border px-3 py-2">
+      <div className="flex items-center gap-2 text-[0.75rem] border border-border px-3 py-2">
         <FolderOpen className="size-3 shrink-0 text-red-500" />
         <span className="text-muted-foreground">{event.message}</span>
       </div>
@@ -414,7 +501,7 @@ function AddToProjectCard({ event }: { event: any }) {
     return (
       <Link
         href={`/projects/${event.project_id}?continue=${event.context_id}`}
-        className="flex items-center gap-2 text-[12px] border border-border px-3 py-2 hover:bg-muted/30 transition-colors"
+        className="flex items-center gap-2 text-[0.75rem] border border-border px-3 py-2 hover:bg-muted/30 transition-colors"
       >
         {content}
       </Link>
@@ -422,7 +509,7 @@ function AddToProjectCard({ event }: { event: any }) {
   }
 
   return (
-    <div className="flex items-center gap-2 text-[12px] border border-border px-3 py-2">
+    <div className="flex items-center gap-2 text-[0.75rem] border border-border px-3 py-2">
       {content}
     </div>
   )
@@ -430,11 +517,11 @@ function AddToProjectCard({ event }: { event: any }) {
 
 function GmailSearchCard({ event }: { event: any }) {
   return (
-    <div className="flex items-center gap-2 text-[12px] border border-border px-3 py-2">
+    <div className="flex items-center gap-2 text-[0.75rem] border border-border px-3 py-2">
       <Mail className="size-3 shrink-0 text-red-400" />
       <span className="text-muted-foreground">Searched Gmail:</span>
       <span className="text-foreground/80 truncate">{event.query}</span>
-      <span className="text-[10px] text-muted-foreground/50 ml-auto shrink-0">
+      <span className="text-[0.625rem] text-muted-foreground/50 ml-auto shrink-0">
         {event.result_count} result{event.result_count !== 1 ? 's' : ''}
       </span>
     </div>
@@ -448,7 +535,7 @@ function ArtifactCard({ event, onClick }: { event: any; onClick?: (artifactId: s
   return (
     <button
       onClick={() => onClick?.(artifact?.id)}
-      className="flex items-center gap-2 text-[12px] border border-border px-3 py-2 hover:bg-muted/30 transition-colors w-full text-left"
+      className="flex items-center gap-2 text-[0.75rem] border border-border px-3 py-2 hover:bg-muted/30 transition-colors w-full text-left"
     >
       {isCreate ? (
         <NotebookPen className="size-3 shrink-0 text-violet-500" />
@@ -458,9 +545,214 @@ function ArtifactCard({ event, onClick }: { event: any; onClick?: (artifactId: s
       <span className="text-muted-foreground">{isCreate ? 'Created' : 'Updated'}:</span>
       <span className="text-foreground/80 truncate">{artifact?.name || 'Untitled'}</span>
       {artifact?.type && artifact.type !== 'freeform' && (
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground/50 ml-auto shrink-0">{artifact.type}</span>
+        <span className="text-[0.625rem] uppercase tracking-wider text-muted-foreground/50 ml-auto shrink-0">{artifact.type}</span>
       )}
     </button>
+  )
+}
+
+function EmailDraftCard({ event }: { event: any }) {
+  const isError = event.status === 'error'
+  return (
+    <div className="flex items-center gap-2 text-[0.75rem] border border-border px-3 py-2">
+      <MailPlus className={cn("size-3 shrink-0", isError ? 'text-red-500' : 'text-emerald-500')} />
+      <span className="text-muted-foreground">{isError ? 'Draft failed' : 'Draft created'}:</span>
+      <span className="text-foreground/80 truncate">{event.subject || event.message}</span>
+      {!isError && event.to && (
+        <span className="text-[0.625rem] text-muted-foreground/50 ml-auto shrink-0">to {event.to}</span>
+      )}
+    </div>
+  )
+}
+
+function ProjectCard({ event }: { event: any }) {
+  const configs: Record<string, { icon: typeof FolderPlus; label: string; color: string }> = {
+    created: { icon: FolderPlus, label: 'Project created', color: 'text-emerald-500' },
+    updated: { icon: FolderPen, label: 'Project updated', color: 'text-amber-500' },
+    archived: { icon: FolderX, label: 'Project archived', color: 'text-red-500' },
+  }
+  const config = configs[event.status] || { icon: FolderPlus, label: event.operation, color: 'text-muted-foreground' }
+  const Icon = config.icon
+
+  return (
+    <div className="flex items-center gap-2 text-[0.75rem] border border-border px-3 py-2">
+      <Icon className={cn("size-3 shrink-0", config.color)} />
+      <span className="text-muted-foreground">{config.label}:</span>
+      <span className="text-foreground/80 truncate">{event.project?.name || 'Unknown'}</span>
+    </div>
+  )
+}
+
+function BookmarkCard({ event }: { event: any }) {
+  const isDelete = event.operation === 'delete'
+  return (
+    <div className="flex items-center gap-2 text-[0.75rem] border border-border px-3 py-2">
+      {isDelete ? (
+        <Trash2 className="size-3 shrink-0 text-red-500" />
+      ) : (
+        <Link2 className="size-3 shrink-0 text-blue-500" />
+      )}
+      <span className="text-muted-foreground">{isDelete ? 'Bookmark removed' : 'Bookmark added'}:</span>
+      <span className="text-foreground/80 truncate">{event.bookmark?.title || event.bookmark?.url || 'Unknown'}</span>
+    </div>
+  )
+}
+
+function DashboardCardCard({ event }: { event: any }) {
+  const configs: Record<string, { label: string; color: string }> = {
+    created: { label: 'Card pinned to dashboard', color: 'text-emerald-500' },
+    updated: { label: 'Dashboard card updated', color: 'text-amber-500' },
+    removed: { label: 'Dashboard card removed', color: 'text-red-500' },
+  }
+  const config = configs[event.status] || { label: event.operation, color: 'text-muted-foreground' }
+
+  return (
+    <div className="flex items-center gap-2 text-[0.75rem] border border-border px-3 py-2">
+      <LayoutDashboard className={cn("size-3 shrink-0", config.color)} />
+      <span className="text-muted-foreground">{config.label}:</span>
+      <span className="text-foreground/80 truncate">{event.card?.title || 'Unknown'}</span>
+    </div>
+  )
+}
+
+function NotificationRuleCard({ event }: { event: any }) {
+  const configs: Record<string, { label: string; color: string }> = {
+    created: { label: 'Alert rule created', color: 'text-emerald-500' },
+    deleted: { label: 'Alert rule removed', color: 'text-red-500' },
+    enabled: { label: 'Alert rule enabled', color: 'text-emerald-500' },
+    disabled: { label: 'Alert rule paused', color: 'text-amber-500' },
+  }
+  const config = configs[event.status] || { label: event.operation, color: 'text-muted-foreground' }
+
+  return (
+    <div className="flex items-center gap-2 text-[0.75rem] border border-border px-3 py-2">
+      <Bell className={cn("size-3 shrink-0", config.color)} />
+      <span className="text-muted-foreground">{config.label}:</span>
+      <span className="text-foreground/80 truncate">{event.rule?.description || 'Unknown'}</span>
+    </div>
+  )
+}
+
+function PreferenceCard({ event }: { event: any }) {
+  return (
+    <div className="flex items-center gap-2 text-[0.75rem] border border-border px-3 py-2">
+      <Palette className="size-3 shrink-0 text-violet-500" />
+      <span className="text-muted-foreground">Preference set:</span>
+      <span className="text-foreground/80">{event.key} = {event.value}</span>
+    </div>
+  )
+}
+
+function TrainingCard({ event }: { event: any }) {
+  const { operation, result } = event
+
+  if (operation === 'stats') {
+    return (
+      <div className="flex items-center gap-2 text-[0.75rem] border border-border px-3 py-2">
+        <GraduationCap className="size-3 shrink-0 text-violet-500" />
+        <span className="text-muted-foreground">Training progress:</span>
+        <span className="text-foreground/80">{result.total_examples} examples, {result.rules_count} rules active</span>
+      </div>
+    )
+  }
+
+  if (operation === 'label') {
+    return (
+      <div className="flex items-center gap-2 text-[0.75rem] border border-border px-3 py-2">
+        <GraduationCap className="size-3 shrink-0 text-emerald-500" />
+        <span className="text-muted-foreground">Preference learned:</span>
+        <span className="text-foreground/80">{result.is_action_item ? 'Track items like this' : 'Skip items like this'}</span>
+      </div>
+    )
+  }
+
+  if (operation === 'teach_me') {
+    return <TeachMeQuiz snippets={result.snippets || []} message={result.message} />
+  }
+
+  return null
+}
+
+function TeachMeQuiz({ snippets, message }: { snippets: any[]; message?: string }) {
+  const [index, setIndex] = useState(0)
+  const [labeling, setLabeling] = useState(false)
+  const [labeled, setLabeled] = useState(0)
+
+  if (snippets.length === 0) {
+    return (
+      <div className="flex items-center gap-2 text-[0.75rem] border border-border px-3 py-2">
+        <GraduationCap className="size-3 shrink-0 text-muted-foreground" />
+        <span className="text-muted-foreground">{message || 'No snippets available for training right now.'}</span>
+      </div>
+    )
+  }
+
+  const done = index >= snippets.length
+  const current = snippets[index]
+
+  async function answer(isActionItem: boolean) {
+    if (!current || labeling) return
+    setLabeling(true)
+    try {
+      await fetch('/api/training/label', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          snippet: current.text,
+          is_action_item: isActionItem,
+          label_source: 'teach_me',
+          source_type: current.source_type,
+          metadata: current.metadata,
+        }),
+      })
+    } catch { /* continue anyway */ }
+    setLabeling(false)
+    setLabeled(prev => prev + 1)
+    setIndex(prev => prev + 1)
+  }
+
+  if (done) {
+    return (
+      <div className="border border-border px-4 py-3">
+        <div className="flex items-center gap-2 text-[0.75rem]">
+          <GraduationCap className="size-3 shrink-0 text-emerald-500" />
+          <span className="text-foreground font-medium">Done! {labeled} examples labeled.</span>
+        </div>
+        <p className="text-[0.6875rem] text-muted-foreground/60 mt-1">This helps me learn what you consider an action item.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="border border-border px-4 py-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium flex items-center gap-1.5">
+          <GraduationCap className="size-3" />
+          Is this an action item? ({index + 1}/{snippets.length})
+        </span>
+      </div>
+      <div className="bg-muted/40 border border-border/50 p-3 mb-3 text-[0.75rem] text-muted-foreground leading-relaxed max-h-[200px] overflow-auto whitespace-pre-wrap">
+        {current?.text}
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={() => answer(true)}
+          disabled={labeling}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.75rem] border border-green-600/30 text-green-600 hover:bg-green-600/10 transition-colors disabled:opacity-30"
+        >
+          {labeling ? <Loader2 className="size-3 animate-spin" /> : <ThumbsUp className="size-3" />}
+          Yes, action item
+        </button>
+        <button
+          onClick={() => answer(false)}
+          disabled={labeling}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.75rem] border border-red-600/30 text-red-600 hover:bg-red-600/10 transition-colors disabled:opacity-30"
+        >
+          {labeling ? <Loader2 className="size-3 animate-spin" /> : <ThumbsDown className="size-3" />}
+          No
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -474,7 +766,7 @@ function formatInline(text: string): React.ReactNode {
     if (codeMatch) {
       if (codeMatch[1]) parts.push(<span key={key++}>{codeMatch[1]}</span>)
       parts.push(
-        <code key={key++} className="bg-muted/80 px-1 py-px text-[12px] font-[family-name:var(--font-geist-mono)]">
+        <code key={key++} className="bg-muted/80 px-1 py-px text-[0.75rem] font-[family-name:var(--font-geist-mono)]">
           {codeMatch[2]}
         </code>
       )

@@ -186,7 +186,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
               onKeyDown={handleKeyDown}
               placeholder="Message..."
               rows={1}
-              className="flex-1 resize-none bg-transparent py-3 pr-2 text-[14px] leading-relaxed outline-none placeholder:text-muted-foreground/40"
+              className="flex-1 resize-none bg-transparent py-3 pr-2 text-[0.875rem] leading-relaxed outline-none placeholder:text-muted-foreground/40"
               style={{ minHeight: '46px', maxHeight: '200px' }}
             />
             <button
