@@ -5,7 +5,7 @@ import { buildBriefingPrompt } from '@/lib/system-prompt'
 import { getMainConversation, insertProactiveMessage, getUserPreferences } from '@/lib/proactive'
 import { sendPushToAll } from '@/lib/push'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, baseURL: process.env.ANTHROPIC_BASE_URL, defaultHeaders: { 'X-OR-Models': 'google/gemini-3.1-flash-lite-preview,google/gemini-3-flash-preview' } })
 
 export async function POST(req: NextRequest) {
   const cronSecret = req.headers.get('x-cron-secret') || req.headers.get('authorization')
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
 
     // Generate briefing via Claude
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'google/gemini-3.1-flash-lite-preview',
       max_tokens: 1024,
       system: fullPrompt,
       messages: [{ role: 'user', content: 'Generate the morning briefing.' }],

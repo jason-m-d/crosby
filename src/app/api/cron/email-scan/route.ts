@@ -6,7 +6,7 @@ import { getMainConversation, insertProactiveMessage, getUserPreferences } from 
 import { buildFewShotBlock } from '@/lib/training'
 import { sendPushToAll } from '@/lib/push'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, baseURL: process.env.ANTHROPIC_BASE_URL, defaultHeaders: { 'X-OR-Models': 'google/gemini-3.1-flash-lite-preview,google/gemini-3-flash-preview' } })
 
 const WINGSTOP_STORES = ['326', '451', '895', '1870', '2067', '2428', '2262', '2289']
 
@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
             : systemPrompt
 
           const response = await anthropic.messages.create({
-            model: 'claude-sonnet-4-20250514',
+            model: 'google/gemini-3.1-flash-lite-preview',
             max_tokens: 1024,
             system: fullSystemPrompt,
             messages: [{
@@ -307,7 +307,7 @@ async function maybeGenerateAlert(newActionItemCount: number) {
 
   // Generate a short alert via Claude
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'google/gemini-3.1-flash-lite-preview',
     max_tokens: 256,
     system: `Write a very short alert (2-3 sentences max) for Jason DeMayo. Be direct, no fluff. Use hyphens not em dashes.${preferences.length > 0 ? `\n\nUser preferences:\n${preferences.map(p => `- ${p}`).join('\n')}` : ''}`,
     messages: [{ role: 'user', content: `Alert items:\n${alertWorthy.map(a => `- ${a}`).join('\n')}` }],
@@ -335,7 +335,7 @@ export async function GET(req: NextRequest) {
 async function parseWingstopSales(email: any) {
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'google/gemini-3.1-flash-lite-preview',
       max_tokens: 1024,
       system: `Parse this Wingstop NBO Daily Report email. Extract net sales for each store. Return JSON: { "stores": [{ "store_number": "326", "store_name": "...", "net_sales": 1234.56 }], "report_date": "2026-01-15" }. Store numbers to look for: 326, 451, 895, 1870, 2067, 2428, 2262, 2289.`,
       messages: [{ role: 'user', content: email.body.slice(0, 5000) }],
@@ -364,7 +364,7 @@ async function parseWingstopSales(email: any) {
 async function parseMrPicklesSales(email: any) {
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'google/gemini-3.1-flash-lite-preview',
       max_tokens: 1024,
       system: `Parse this Mr. Pickle's Daily Sales Report email. Extract net sales for stores 405 (Fresno) and 1008 (Van Nuys). Return JSON: { "stores": [{ "store_number": "405", "store_name": "Fresno", "net_sales": 1234.56 }], "report_date": "2026-01-15" }.`,
       messages: [{ role: 'user', content: email.body.slice(0, 5000) }],

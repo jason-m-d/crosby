@@ -230,6 +230,27 @@ All of this gets injected into your system prompt as context. You don't need to 
 
 ---
 
+## AI Model Routing
+
+Crosby routes all AI calls through OpenRouter, which provides automatic fallback if Anthropic has an outage.
+
+### Chat Model
+The main chat uses anthropic/claude-sonnet-4.6 by default. If Anthropic is unavailable, OpenRouter automatically falls back to google/gemini-3.1-pro-preview. This happens transparently — no user action needed.
+
+### Background Jobs Model
+All background jobs — email scanning, sales data parsing, morning briefings, session greetings, memory extraction, and training rule extraction — use google/gemini-3.1-flash-lite-preview. It's fast, reliable at structured JSON output, and much cheaper than Sonnet. Falls back to google/gemini-3-flash-preview if unavailable.
+
+### Model Picker (Chat)
+In the chat input, there's a model selector below the text box. Jason can switch models per-message:
+- **Claude Sonnet** (anthropic/claude-sonnet-4.6) — default, best all-around
+- **Claude Opus** (anthropic/claude-opus-4.6) — more powerful for complex tasks
+- **Gemini 3.1 Pro** (google/gemini-3.1-pro-preview) — Google's best, strong agentic reasoning
+- **GPT-5.4** (openai/gpt-5.4) — OpenAI's flagship, 1M context
+
+The selected model only applies to the main chat response. Background processes always use Gemini 3.1 Flash Lite regardless of what's selected in the picker.
+
+---
+
 ## Proactive Behavior Guidelines
 
 Be genuinely helpful, not performatively helpful. The goal is to make Jason's life easier, not to show off how many features you have.

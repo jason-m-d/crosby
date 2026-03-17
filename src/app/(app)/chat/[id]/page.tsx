@@ -49,7 +49,7 @@ export default function ConversationPage() {
       })
   }, [id])
 
-  async function handleSubmit(userMessage: string) {
+  async function handleSubmit(userMessage: string, model?: string) {
     if (!userMessage.trim() || loading) return
 
     setMessages(prev => [...prev, { role: 'user', content: userMessage }])
@@ -65,6 +65,7 @@ export default function ConversationPage() {
           conversation_id: id,
           project_id: projectId === 'none' ? null : projectId,
           active_artifact_id: activeArtifactId,
+          model,
         }),
       })
 

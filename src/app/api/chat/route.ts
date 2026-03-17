@@ -11,7 +11,7 @@ import { fetchEmails } from '@/lib/gmail'
 import type { ActionItem, Artifact, DashboardCard, NotificationRule, Bookmark, UIPreference } from '@/lib/types'
 import { sendPushToAll } from '@/lib/push'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, baseURL: process.env.ANTHROPIC_BASE_URL, defaultHeaders: { 'X-OR-Models': 'claude-sonnet-4-20250514,google/gemini-3.1-pro-preview' } })
 
 const ACTION_ITEM_TOOL: Anthropic.Messages.Tool = {
   name: 'manage_action_items',
@@ -353,7 +353,8 @@ const TRAINING_TOOL: Anthropic.Messages.Tool = {
 }
 
 export async function POST(req: NextRequest) {
-  const { message, conversation_id, project_id, active_artifact_id } = await req.json()
+  const { message, conversation_id, project_id, active_artifact_id, model } = await req.json()
+  const selectedModel = model || 'anthropic/claude-sonnet-4.6'
 
   // Create or get conversation
   let convId = conversation_id
@@ -455,7 +456,7 @@ export async function POST(req: NextRequest) {
           continueLoop = false
 
           const response = anthropic.messages.stream({
-            model: 'claude-sonnet-4-20250514',
+            model: selectedModel,
             max_tokens: 4096,
             system: systemPrompt,
             messages: currentMessages,
@@ -1437,7 +1438,7 @@ async function extractMemories(conversationId: string, userMessage: string, assi
       .join('\n')
 
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'google/gemini-3.1-flash-lite-preview',
       max_tokens: 1024,
       system: `You manage a memory system for Jason DeMayo (also goes by "Jerry"). Extract genuinely NEW information from this conversation turn.
 

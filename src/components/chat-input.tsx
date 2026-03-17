@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react'
-import { Loader2, ArrowUp, Paperclip, X, FileText } from 'lucide-react'
+import { Loader2, ArrowUp, Paperclip, X, FileText, ChevronDown } from 'lucide-react'
 
 interface UploadedFile {
   id: string
@@ -9,8 +9,15 @@ interface UploadedFile {
   uploading: boolean
 }
 
+const MODELS = [
+  { id: 'anthropic/claude-sonnet-4.6', label: 'Claude Sonnet' },
+  { id: 'anthropic/claude-opus-4.6', label: 'Claude Opus' },
+  { id: 'google/gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro' },
+  { id: 'openai/gpt-5.4', label: 'GPT-5.4' },
+]
+
 interface ChatInputProps {
-  onSubmit: (message: string) => void
+  onSubmit: (message: string, model: string) => void
   loading: boolean
   storageKey?: string
 }
@@ -26,6 +33,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     return localStorage.getItem(lsKey) || ''
   })
   const [files, setFiles] = useState<UploadedFile[]>([])
+  const [model, setModel] = useState(MODELS[0].id)
+  const [modelPickerOpen, setModelPickerOpen] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -96,7 +105,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
     }
-    onSubmit(message)
+    onSubmit(message, model)
   }
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -210,6 +219,30 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             onChange={handleFileSelect}
             className="hidden"
           />
+        </div>
+
+        {/* Model picker */}
+        <div className="relative mt-2 flex items-center">
+          <button
+            onClick={() => setModelPickerOpen(o => !o)}
+            className="flex items-center gap-1 text-[0.7rem] text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+          >
+            {MODELS.find(m => m.id === model)?.label}
+            <ChevronDown className="size-3" />
+          </button>
+          {modelPickerOpen && (
+            <div className="absolute bottom-6 left-0 z-10 border border-border bg-background shadow-md min-w-[160px]">
+              {MODELS.map(m => (
+                <button
+                  key={m.id}
+                  onClick={() => { setModel(m.id); setModelPickerOpen(false) }}
+                  className={`w-full text-left px-3 py-2 text-xs hover:bg-muted transition-colors ${m.id === model ? 'text-foreground' : 'text-muted-foreground'}`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

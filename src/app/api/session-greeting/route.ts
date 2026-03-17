@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getUserPreferences } from '@/lib/proactive'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, baseURL: process.env.ANTHROPIC_BASE_URL, defaultHeaders: { 'X-OR-Models': 'google/gemini-3.1-flash-lite-preview,google/gemini-3-flash-preview' } })
 
 type SessionType = 'morning' | 'midday' | 'afternoon' | 'evening' | 'weekend' | 'continuation'
 
@@ -313,7 +313,7 @@ FORMATTING (critical):
 
     // Call Claude Sonnet
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'google/gemini-3.1-flash-lite-preview',
       max_tokens: 500,
       messages: [{ role: 'user', content: prompt }],
     })
