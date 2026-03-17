@@ -729,7 +729,9 @@ export async function POST(req: NextRequest) {
         controller.close()
       } catch (error) {
         const errBody = (error as any)?.error
-        console.error('CHAT_ERR status=' + (error as any)?.status + ' type=' + errBody?.type + ' msg=' + (errBody?.message || (error as Error)?.message))
+        console.error('CHAT_ERR_STATUS=' + (error as any)?.status)
+        console.error('CHAT_ERR_TYPE=' + errBody?.type)
+        console.error('CHAT_ERR_MSG=' + (errBody?.message || (error as Error)?.message))
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Failed to generate response' })}\n\n`))
         controller.close()
       }
