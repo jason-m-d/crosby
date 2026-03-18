@@ -15,7 +15,7 @@
 - Next.js (App Router), TypeScript, Tailwind CSS
 - Supabase (Postgres + auth + storage)
 - Anthropic Claude API for the AI chat (routed through OpenRouter via ANTHROPIC_BASE_URL)
-- Voyage AI for embeddings (RAG)
+- OpenAI text-embedding-3-small via OpenRouter for embeddings (RAG) — see `src/lib/embeddings.ts`
 
 ## AI Routing (OpenRouter)
 All AI calls go through OpenRouter (`ANTHROPIC_BASE_URL`). Do not call Anthropic directly.
@@ -39,7 +39,7 @@ All AI calls go through OpenRouter (`ANTHROPIC_BASE_URL`). Do not call Anthropic
 ## Document Pipeline
 - Uploads go through `/api/documents/upload` — same endpoint for both the Documents page and the chat paperclip attachment.
 - PDF text extraction uses `unpdf` (`src/lib/pdf.ts`). If extracted text < 100 chars, falls back to `ocrPdfWithAI()` which sends the PDF bytes to Gemini via Anthropic document block format.
-- Chunking + embedding (Voyage AI) runs in the background after every upload.
+- Chunking + embedding (OpenAI text-embedding-3-small via OpenRouter) runs in the background after every upload.
 - Files attached via the paperclip are uploaded immediately on selection, before the user hits send.
 
 ## Verification Rule

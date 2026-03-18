@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase'
-import { generateEmbedding, generateQueryEmbedding } from '@/lib/voyage'
+import { generateEmbedding, generateQueryEmbedding } from '@/lib/embeddings'
 import type { TrainingRule } from '@/lib/types'
 
 /**
@@ -25,8 +25,8 @@ export async function getRelevantTrainingExamples(
     }
 
     return data || []
-  } catch (e) {
-    console.error('getRelevantTrainingExamples failed:', e)
+  } catch {
+    // Embedding failures are logged in embeddings.ts — don't re-log the full stack here
     return []
   }
 }

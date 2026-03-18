@@ -44,6 +44,7 @@ export async function searchEmails(query: string, maxResults: number = 10) {
       from,
       date,
       snippet: body.slice(0, 1500),
+      threadId: msgData.threadId || null,
     })
   }
 

@@ -7,6 +7,7 @@ import { buildFewShotBlock } from '@/lib/training'
 import { sendPushToAll } from '@/lib/push'
 import { spawnBackgroundJob, isAutoTriggerRateLimited, getDailyAutoTriggerCount, logAutoTrigger } from '@/lib/background-jobs'
 import { openrouterClient } from '@/lib/openrouter'
+import { checkWatchesAgainstEmails, buildWatchMessage, createAutoWatch } from '@/lib/watches'
 
 // Anthropic client used only for Claude models (main chat, etc.)
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, baseURL: process.env.ANTHROPIC_BASE_URL })
@@ -428,13 +429,42 @@ export async function POST(req: NextRequest) {
         }, { onConflict: 'account' })
       }
 
+      // Auto-create watches from outbound email threads
+      for (const email of emails) {
+        if (!email.threadId) continue
+        const senderEmail = extractEmail(email.from)
+        const isFromJason = JASON_EMAILS.includes(senderEmail)
+        if (!isFromJason) continue
+
+        // Only for non-automated outbound emails that might need a reply
+        try {
+          await createAutoWatch(email.threadId, email.to ? extractEmail(email.to) : '', email.subject)
+        } catch (e: any) {
+          console.error(`[email-scan] Auto-watch creation failed: ${e.message?.slice(0, 100)}`)
+        }
+      }
+
+      // Check watches against incoming emails
+      try {
+        const watchMatches = await checkWatchesAgainstEmails(emails, '')
+        if (watchMatches.length > 0) {
+          await processWatchMatches(watchMatches)
+        }
+      } catch (e: any) {
+        console.error(`[email-scan] Watch matching failed: ${e.message?.slice(0, 200)}`)
+      }
+
       totalProcessed += emails.length
       totalItems += itemsFound
 
-      // Final update with accurate totals
+      // Final update with accurate totals — keep last_scanned_at from the per-email updates
+      // (based on actual email timestamps), don't blindly set to now()
+      const lastEmailTimestamp = emails.length > 0 && emails[emails.length - 1].internalDate
+        ? new Date(parseInt(emails[emails.length - 1].internalDate)).toISOString()
+        : since.toISOString()
       await supabaseAdmin.from('email_scans').upsert({
         account,
-        last_scanned_at: new Date().toISOString(),
+        last_scanned_at: lastEmailTimestamp,
         emails_processed: emails.length,
         action_items_found: itemsFound,
       }, { onConflict: 'account' })
@@ -458,6 +488,83 @@ export async function POST(req: NextRequest) {
   maybeSpawnSalesAnomalyResearch(convId).catch(e => console.error('Sales anomaly trigger failed:', e))
 
   return NextResponse.json({ emails_processed: totalProcessed, action_items_found: totalItems })
+}
+
+async function processWatchMatches(matches: Awaited<ReturnType<typeof checkWatchesAgainstEmails>>) {
+  if (matches.length === 0) return
+
+  const convId = await getMainConversation()
+
+  // Rate limit: max 3 watch-triggered proactive messages per hour
+  const { data: recentWatchMessages } = await supabaseAdmin
+    .from('messages')
+    .select('id')
+    .eq('conversation_id', convId)
+    .eq('role', 'assistant')
+    .like('content', '%Heads up%waiting for%')
+    .gte('created_at', new Date(Date.now() - 3600000).toISOString())
+    .limit(3)
+
+  const messagesThisHour = recentWatchMessages?.length || 0
+  if (messagesThisHour >= 3) {
+    console.log('[watches] Rate limited: 3+ watch messages sent this hour')
+    return
+  }
+
+  // Group matches by watch ID to batch multiple emails into one message
+  const matchesByWatch = new Map<string, typeof matches>()
+  for (const match of matches) {
+    const existing = matchesByWatch.get(match.watchId) || []
+    existing.push(match)
+    matchesByWatch.set(match.watchId, existing)
+  }
+
+  let messagesSent = 0
+  for (const [watchId, watchMatches] of matchesByWatch) {
+    if (messagesThisHour + messagesSent >= 3) break
+
+    const watch = watchMatches[0].watch
+
+    // Build message (use first match for the message, mention others if batched)
+    let messageText = buildWatchMessage(watchMatches[0])
+    if (watchMatches.length > 1) {
+      messageText += `\n\n(${watchMatches.length - 1} more related email${watchMatches.length > 2 ? 's' : ''} also matched this watch.)`
+    }
+
+    // Update watch status
+    if (watch.watch_type === 'email_reply') {
+      // email_reply watches trigger once then go to 'triggered'
+      await supabaseAdmin
+        .from('conversation_watches')
+        .update({ status: 'triggered', triggered_at: new Date().toISOString() })
+        .eq('id', watchId)
+    } else {
+      // keyword, topic, sender watches stay active but log the trigger
+      await supabaseAdmin
+        .from('conversation_watches')
+        .update({ triggered_at: new Date().toISOString() })
+        .eq('id', watchId)
+    }
+
+    // If watch has a source_thread_id, mark email_thread response_detected
+    if (watch.source_thread_id) {
+      await supabaseAdmin
+        .from('email_threads')
+        .update({ response_detected: true })
+        .eq('gmail_thread_id', watch.source_thread_id)
+    }
+
+    // Post proactive message
+    await insertProactiveMessage(convId, messageText)
+
+    // Push notification
+    const pushTitle = watch.priority === 'high' ? 'Watch Alert' : 'Watch Match'
+    const pushBody = `${watchMatches[0].email.from.replace(/<[^>]+>/, '').trim()} - ${watchMatches[0].email.subject}`.slice(0, 200)
+    await sendPushToAll(pushTitle, pushBody, `/chat/${convId}`).catch(() => {})
+
+    messagesSent++
+    console.log(`[watches] Triggered watch ${watchId} (layer ${watchMatches[0].layer}, ${watchMatches[0].confidence} confidence)`)
+  }
 }
 
 async function maybeGenerateAlert(newActionItemCount: number) {
@@ -709,7 +816,7 @@ async function parseWingstopSales(email: any) {
 
 CRITICAL: Extract the "Sales Actual" column, NOT "Sales Forecast". These are adjacent columns and easy to confuse. The Sales Actual value is the SECOND numeric column after the date, not the first.
 
-For each store section (identified by store number like 0326, 0451, etc.), find the most recent date row that has a non-zero "Sales Actual" value. Extract:
+For each store section (identified by store number like 0326, 0451, etc.), extract ALL date rows that have a non-zero "Sales Actual" value. This means if a store has data for multiple days, return a separate entry per day. Extract:
 - net_sales = the "Sales Actual" value (SECOND column, not first)
 - forecast_sales = the "Sales Forecast" value (FIRST column)
 - budget_sales = the "Sales Budget" or "Budget" value if present, otherwise null
@@ -756,16 +863,19 @@ If a store has no actual data yet (Sales Actual is 0.00 for all dates), omit it.
 async function parseMrPicklesSales(email: any) {
   try {
     const attachments: { filename: string; data: Buffer }[] = email.attachments || []
+    console.log(`[mrpickles-sales] Attachments: ${attachments.map(a => `${a.filename} (${a.data.length} bytes)`).join(', ') || 'none'}`)
     const pdf = attachments.find((a: any) => a.filename.toLowerCase().endsWith('.pdf'))
 
     if (!pdf) {
-      console.warn(`Mr. Pickle's email ${email.id} has no PDF attachments, skipping sales parse`)
+      console.warn(`[mrpickles-sales] No PDF attachments found, skipping`)
       return
     }
 
+    console.log(`[mrpickles-sales] Using PDF: ${pdf.filename} (${pdf.data.length} bytes)`)
     const pdfText = await extractPdfTextFromBuffer(pdf.data)
+    console.log(`[mrpickles-sales] Extracted ${pdfText?.length || 0} chars of text`)
     if (!pdfText || pdfText.trim().length < 50) {
-      console.warn(`Mr. Pickle's PDF "${pdf.filename}" yielded no text`)
+      console.warn(`[mrpickles-sales] PDF "${pdf.filename}" yielded insufficient text`)
       return
     }
 
@@ -790,11 +900,17 @@ Use YYYY-MM-DD for dates.`,
     } as any)
 
     const text = response.choices[0]?.message?.content || ''
+    console.log(`[mrpickles-sales] AI raw response: ${text.slice(0, 500)}`)
     const parsed = parseJsonSafe(text)
 
+    console.log(`[mrpickles-sales] AI returned ${parsed.stores?.length || 0} stores`)
     if (parsed.stores) {
       for (const store of parsed.stores) {
-        if (!store.report_date || !store.net_sales) continue
+        if (!store.report_date || !store.net_sales) {
+          console.warn(`[mrpickles-sales] Skipping store ${store.store_number}: missing report_date or net_sales`)
+          continue
+        }
+        console.log(`[mrpickles-sales] Upserting store ${store.store_number} (${store.store_name}): $${store.net_sales} on ${store.report_date}`)
         const { error: upsertError } = await supabaseAdmin.from('sales_data').upsert({
           report_date: store.report_date,
           brand: 'mrpickles',
@@ -806,7 +922,7 @@ Use YYYY-MM-DD for dates.`,
         if (upsertError) console.error(`[mrpickles-sales] Upsert failed for store ${store.store_number}: ${upsertError.message}`)
       }
     }
-  } catch (e) {
-    console.error("Failed to parse Mr. Pickle's sales:", e)
+  } catch (e: any) {
+    console.error(`[mrpickles-sales] Failed: ${e.message}`)
   }
 }

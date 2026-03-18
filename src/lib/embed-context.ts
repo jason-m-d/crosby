@@ -1,6 +1,6 @@
 import { supabaseAdmin } from './supabase'
 import { chunkText } from './chunker'
-import { generateEmbedding } from './voyage'
+import { generateEmbedding } from './embeddings'
 
 export async function chunkAndEmbedContext(contextId: string, content: string) {
   const chunks = chunkText(content)

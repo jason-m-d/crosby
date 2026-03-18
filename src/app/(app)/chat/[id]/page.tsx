@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Loader2, Trash2, FileText } from 'lucide-react'
+import { Loader2, Trash2, FileText, X } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase-browser'
 import { ChatMessages } from '@/components/chat-messages'
 import { ChatInput, type ChatInputHandle } from '@/components/chat-input'
@@ -213,24 +213,26 @@ export default function ConversationPage() {
             ))}
           </select>
           <div className="ml-auto flex items-center gap-1">
-            {artifacts.length > 0 && (
-              <button
-                onClick={() => {
-                  if (showArtifactPanel) {
-                    setShowArtifactPanel(false)
-                  } else {
+            <button
+              onClick={() => {
+                if (showArtifactPanel) {
+                  setShowArtifactPanel(false)
+                } else {
+                  if (artifacts.length > 0) {
                     setOpenArtifactIds(artifacts.map(a => a.id))
                     setActiveArtifactId(activeArtifactId || artifacts[0].id)
-                    setShowArtifactPanel(true)
                   }
-                }}
-                className={`relative p-1 transition-colors ${showArtifactPanel ? 'text-foreground/70' : 'text-muted-foreground/30 hover:text-foreground/50'}`}
-                title="Artifacts"
-              >
-                <FileText className="size-3.5" />
+                  setShowArtifactPanel(true)
+                }
+              }}
+              className={`relative p-1 transition-colors ${showArtifactPanel ? 'text-foreground/70' : 'text-muted-foreground/30 hover:text-foreground/50'}`}
+              title="Artifacts"
+            >
+              <FileText className="size-3.5" />
+              {artifacts.length > 0 && (
                 <span className="absolute -top-1 -right-1.5 text-[0.5625rem] font-medium text-muted-foreground/50">{artifacts.length}</span>
-              </button>
-            )}
+              )}
+            </button>
             <button
               onClick={async () => {
                 if (!confirm('Delete this conversation?')) return
@@ -269,7 +271,8 @@ export default function ConversationPage() {
         <ChatInput ref={chatInputRef} onSubmit={handleSubmit} loading={loading} storageKey={id} />
       </div>
 
-      {showArtifactPanel && openArtifacts.length > 0 && (
+      {showArtifactPanel && (
+        openArtifacts.length > 0 ? (
         <ArtifactPanel
           artifacts={openArtifacts}
           activeArtifactId={activeArtifactId}
@@ -279,6 +282,19 @@ export default function ConversationPage() {
           onArtifactUpdated={handleArtifactUpdated}
           projects={projects}
         />
+        ) : (
+        <div className="w-96 border-l border-border flex flex-col shrink-0 bg-background">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+            <span className="text-[0.75rem] font-medium uppercase tracking-[0.08em] text-muted-foreground/60">Artifacts</span>
+            <button onClick={() => setShowArtifactPanel(false)} className="p-0.5 text-muted-foreground/40 hover:text-foreground/60 transition-colors">
+              <X className="size-3.5" />
+            </button>
+          </div>
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-[0.75rem] text-muted-foreground/40">No artifacts yet</p>
+          </div>
+        </div>
+        )
       )}
     </div>
   )

@@ -1,5 +1,5 @@
 import { supabaseAdmin } from './supabase'
-import { generateQueryEmbedding } from './voyage'
+import { generateQueryEmbedding } from './embeddings'
 import type { Document, Memory } from './types'
 
 interface ChunkWithMeta {

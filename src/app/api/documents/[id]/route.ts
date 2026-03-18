@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { chunkText } from '@/lib/chunker'
-import { generateEmbedding } from '@/lib/voyage'
+import { generateEmbedding } from '@/lib/embeddings'
 
 export async function GET(
   req: NextRequest,
