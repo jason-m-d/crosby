@@ -1077,218 +1077,227 @@ export async function POST(req: NextRequest) {
   const { message, conversation_id, project_id, active_artifact_id, model } = await req.json()
   const selectedModel = model || 'anthropic/claude-sonnet-4.6:exacto'
 
-  // Create or get conversation
-  let convId = conversation_id
-  if (!convId) {
-    const title = message.slice(0, 50) + (message.length > 50 ? '...' : '')
-    const { data: conv } = await supabaseAdmin
-      .from('conversations')
-      .insert({ title, project_id })
-      .select()
-      .single()
-    convId = conv.id
-  }
-
-  // Get or create session
-  console.log('[Chat] getOrCreateSession start')
-  const { sessionId, previousSummary } = await getOrCreateSession(convId)
-  console.log('[Chat] getOrCreateSession done, sessionId:', sessionId)
-
-  // Save user message
-  await supabaseAdmin.from('messages').insert({
-    conversation_id: convId,
-    role: 'user',
-    content: message,
-    session_id: sessionId,
-  })
-
-  // Load conversation history for current session only (last 20 messages)
-  const { data: history } = await supabaseAdmin
-    .from('messages')
-    .select('role, content, context_domains')
-    .eq('conversation_id', convId)
-    .eq('session_id', sessionId)
-    .order('created_at', { ascending: true })
-    .limit(20)
-
-  // Skip vector search for short/vague messages - embeddings on "hi", "yes", "ok" etc.
-  // will latch onto whatever happens to be in the store and hallucinate context
-  const isSubstantiveMessage = message.trim().split(/\s+/).length >= 4
-
-  // Classify intent to determine which domains (data + tools) are active for this message
-  const lastAssistantMsg = (history || []).slice().reverse().find((m: any) => m.role === 'assistant')
-  const recentDomains = lastAssistantMsg?.context_domains as string[] | null
-  const domains = classifyIntent(message, recentDomains)
-
-  // Contacts: inject when email, calendar, or people are active
-  if (domains.has('email') || domains.has('calendar') || domains.has('people')) {
-    domains.add('contacts')
-  }
-
-  // Generate query embedding once and reuse for all vector searches
-  const queryEmbedding = isSubstantiveMessage
-    ? await generateQueryEmbedding(message).catch(e => { console.error('Query embedding failed:', e.message); return undefined })
-    : undefined
-
-  // RAG retrieval + action items + artifacts + all projects + training context in parallel
-  // Domain-gated queries skip the DB call entirely when the domain is inactive
-  const [chunks, pinnedDocs, memories, actionItemsResult, projectResult, contextChunks, artifactsResult, allProjectsResult, dashboardCardsResult, notificationRulesResult, uiPreferencesResult, trainingContext, notesResult, contactsResult, relevantDecisions, awaitingRepliesResult, activeWatchesResult, calendarEventsResult, recentTextsResult] = await Promise.all([
-    isSubstantiveMessage ? retrieveRelevantChunks(message, project_id, 8, 0.7, queryEmbedding).catch(e => { console.error('RAG retrieval failed:', e.message); return [] }) : Promise.resolve([]),
-    project_id ? getPinnedDocuments(project_id) : Promise.resolve([]),
-    isSubstantiveMessage ? getRelevantMemories(message) : Promise.resolve([]),
-    supabaseAdmin
-      .from('action_items')
-      .select('*')
-      .in('status', ['pending', 'approved'])
-      .order('created_at', { ascending: false })
-      .limit(30),
-    project_id
-      ? supabaseAdmin.from('projects').select('system_prompt').eq('id', project_id).single()
-      : Promise.resolve({ data: null }),
-    isSubstantiveMessage ? retrieveRelevantContextChunks(message, project_id, 5, 0.7, queryEmbedding).catch(e => { console.error('Context retrieval failed:', e.message); return [] }) : Promise.resolve([]),
-    convId
-      ? supabaseAdmin.from('artifacts').select('*').eq('conversation_id', convId).order('updated_at', { ascending: false })
-      : Promise.resolve({ data: [] }),
-    supabaseAdmin.from('projects').select('id, name, description').order('name'),
-    domains.has('dashboard')
-      ? supabaseAdmin.from('dashboard_cards').select('*').eq('is_active', true).order('position')
-      : Promise.resolve({ data: [] }),
-    domains.has('alerts')
-      ? supabaseAdmin.from('notification_rules').select('*').eq('is_active', true).order('created_at', { ascending: false })
-      : Promise.resolve({ data: [] }),
-    domains.has('prefs')
-      ? supabaseAdmin.from('ui_preferences').select('*')
-      : Promise.resolve({ data: [] }),
-    isSubstantiveMessage ? buildFewShotBlock(message, queryEmbedding).catch(e => { console.error('Training context failed:', e.message); return null }) : Promise.resolve(null),
-    domains.has('notes')
-      ? supabaseAdmin.from('notes').select('*').or('expires_at.is.null,expires_at.gt.' + new Date().toISOString()).order('created_at', { ascending: false })
-      : Promise.resolve({ data: [] }),
-    domains.has('contacts')
-      ? supabaseAdmin.from('contacts').select('*').order('name')
-      : Promise.resolve({ data: [] }),
-    isSubstantiveMessage ? retrieveRelevantDecisions(message, 5, 0.7, queryEmbedding).catch(e => { console.error('Decision retrieval failed:', e.message); return [] }) : Promise.resolve([]),
-    domains.has('email')
-      ? supabaseAdmin
-          .from('email_threads')
-          .select('last_sender_email, subject, last_message_date')
-          .eq('direction', 'outbound')
-          .eq('response_detected', false)
-          .gte('last_message_date', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString())
-          .order('last_message_date', { ascending: false })
-      : Promise.resolve({ data: [] }),
-    supabaseAdmin
-      .from('conversation_watches')
-      .select('id, watch_type, context, priority, created_at, match_criteria')
-      .eq('status', 'active')
-      .gt('expires_at', new Date().toISOString())
-      .order('created_at', { ascending: false })
-      .limit(20),
-    domains.has('calendar')
-      ? supabaseAdmin
-          .from('calendar_events')
-          .select('title, start_time, end_time, all_day, location, attendees, organizer_email, status')
-          .gte('start_time', new Date().toISOString())
-          .lte('start_time', new Date(Date.now() + 48 * 3600000).toISOString())
-          .order('start_time', { ascending: true })
-      : Promise.resolve({ data: [] }),
-    domains.has('texts')
-      ? supabaseAdmin
-          .from('text_messages')
-          .select('contact_name, phone_number, message_text, service, message_date, is_from_me, is_group_chat, group_chat_name, flag_reason')
-          .eq('flagged', true)
-          .eq('is_from_me', false)
-          .gte('message_date', new Date(Date.now() - 48 * 3600000).toISOString())
-          .order('message_date', { ascending: false })
-          .limit(15)
-      : Promise.resolve({ data: [] }),
-  ])
-
-  console.log('[Chat] Promise.all done')
-  const actionItems: ActionItem[] = actionItemsResult.data || []
-  const artifacts: Artifact[] = artifactsResult.data || []
-  const projectPrompt = projectResult.data?.system_prompt || ''
-  const allProjects: { id: string; name: string; description: string | null }[] = allProjectsResult.data || []
-  const dashboardCards: DashboardCard[] = dashboardCardsResult.data || []
-  const notificationRules: NotificationRule[] = notificationRulesResult.data || []
-  const uiPreferences: UIPreference[] = uiPreferencesResult.data || []
-  const awaitingReplies = ((awaitingRepliesResult as any).data || []).map((r: any) => ({
-    recipient_email: r.last_sender_email,
-    subject: r.subject,
-    last_message_date: r.last_message_date,
-  }))
-  const activeWatches = (activeWatchesResult as any).data || []
-  const calendarEvents: CalendarEventEntry[] = (calendarEventsResult as any).data || []
-  const recentTexts: RecentText[] = (recentTextsResult as any).data || []
-
-  // Add artifactContent domain when the active artifact panel is open,
-  // or when the message explicitly names an artifact
-  if (active_artifact_id) {
-    domains.add('artifactContent')
-  } else if (artifacts.length > 0) {
-    const msgLower = message.toLowerCase()
-    if (artifacts.some((a: Artifact) => msgLower.includes(a.name.toLowerCase()))) {
-      domains.add('artifactContent')
-    }
-  }
-
-  // Build filtered tools array based on active domains
-  const activeToolNames = getToolsForDomains(domains)
-  const activeTools = activeToolNames.map(n => ALL_TOOLS_MAP[n]).filter((t): t is Anthropic.Messages.Tool => !!t)
-  console.log(`[Intent] "${message.slice(0, 50)}" → domains: [${Array.from(domains).join(', ')}] | tools: ${activeTools.length}/${Object.keys(ALL_TOOLS_MAP).length}`)
-
-  console.log('[Chat] building system prompt, size will be...')
-  // Build context
-  const context = buildContext(chunks, pinnedDocs, memories, contextChunks)
-  const systemPrompt = buildSystemPrompt({
-    projectSystemPrompt: projectPrompt,
-    memories,
-    documentContext: context,
-    actionItems,
-    artifacts,
-    activeArtifactId: active_artifact_id,
-    projects: allProjects,
-    currentProjectId: project_id,
-    dashboardCards,
-    notificationRules,
-    uiPreferences,
-    trainingContext,
-    previousSessionSummary: previousSummary,
-    notes: (notesResult.data || []) as Note[],
-    contacts: (contactsResult.data || []) as Contact[],
-    decisions: relevantDecisions.length > 0 ? relevantDecisions : undefined,
-    awaitingReplies: awaitingReplies.length > 0 ? awaitingReplies : undefined,
-    activeWatches: activeWatches.length > 0 ? activeWatches : undefined,
-    calendarEvents: calendarEvents.length > 0 ? calendarEvents : undefined,
-    recentTexts: recentTexts.length > 0 ? recentTexts : undefined,
-    domains,
-  })
-  console.log('[Chat] system prompt built, length:', systemPrompt.length)
-
-  // Build messages array for Claude, capped by character budget to avoid context overflow.
-  // 40K chars ~= 10K tokens, leaving room for system prompt + tool schemas + operational data.
-  const HISTORY_CHAR_BUDGET = 40000
-  let historyCharCount = 0
-  const trimmedHistory = (history || []).reduceRight((acc: any[], m: any) => {
-    const len = (m.content || '').length
-    if (historyCharCount + len > HISTORY_CHAR_BUDGET) return acc
-    historyCharCount += len
-    acc.unshift(m)
-    return acc
-  }, [])
-
-  const chatMessages: Anthropic.Messages.MessageParam[] = trimmedHistory.map((m: any) => ({
-    role: m.role as 'user' | 'assistant',
-    content: m.content,
-  }))
-
-  console.log('[Chat] chatMessages count:', chatMessages.length, '| returning stream now')
-  // Stream response with tool use loop
   const encoder = new TextEncoder()
   let fullResponse = ''
 
   const stream = new ReadableStream({
     async start(controller) {
+      // Emit ping immediately so the HTTP connection is established and we can
+      // observe exactly where the setup hangs via logs vs. frontend behavior.
+      controller.enqueue(encoder.encode('data: {"type":"ping"}\n\n'))
+
       try {
+        // Create or get conversation
+        console.log('[Chat] step 1: create/get conversation')
+        let convId = conversation_id
+        if (!convId) {
+          const title = message.slice(0, 50) + (message.length > 50 ? '...' : '')
+          const { data: conv } = await supabaseAdmin
+            .from('conversations')
+            .insert({ title, project_id })
+            .select()
+            .single()
+          convId = conv.id
+        }
+
+        // Get or create session
+        console.log('[Chat] getOrCreateSession start')
+        const { sessionId, previousSummary } = await getOrCreateSession(convId)
+        console.log('[Chat] getOrCreateSession done, sessionId:', sessionId)
+
+        // Save user message
+        console.log('[Chat] step 3: save user message')
+        await supabaseAdmin.from('messages').insert({
+          conversation_id: convId,
+          role: 'user',
+          content: message,
+          session_id: sessionId,
+        })
+
+        // Load conversation history for current session only (last 20 messages)
+        console.log('[Chat] step 4: load history')
+        const { data: history } = await supabaseAdmin
+          .from('messages')
+          .select('role, content, context_domains')
+          .eq('conversation_id', convId)
+          .eq('session_id', sessionId)
+          .order('created_at', { ascending: true })
+          .limit(20)
+
+        // Skip vector search for short/vague messages - embeddings on "hi", "yes", "ok" etc.
+        // will latch onto whatever happens to be in the store and hallucinate context
+        const isSubstantiveMessage = message.trim().split(/\s+/).length >= 4
+
+        // Classify intent to determine which domains (data + tools) are active for this message
+        const lastAssistantMsg = (history || []).slice().reverse().find((m: any) => m.role === 'assistant')
+        const recentDomains = lastAssistantMsg?.context_domains as string[] | null
+        const domains = classifyIntent(message, recentDomains)
+
+        // Contacts: inject when email, calendar, or people are active
+        if (domains.has('email') || domains.has('calendar') || domains.has('people')) {
+          domains.add('contacts')
+        }
+
+        // Generate query embedding once and reuse for all vector searches
+        console.log('[Chat] step 5: generate embedding (isSubstantive:', isSubstantiveMessage, ')')
+        const queryEmbedding = isSubstantiveMessage
+          ? await generateQueryEmbedding(message).catch(e => { console.error('Query embedding failed:', e.message); return undefined })
+          : undefined
+
+        // RAG retrieval + action items + artifacts + all projects + training context in parallel
+        // Domain-gated queries skip the DB call entirely when the domain is inactive
+        console.log('[Chat] step 6: Promise.all start')
+        const [chunks, pinnedDocs, memories, actionItemsResult, projectResult, contextChunks, artifactsResult, allProjectsResult, dashboardCardsResult, notificationRulesResult, uiPreferencesResult, trainingContext, notesResult, contactsResult, relevantDecisions, awaitingRepliesResult, activeWatchesResult, calendarEventsResult, recentTextsResult] = await Promise.all([
+          isSubstantiveMessage ? retrieveRelevantChunks(message, project_id, 8, 0.7, queryEmbedding).catch(e => { console.error('RAG retrieval failed:', e.message); return [] }) : Promise.resolve([]),
+          project_id ? getPinnedDocuments(project_id) : Promise.resolve([]),
+          isSubstantiveMessage ? getRelevantMemories(message) : Promise.resolve([]),
+          supabaseAdmin
+            .from('action_items')
+            .select('*')
+            .in('status', ['pending', 'approved'])
+            .order('created_at', { ascending: false })
+            .limit(30),
+          project_id
+            ? supabaseAdmin.from('projects').select('system_prompt').eq('id', project_id).single()
+            : Promise.resolve({ data: null }),
+          isSubstantiveMessage ? retrieveRelevantContextChunks(message, project_id, 5, 0.7, queryEmbedding).catch(e => { console.error('Context retrieval failed:', e.message); return [] }) : Promise.resolve([]),
+          convId
+            ? supabaseAdmin.from('artifacts').select('*').eq('conversation_id', convId).order('updated_at', { ascending: false })
+            : Promise.resolve({ data: [] }),
+          supabaseAdmin.from('projects').select('id, name, description').order('name'),
+          domains.has('dashboard')
+            ? supabaseAdmin.from('dashboard_cards').select('*').eq('is_active', true).order('position')
+            : Promise.resolve({ data: [] }),
+          domains.has('alerts')
+            ? supabaseAdmin.from('notification_rules').select('*').eq('is_active', true).order('created_at', { ascending: false })
+            : Promise.resolve({ data: [] }),
+          domains.has('prefs')
+            ? supabaseAdmin.from('ui_preferences').select('*')
+            : Promise.resolve({ data: [] }),
+          isSubstantiveMessage ? buildFewShotBlock(message, queryEmbedding).catch(e => { console.error('Training context failed:', e.message); return null }) : Promise.resolve(null),
+          domains.has('notes')
+            ? supabaseAdmin.from('notes').select('*').or('expires_at.is.null,expires_at.gt.' + new Date().toISOString()).order('created_at', { ascending: false })
+            : Promise.resolve({ data: [] }),
+          domains.has('contacts')
+            ? supabaseAdmin.from('contacts').select('*').order('name')
+            : Promise.resolve({ data: [] }),
+          isSubstantiveMessage ? retrieveRelevantDecisions(message, 5, 0.7, queryEmbedding).catch(e => { console.error('Decision retrieval failed:', e.message); return [] }) : Promise.resolve([]),
+          domains.has('email')
+            ? supabaseAdmin
+                .from('email_threads')
+                .select('last_sender_email, subject, last_message_date')
+                .eq('direction', 'outbound')
+                .eq('response_detected', false)
+                .gte('last_message_date', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString())
+                .order('last_message_date', { ascending: false })
+            : Promise.resolve({ data: [] }),
+          supabaseAdmin
+            .from('conversation_watches')
+            .select('id, watch_type, context, priority, created_at, match_criteria')
+            .eq('status', 'active')
+            .gt('expires_at', new Date().toISOString())
+            .order('created_at', { ascending: false })
+            .limit(20),
+          domains.has('calendar')
+            ? supabaseAdmin
+                .from('calendar_events')
+                .select('title, start_time, end_time, all_day, location, attendees, organizer_email, status')
+                .gte('start_time', new Date().toISOString())
+                .lte('start_time', new Date(Date.now() + 48 * 3600000).toISOString())
+                .order('start_time', { ascending: true })
+            : Promise.resolve({ data: [] }),
+          domains.has('texts')
+            ? supabaseAdmin
+                .from('text_messages')
+                .select('contact_name, phone_number, message_text, service, message_date, is_from_me, is_group_chat, group_chat_name, flag_reason')
+                .eq('flagged', true)
+                .eq('is_from_me', false)
+                .gte('message_date', new Date(Date.now() - 48 * 3600000).toISOString())
+                .order('message_date', { ascending: false })
+                .limit(15)
+            : Promise.resolve({ data: [] }),
+        ])
+
+        console.log('[Chat] Promise.all done')
+        const actionItems: ActionItem[] = actionItemsResult.data || []
+        const artifacts: Artifact[] = artifactsResult.data || []
+        const projectPrompt = projectResult.data?.system_prompt || ''
+        const allProjects: { id: string; name: string; description: string | null }[] = allProjectsResult.data || []
+        const dashboardCards: DashboardCard[] = dashboardCardsResult.data || []
+        const notificationRules: NotificationRule[] = notificationRulesResult.data || []
+        const uiPreferences: UIPreference[] = uiPreferencesResult.data || []
+        const awaitingReplies = ((awaitingRepliesResult as any).data || []).map((r: any) => ({
+          recipient_email: r.last_sender_email,
+          subject: r.subject,
+          last_message_date: r.last_message_date,
+        }))
+        const activeWatches = (activeWatchesResult as any).data || []
+        const calendarEvents: CalendarEventEntry[] = (calendarEventsResult as any).data || []
+        const recentTexts: RecentText[] = (recentTextsResult as any).data || []
+
+        // Add artifactContent domain when the active artifact panel is open,
+        // or when the message explicitly names an artifact
+        if (active_artifact_id) {
+          domains.add('artifactContent')
+        } else if (artifacts.length > 0) {
+          const msgLower = message.toLowerCase()
+          if (artifacts.some((a: Artifact) => msgLower.includes(a.name.toLowerCase()))) {
+            domains.add('artifactContent')
+          }
+        }
+
+        // Build filtered tools array based on active domains
+        const activeToolNames = getToolsForDomains(domains)
+        const activeTools = activeToolNames.map(n => ALL_TOOLS_MAP[n]).filter((t): t is Anthropic.Messages.Tool => !!t)
+        console.log(`[Intent] "${message.slice(0, 50)}" → domains: [${Array.from(domains).join(', ')}] | tools: ${activeTools.length}/${Object.keys(ALL_TOOLS_MAP).length}`)
+
+        console.log('[Chat] building system prompt, size will be...')
+        // Build context
+        const context = buildContext(chunks, pinnedDocs, memories, contextChunks)
+        const systemPrompt = buildSystemPrompt({
+          projectSystemPrompt: projectPrompt,
+          memories,
+          documentContext: context,
+          actionItems,
+          artifacts,
+          activeArtifactId: active_artifact_id,
+          projects: allProjects,
+          currentProjectId: project_id,
+          dashboardCards,
+          notificationRules,
+          uiPreferences,
+          trainingContext,
+          previousSessionSummary: previousSummary,
+          notes: (notesResult.data || []) as Note[],
+          contacts: (contactsResult.data || []) as Contact[],
+          decisions: relevantDecisions.length > 0 ? relevantDecisions : undefined,
+          awaitingReplies: awaitingReplies.length > 0 ? awaitingReplies : undefined,
+          activeWatches: activeWatches.length > 0 ? activeWatches : undefined,
+          calendarEvents: calendarEvents.length > 0 ? calendarEvents : undefined,
+          recentTexts: recentTexts.length > 0 ? recentTexts : undefined,
+          domains,
+        })
+        console.log('[Chat] system prompt built, length:', systemPrompt.length)
+
+        // Build messages array for Claude, capped by character budget to avoid context overflow.
+        // 40K chars ~= 10K tokens, leaving room for system prompt + tool schemas + operational data.
+        const HISTORY_CHAR_BUDGET = 40000
+        let historyCharCount = 0
+        const trimmedHistory = (history || []).reduceRight((acc: any[], m: any) => {
+          const len = (m.content || '').length
+          if (historyCharCount + len > HISTORY_CHAR_BUDGET) return acc
+          historyCharCount += len
+          acc.unshift(m)
+          return acc
+        }, [])
+
+        const chatMessages: Anthropic.Messages.MessageParam[] = trimmedHistory.map((m: any) => ({
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+        }))
+
+        console.log('[Chat] chatMessages count:', chatMessages.length, '| calling OpenRouter now')
+
         let currentMessages = [...chatMessages]
         let continueLoop = true
 
