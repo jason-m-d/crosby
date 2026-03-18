@@ -1229,6 +1229,7 @@ export async function POST(req: NextRequest) {
   // Build filtered tools array based on active domains
   const activeToolNames = getToolsForDomains(domains)
   const activeTools = activeToolNames.map(n => ALL_TOOLS_MAP[n]).filter((t): t is Anthropic.Messages.Tool => !!t)
+  console.log(`[Intent] "${message.slice(0, 50)}" → domains: [${Array.from(domains).join(', ')}] | tools: ${activeTools.length}/${Object.keys(ALL_TOOLS_MAP).length}`)
 
   // Build context
   const context = buildContext(chunks, pinnedDocs, memories, contextChunks)
