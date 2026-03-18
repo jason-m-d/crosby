@@ -1236,6 +1236,7 @@ export async function POST(req: NextRequest) {
   const activeTools = activeToolNames.map(n => ALL_TOOLS_MAP[n]).filter((t): t is Anthropic.Messages.Tool => !!t)
   console.log(`[Intent] "${message.slice(0, 50)}" → domains: [${Array.from(domains).join(', ')}] | tools: ${activeTools.length}/${Object.keys(ALL_TOOLS_MAP).length}`)
 
+  console.log('[Chat] building system prompt, size will be...')
   // Build context
   const context = buildContext(chunks, pinnedDocs, memories, contextChunks)
   const systemPrompt = buildSystemPrompt({
@@ -1261,6 +1262,7 @@ export async function POST(req: NextRequest) {
     recentTexts: recentTexts.length > 0 ? recentTexts : undefined,
     domains,
   })
+  console.log('[Chat] system prompt built, length:', systemPrompt.length)
 
   // Build messages array for Claude, capped by character budget to avoid context overflow.
   // 40K chars ~= 10K tokens, leaving room for system prompt + tool schemas + operational data.
@@ -1279,6 +1281,7 @@ export async function POST(req: NextRequest) {
     content: m.content,
   }))
 
+  console.log('[Chat] chatMessages count:', chatMessages.length, '| returning stream now')
   // Stream response with tool use loop
   const encoder = new TextEncoder()
   let fullResponse = ''
