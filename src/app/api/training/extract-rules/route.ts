@@ -5,6 +5,28 @@ import { getTrainingStats } from '@/lib/training'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, baseURL: process.env.ANTHROPIC_BASE_URL })
 
+const BACKGROUND_EXTRA_BODY = { models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'], provider: { sort: 'price' } }
+
+const RULES_SCHEMA = {
+  type: 'object',
+  properties: {
+    rules: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          rule: { type: 'string' },
+          category: { type: 'string', enum: ['always_flag', 'never_flag', 'conditional'] },
+        },
+        required: ['rule', 'category'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['rules'],
+  additionalProperties: false,
+}
+
 export async function POST(req: NextRequest) {
   try {
     const stats = await getTrainingStats()
@@ -53,16 +75,27 @@ Keep rules specific and actionable. 5-10 rules max. Base them on clear patterns 
         role: 'user',
         content: `Here are ${examples.length} labeled examples. Extract rules:\n\n${exampleLines.join('\n\n')}`,
       }],
-      ...({ extra_body: { models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'], provider: { sort: 'price' } } } as any),
+      ...({
+        extra_body: {
+          ...BACKGROUND_EXTRA_BODY,
+          plugins: [{ id: 'response-healing' }],
+          response_format: { type: 'json_schema', json_schema: { name: 'response', strict: true, schema: RULES_SCHEMA } },
+        },
+      } as any),
     })
 
     const text = response.content[0].type === 'text' ? response.content[0].text : ''
     let parsed: any
     try {
-      const match = text.match(/\{[\s\S]*\}/)
-      parsed = match ? JSON.parse(match[0]) : JSON.parse(text)
+      parsed = JSON.parse(text)
     } catch {
-      return NextResponse.json({ error: 'Failed to parse rules from AI response' }, { status: 500 })
+      // Fallback: strip markdown fences and extract JSON
+      try {
+        const match = text.match(/\{[\s\S]*\}/)
+        parsed = match ? JSON.parse(match[0]) : JSON.parse(text)
+      } catch {
+        return NextResponse.json({ error: 'Failed to parse rules from AI response' }, { status: 500 })
+      }
     }
 
     if (!parsed.rules || !Array.isArray(parsed.rules)) {

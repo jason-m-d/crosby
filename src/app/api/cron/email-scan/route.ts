@@ -9,7 +9,101 @@ import { sendPushToAll } from '@/lib/push'
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, baseURL: process.env.ANTHROPIC_BASE_URL })
 const BACKGROUND_EXTRA_BODY = { extra_body: { models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'], provider: { sort: 'price' } } }
 
+// OpenRouter structured output + response healing for JSON calls
+function jsonExtraBody(schema: Record<string, unknown>) {
+  return {
+    extra_body: {
+      ...BACKGROUND_EXTRA_BODY.extra_body,
+      plugins: [{ id: 'response-healing' }],
+      response_format: { type: 'json_schema', json_schema: { name: 'response', strict: true, schema } },
+    },
+  }
+}
+
 const WINGSTOP_STORES = ['326', '451', '895', '1870', '2067', '2428', '2262', '2289']
+
+const EMAIL_EXTRACTION_SCHEMA = {
+  type: 'object',
+  properties: {
+    action_items: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          title: { type: 'string' },
+          description: { type: 'string' },
+          priority: { type: 'string', enum: ['high', 'medium', 'low'] },
+          due_date: { type: ['string', 'null'] },
+          source_snippet: { type: 'string' },
+          confidence: { type: 'number' },
+          related_project: { type: ['string', 'null'] },
+        },
+        required: ['title', 'description', 'priority', 'due_date', 'source_snippet', 'confidence', 'related_project'],
+        additionalProperties: false,
+      },
+    },
+    updates: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          item_id: { type: 'string' },
+          description: { type: 'string' },
+          priority: { type: 'string', enum: ['high', 'medium', 'low'] },
+          due_date: { type: ['string', 'null'] },
+        },
+        required: ['item_id', 'description', 'priority', 'due_date'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['action_items', 'updates'],
+  additionalProperties: false,
+}
+
+const WINGSTOP_SALES_SCHEMA = {
+  type: 'object',
+  properties: {
+    stores: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          store_number: { type: 'string' },
+          store_name: { type: 'string' },
+          net_sales: { type: 'number' },
+          report_date: { type: 'string' },
+        },
+        required: ['store_number', 'store_name', 'net_sales', 'report_date'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['stores'],
+  additionalProperties: false,
+}
+
+const MR_PICKLES_SALES_SCHEMA = {
+  type: 'object',
+  properties: {
+    stores: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          store_number: { type: 'string' },
+          store_name: { type: 'string' },
+          net_sales: { type: 'number' },
+          report_date: { type: 'string' },
+        },
+        required: ['store_number', 'store_name', 'net_sales', 'report_date'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['stores'],
+  additionalProperties: false,
+}
 
 const EMAIL_EXTRACTION_PROMPT = `You extract action items from emails for Jason DeMayo, CEO of DeMayo Restaurant Group (8 Wingstop locations) and Hungry Hospitality Group (2 Mr. Pickle's locations).
 
@@ -43,6 +137,8 @@ Return JSON:
 }
 
 Return {"action_items": [], "updates": []} if nothing qualifies.`
+
+export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
   // Validate secret (cron or manual)
@@ -104,13 +200,18 @@ export async function POST(req: NextRequest) {
       const since = scan?.last_scanned_at ? new Date(scan.last_scanned_at) : new Date(Date.now() - 3600000) // default 1 hour ago
 
       const emails = await fetchEmails(account, since)
+      console.log(`[email-scan] ${account}: fetched ${emails.length} emails since ${since.toISOString()}`)
       let itemsFound = 0
 
       for (const email of emails) {
+        console.log(`[email-scan] Processing: "${email.subject}" from ${email.from} (${email.attachments?.length || 0} attachments)`)
+
         // Check for sales emails
         if (email.subject.includes('NBO Daily Reports') && email.subject.includes('DeMayo')) {
+          console.log(`[email-scan] Matched Wingstop sales email, parsing...`)
           await parseWingstopSales(email)
         } else if (email.subject.includes('[MP]') && email.subject.includes('Daily Sales')) {
+          console.log(`[email-scan] Matched Mr. Pickle's sales email, parsing...`)
           await parseMrPicklesSales(email)
         }
 
@@ -153,26 +254,31 @@ export async function POST(req: NextRequest) {
           const response = await anthropic.messages.create({
             model: 'google/gemini-3.1-flash-lite-preview',
             max_tokens: 1024,
-            system: fullSystemPrompt,
+            system: [{ type: 'text', text: fullSystemPrompt, cache_control: { type: 'ephemeral' } }] as any,
             messages: [{
               role: 'user',
               content: emailText,
             }],
-            ...(BACKGROUND_EXTRA_BODY as any),
+            ...(jsonExtraBody(EMAIL_EXTRACTION_SCHEMA) as any),
           })
 
           const text = response.content[0].type === 'text' ? response.content[0].text : ''
           let parsed: any
           try {
-            let cleaned = text.trim()
-            if (cleaned.startsWith('```')) {
-              cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '')
-            }
-            const match = cleaned.match(/\{[\s\S]*\}/)
-            parsed = match ? JSON.parse(match[0]) : JSON.parse(cleaned)
+            parsed = JSON.parse(text)
           } catch {
-            console.error('Failed to parse email extraction response:', text.slice(0, 200))
-            continue
+            // Fallback: strip markdown fences and extract JSON
+            try {
+              let cleaned = text.trim()
+              if (cleaned.startsWith('```')) {
+                cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '')
+              }
+              const match = cleaned.match(/\{[\s\S]*\}/)
+              parsed = match ? JSON.parse(match[0]) : JSON.parse(cleaned)
+            } catch {
+              console.error('[email-scan] Failed to parse extraction response:', text.slice(0, 200))
+              continue
+            }
           }
 
           // Handle new action items
@@ -214,15 +320,25 @@ export async function POST(req: NextRequest) {
                 .eq('id', update.item_id)
             }
           }
-        } catch (e) {
-          console.error(`Failed to process email ${email.id}:`, e)
+        } catch (e: any) {
+          console.error(`[email-scan] Failed to process email ${email.id}: ${e.message}`)
         }
+
+        // Update last_scanned_at after each email so we don't re-process on timeout
+        await supabaseAdmin.from('email_scans').upsert({
+          account,
+          last_scanned_at: email.internalDate
+            ? new Date(parseInt(email.internalDate)).toISOString()
+            : new Date().toISOString(),
+          emails_processed: totalProcessed + emails.indexOf(email) + 1,
+          action_items_found: totalItems + itemsFound,
+        }, { onConflict: 'account' })
       }
 
       totalProcessed += emails.length
       totalItems += itemsFound
 
-      // Update scan record
+      // Final update with accurate totals
       await supabaseAdmin.from('email_scans').upsert({
         account,
         last_scanned_at: new Date().toISOString(),
@@ -230,8 +346,8 @@ export async function POST(req: NextRequest) {
         action_items_found: itemsFound,
       }, { onConflict: 'account' })
 
-    } catch (e) {
-      console.error(`Failed to scan ${account}:`, e)
+    } catch (e: any) {
+      console.error(`[email-scan] Failed to scan ${account}: ${e.message}`, e.stack?.slice(0, 300))
     }
   }
 
@@ -353,18 +469,22 @@ async function parseWingstopSales(email: any) {
   try {
     // Find the "Forecast vs Actuals" PDF attachment
     const attachments: { filename: string; data: Buffer }[] = email.attachments || []
+    console.log(`[wingstop-sales] Attachments: ${attachments.map(a => `${a.filename} (${a.data.length} bytes)`).join(', ') || 'none'}`)
+
     const forecastPdf = attachments.find((a: any) =>
       a.filename.toLowerCase().includes('forecast') || a.filename.toLowerCase().includes('actual')
     ) || attachments.find((a: any) => a.filename.toLowerCase().endsWith('.pdf'))
 
     if (!forecastPdf) {
-      console.warn(`Wingstop email ${email.id} has no PDF attachments, skipping sales parse`)
+      console.warn(`[wingstop-sales] No PDF attachments found, skipping`)
       return
     }
 
+    console.log(`[wingstop-sales] Using PDF: ${forecastPdf.filename} (${forecastPdf.data.length} bytes)`)
     const pdfText = await extractPdfTextFromBuffer(forecastPdf.data)
+    console.log(`[wingstop-sales] Extracted ${pdfText?.length || 0} chars of text`)
     if (!pdfText || pdfText.trim().length < 50) {
-      console.warn(`Wingstop PDF "${forecastPdf.filename}" yielded no text`)
+      console.warn(`[wingstop-sales] PDF "${forecastPdf.filename}" yielded insufficient text`)
       return
     }
 
@@ -380,15 +500,17 @@ Return JSON only:
 
 If a store has no actual data yet, omit it. Use YYYY-MM-DD for dates.`,
       messages: [{ role: 'user', content: pdfText.slice(0, 8000) }],
-      ...(BACKGROUND_EXTRA_BODY as any),
+      ...(jsonExtraBody(WINGSTOP_SALES_SCHEMA) as any),
     })
 
     const text = response.content[0].type === 'text' ? response.content[0].text : ''
     const parsed = parseJsonSafe(text)
 
+    console.log(`[wingstop-sales] AI returned ${parsed.stores?.length || 0} stores`)
     if (parsed.stores) {
       for (const store of parsed.stores) {
         if (!store.report_date || !store.net_sales) continue
+        console.log(`[wingstop-sales] Upserting store ${store.store_number} (${store.store_name}): $${store.net_sales} on ${store.report_date}`)
         await supabaseAdmin.from('sales_data').upsert({
           report_date: store.report_date,
           brand: 'wingstop',
@@ -399,8 +521,8 @@ If a store has no actual data yet, omit it. Use YYYY-MM-DD for dates.`,
         }, { onConflict: 'report_date,brand,store_number' })
       }
     }
-  } catch (e) {
-    console.error('Failed to parse Wingstop sales:', e)
+  } catch (e: any) {
+    console.error(`[wingstop-sales] Failed: ${e.message}`)
   }
 }
 
@@ -432,7 +554,7 @@ Return JSON only:
 
 Use YYYY-MM-DD for dates.`,
       messages: [{ role: 'user', content: pdfText.slice(0, 8000) }],
-      ...(BACKGROUND_EXTRA_BODY as any),
+      ...(jsonExtraBody(MR_PICKLES_SALES_SCHEMA) as any),
     })
 
     const text = response.content[0].type === 'text' ? response.content[0].text : ''

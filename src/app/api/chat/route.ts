@@ -1638,16 +1638,48 @@ async function summarizeSession(sessionId: string, convId: string) {
 async function extractNotepadEntriesFromSummary(summary: string) {
   const anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, baseURL: process.env.ANTHROPIC_BASE_URL })
 
+  const notepadSchema = {
+    type: 'object',
+    properties: {
+      entries: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            content: { type: 'string' },
+            title: { type: 'string' },
+          },
+          required: ['content', 'title'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['entries'],
+    additionalProperties: false,
+  }
+
   const response = await anthropicClient.messages.create({
     model: 'google/gemini-3.1-flash-lite-preview',
     max_tokens: 400,
     system: `Extract 0-3 time-sensitive operational facts from this session summary that should go on the notepad. These are short-lived facts like "ordered deposit slips for 2262", "Roger is out this week", "waiting on callback from landlord at 1008". NOT general business knowledge. Return JSON: {"entries": [{"content": "...", "title": "..."}]} or {"entries": []} if nothing fits.`,
     messages: [{ role: 'user', content: summary }],
-    ...({ extra_body: { models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'], provider: { sort: 'price' } } } as any),
+    ...({
+      extra_body: {
+        models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'],
+        provider: { sort: 'price' },
+        plugins: [{ id: 'response-healing' }],
+        response_format: { type: 'json_schema', json_schema: { name: 'response', strict: true, schema: notepadSchema } },
+      },
+    } as any),
   })
 
   const text = response.content[0].type === 'text' ? response.content[0].text : ''
-  const parsed = parseJSON(text)
+  let parsed: any
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    parsed = parseJSON(text)
+  }
   if (!parsed.entries || parsed.entries.length === 0) return
 
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
@@ -1802,10 +1834,50 @@ async function extractMemories(conversationId: string, userMessage: string, assi
       .map((m: any) => `- [${m.category}] (id: ${m.id}) ${m.content}`)
       .join('\n')
 
+    const memorySchema = {
+      type: 'object',
+      properties: {
+        create: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              content: { type: 'string' },
+              category: { type: 'string', enum: ['fact', 'preference', 'context'] },
+            },
+            required: ['content', 'category'],
+            additionalProperties: false,
+          },
+        },
+        update: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              content: { type: 'string' },
+              category: { type: 'string', enum: ['fact', 'preference', 'context'] },
+            },
+            required: ['id', 'content', 'category'],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ['create', 'update'],
+      additionalProperties: false,
+    }
+
     const response = await anthropic.messages.create({
       model: 'google/gemini-3.1-flash-lite-preview',
       max_tokens: 1024,
-      ...({ extra_body: { models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'], provider: { sort: 'price' } } } as any),
+      ...({
+        extra_body: {
+          models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'],
+          provider: { sort: 'price' },
+          plugins: [{ id: 'response-healing' }],
+          response_format: { type: 'json_schema', json_schema: { name: 'response', strict: true, schema: memorySchema } },
+        },
+      } as any),
       system: `You manage a memory system for Jason DeMayo (also goes by "Jerry"). Extract genuinely NEW information from this conversation turn.
 
 Rules:
@@ -1838,7 +1910,12 @@ Return raw JSON only:
 
     const text = response.content[0].type === 'text' ? response.content[0].text : ''
     console.log('Memory extraction raw:', text.slice(0, 200))
-    const parsed = parseJSON(text)
+    let parsed: any
+    try {
+      parsed = JSON.parse(text)
+    } catch {
+      parsed = parseJSON(text)
+    }
 
     // Handle creates
     if (parsed.create && parsed.create.length > 0) {
