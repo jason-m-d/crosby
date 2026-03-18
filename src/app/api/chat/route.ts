@@ -17,6 +17,8 @@ import { spawnBackgroundJob } from '@/lib/background-jobs'
 import { getMainConversation } from '@/lib/proactive'
 import { openrouterClient } from '@/lib/openrouter'
 
+export const maxDuration = 60
+
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, baseURL: process.env.ANTHROPIC_BASE_URL })
 
 const ACTION_ITEM_TOOL: Anthropic.Messages.Tool = {
