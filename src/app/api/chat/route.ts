@@ -499,13 +499,14 @@ export async function POST(req: NextRequest) {
 
   const stream = new ReadableStream({
     async start(controller) {
+      let loopCount = 0
       try {
         let currentMessages = [...chatMessages]
         let continueLoop = true
 
         while (continueLoop) {
           continueLoop = false
-
+          loopCount++
 
           const response = anthropic.messages.stream({
             model: selectedModel,
@@ -729,6 +730,7 @@ export async function POST(req: NextRequest) {
         controller.close()
       } catch (error) {
         const errBody = (error as any)?.error
+        console.error('CHAT_ERR_LOOP=' + loopCount)
         console.error('CHAT_ERR_STATUS=' + (error as any)?.status)
         console.error('CHAT_ERR_TYPE=' + errBody?.type)
         console.error('CHAT_ERR_MSG=' + (errBody?.message || (error as Error)?.message))
