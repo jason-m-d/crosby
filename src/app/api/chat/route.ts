@@ -4,7 +4,8 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { retrieveRelevantChunks, getPinnedDocuments, getRelevantMemories, retrieveRelevantContextChunks, buildContext, retrieveRelevantDecisions } from '@/lib/rag'
 import { generateQueryEmbedding } from '@/lib/embeddings'
 import { chunkAndEmbedContext } from '@/lib/embed-context'
-import { buildSystemPrompt, CalendarEventEntry } from '@/lib/system-prompt'
+import { buildSystemPrompt, CalendarEventEntry, RecentText } from '@/lib/system-prompt'
+import { normalizePhone } from '@/lib/phone'
 import { searchEmails, createDraft } from '@/lib/gmail'
 import { getConnectedCalendarAccount, fetchUpcomingEvents, createCalendarEvent } from '@/lib/calendar'
 import { buildFewShotBlock, storeTrainingExample, getTrainingStats } from '@/lib/training'
@@ -599,6 +600,59 @@ const QUICK_CONFIRM_TOOL: Anthropic.Messages.Tool = {
   },
 }
 
+const SEARCH_TEXTS_TOOL: Anthropic.Messages.Tool = {
+  name: 'search_texts',
+  description: 'Search iMessage/SMS text messages. Use when Jason asks about a text, wants to find something a contact said, or references a recent conversation.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      query: { type: 'string', description: 'Search term to match against message text (case-insensitive)' },
+      contact_name: { type: 'string', description: 'Filter by contact name (partial match)' },
+      phone_number: { type: 'string', description: 'Filter by phone number (exact, normalized)' },
+      days_back: { type: 'number', description: 'How many days back to search (default: 7)' },
+      include_outbound: { type: 'boolean', description: 'Include messages Jason sent (default: false, inbound only)' },
+    },
+    required: [],
+  },
+}
+
+const MANAGE_TEXT_CONTACTS_TOOL: Anthropic.Messages.Tool = {
+  name: 'manage_text_contacts',
+  description: 'Add, list, or remove contacts in the iMessage bridge contact book. Use when Jason identifies who a phone number belongs to.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      action: {
+        type: 'string',
+        enum: ['add_contact', 'list_contacts', 'remove_contact'],
+        description: 'add_contact: save a name/role for a number. list_contacts: show all saved contacts. remove_contact: delete by phone number.',
+      },
+      phone_number: { type: 'string', description: 'Phone number (for add_contact or remove_contact)' },
+      name: { type: 'string', description: 'Contact name (for add_contact)' },
+      role: { type: 'string', description: 'Role like "gm", "vendor", "admin", "personal" (for add_contact)' },
+    },
+    required: ['action'],
+  },
+}
+
+const MANAGE_GROUP_WHITELIST_TOOL: Anthropic.Messages.Tool = {
+  name: 'manage_group_whitelist',
+  description: 'Manage which group chats are synced from iMessage. Use list_available_groups first to see what groups exist, then add ones Jason wants to monitor.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      action: {
+        type: 'string',
+        enum: ['add_group', 'list_groups', 'remove_group', 'list_available_groups'],
+        description: 'list_available_groups: show groups seen in recent messages (not yet whitelisted). add_group: whitelist a group. list_groups: show whitelisted groups. remove_group: remove from whitelist.',
+      },
+      chat_identifier: { type: 'string', description: 'The chat identifier from chat.db (for add_group or remove_group)' },
+      display_name: { type: 'string', description: 'Human-readable name for the group (for add_group)' },
+    },
+    required: ['action'],
+  },
+}
+
 const QUERY_SALES_TOOL: Anthropic.Messages.Tool = {
   name: 'query_sales',
   description: 'Query sales data for Jason\'s stores from the database. Use this when Jason asks how stores are doing, asks about sales, revenue, or performance. Do not go to Gmail for sales data - it lives here.',
@@ -661,6 +715,140 @@ const CREATE_CALENDAR_EVENT_TOOL: Anthropic.Messages.Tool = {
     },
     required: ['title', 'start_time', 'end_time'],
   },
+}
+
+async function executeSearchTexts(input: {
+  query?: string
+  contact_name?: string
+  phone_number?: string
+  days_back?: number
+  include_outbound?: boolean
+}): Promise<object> {
+  const daysBack = input.days_back ?? 7
+  const cutoff = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString()
+
+  let q = supabaseAdmin
+    .from('text_messages')
+    .select('contact_name, phone_number, message_text, service, message_date, is_from_me, is_group_chat, group_chat_name, flagged, flag_reason')
+    .gte('message_date', cutoff)
+    .order('message_date', { ascending: false })
+    .limit(25)
+
+  if (!input.include_outbound) q = q.eq('is_from_me', false)
+  if (input.query) q = q.ilike('message_text', `%${input.query}%`)
+  if (input.phone_number) q = q.eq('phone_number', normalizePhone(input.phone_number))
+  if (input.contact_name) q = q.ilike('contact_name', `%${input.contact_name}%`)
+
+  const { data, error } = await q
+  if (error) return { error: error.message }
+  return { results: data ?? [], count: data?.length ?? 0 }
+}
+
+async function executeManageTextContacts(input: {
+  action: 'add_contact' | 'list_contacts' | 'remove_contact'
+  phone_number?: string
+  name?: string
+  role?: string
+}): Promise<object> {
+  if (input.action === 'list_contacts') {
+    const { data, error } = await supabaseAdmin
+      .from('text_contacts')
+      .select('phone_number, contact_name, role, created_at')
+      .order('contact_name', { ascending: true })
+    if (error) return { error: error.message }
+    return { contacts: data ?? [] }
+  }
+
+  if (input.action === 'add_contact') {
+    if (!input.phone_number || !input.name) return { error: 'phone_number and name are required' }
+    const normalized = normalizePhone(input.phone_number)
+    const { error } = await supabaseAdmin
+      .from('text_contacts')
+      .upsert({ phone_number: normalized, contact_name: input.name, role: input.role ?? null }, { onConflict: 'phone_number' })
+    if (error) return { error: error.message }
+    // Backfill contact_name on existing messages for this number
+    await supabaseAdmin
+      .from('text_messages')
+      .update({ contact_name: input.name })
+      .eq('phone_number', normalized)
+    return { ok: true, phone_number: normalized, contact_name: input.name }
+  }
+
+  if (input.action === 'remove_contact') {
+    if (!input.phone_number) return { error: 'phone_number is required' }
+    const normalized = normalizePhone(input.phone_number)
+    const { error } = await supabaseAdmin
+      .from('text_contacts')
+      .delete()
+      .eq('phone_number', normalized)
+    if (error) return { error: error.message }
+    return { ok: true, removed: normalized }
+  }
+
+  return { error: 'Unknown action' }
+}
+
+async function executeManageGroupWhitelist(input: {
+  action: 'add_group' | 'list_groups' | 'remove_group' | 'list_available_groups'
+  chat_identifier?: string
+  display_name?: string
+}): Promise<object> {
+  if (input.action === 'list_groups') {
+    const { data, error } = await supabaseAdmin
+      .from('text_group_whitelist')
+      .select('chat_identifier, display_name, created_at')
+      .order('display_name', { ascending: true })
+    if (error) return { error: error.message }
+    return { groups: data ?? [] }
+  }
+
+  if (input.action === 'list_available_groups') {
+    const { data: whitelisted } = await supabaseAdmin
+      .from('text_group_whitelist')
+      .select('chat_identifier')
+    const whitelistedIds = new Set((whitelisted ?? []).map((r: { chat_identifier: string }) => r.chat_identifier))
+
+    const { data, error } = await supabaseAdmin
+      .from('text_messages')
+      .select('chat_identifier, group_chat_name')
+      .eq('is_group_chat', true)
+      .not('chat_identifier', 'is', null)
+      .order('message_date', { ascending: false })
+      .limit(500)
+    if (error) return { error: error.message }
+
+    const seen = new Map<string, string | null>()
+    for (const r of (data ?? [])) {
+      if (r.chat_identifier && !whitelistedIds.has(r.chat_identifier) && !seen.has(r.chat_identifier)) {
+        seen.set(r.chat_identifier, r.group_chat_name)
+      }
+    }
+    return {
+      available_groups: Array.from(seen.entries()).map(([id, name]) => ({ chat_identifier: id, group_chat_name: name })),
+      note: 'Use add_group with a chat_identifier and display_name to whitelist one of these.',
+    }
+  }
+
+  if (input.action === 'add_group') {
+    if (!input.chat_identifier || !input.display_name) return { error: 'chat_identifier and display_name are required' }
+    const { error } = await supabaseAdmin
+      .from('text_group_whitelist')
+      .upsert({ chat_identifier: input.chat_identifier, display_name: input.display_name }, { onConflict: 'chat_identifier' })
+    if (error) return { error: error.message }
+    return { ok: true, whitelisted: input.chat_identifier, display_name: input.display_name }
+  }
+
+  if (input.action === 'remove_group') {
+    if (!input.chat_identifier) return { error: 'chat_identifier is required' }
+    const { error } = await supabaseAdmin
+      .from('text_group_whitelist')
+      .delete()
+      .eq('chat_identifier', input.chat_identifier)
+    if (error) return { error: error.message }
+    return { ok: true, removed: input.chat_identifier }
+  }
+
+  return { error: 'Unknown action' }
 }
 
 async function executeWebSearch(query: string): Promise<string> {
@@ -943,6 +1131,14 @@ export async function POST(req: NextRequest) {
       .gte('start_time', new Date().toISOString())
       .lte('start_time', new Date(Date.now() + 48 * 3600000).toISOString())
       .order('start_time', { ascending: true }),
+    supabaseAdmin
+      .from('text_messages')
+      .select('contact_name, phone_number, message_text, service, message_date, is_from_me, is_group_chat, group_chat_name, flag_reason')
+      .eq('flagged', true)
+      .eq('is_from_me', false)
+      .gte('message_date', new Date(Date.now() - 48 * 3600000).toISOString())
+      .order('message_date', { ascending: false })
+      .limit(15),
   ])
 
   const actionItems: ActionItem[] = actionItemsResult.data || []
@@ -959,7 +1155,6 @@ export async function POST(req: NextRequest) {
   }))
   const activeWatches = (activeWatchesResult as any).data || []
   const calendarEvents: CalendarEventEntry[] = (calendarEventsResult as any).data || []
-
   // Build context
   const context = buildContext(chunks, pinnedDocs, memories, contextChunks)
   const systemPrompt = buildSystemPrompt({
@@ -984,8 +1179,19 @@ export async function POST(req: NextRequest) {
     calendarEvents: calendarEvents.length > 0 ? calendarEvents : undefined,
   })
 
-  // Build messages array for Claude
-  const chatMessages: Anthropic.Messages.MessageParam[] = (history || []).map((m: any) => ({
+  // Build messages array for Claude, capped by character budget to avoid context overflow.
+  // 40K chars ~= 10K tokens, leaving room for system prompt + tool schemas + operational data.
+  const HISTORY_CHAR_BUDGET = 40000
+  let historyCharCount = 0
+  const trimmedHistory = (history || []).reduceRight((acc: any[], m: any) => {
+    const len = (m.content || '').length
+    if (historyCharCount + len > HISTORY_CHAR_BUDGET) return acc
+    historyCharCount += len
+    acc.unshift(m)
+    return acc
+  }, [])
+
+  const chatMessages: Anthropic.Messages.MessageParam[] = trimmedHistory.map((m: any) => ({
     role: m.role as 'user' | 'assistant',
     content: m.content,
   }))
@@ -1008,8 +1214,14 @@ export async function POST(req: NextRequest) {
             max_tokens: 4096,
             system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }] as any,
             messages: currentMessages,
-            tools: [ACTION_ITEM_TOOL, MANAGE_PROJECT_CONTEXT_TOOL, ARTIFACT_TOOL, SEARCH_GMAIL_TOOL, DRAFT_EMAIL_TOOL, MANAGE_PROJECT_TOOL, MANAGE_BOOKMARKS_TOOL, MANAGE_DASHBOARD_TOOL, MANAGE_NOTIFICATION_RULES_TOOL, MANAGE_PREFERENCES_TOOL, TRAINING_TOOL, MANAGE_NOTEPAD_TOOL, MANAGE_CONTACTS_TOOL, SEARCH_WEB_TOOL, SPAWN_BACKGROUND_JOB_TOOL, CREATE_WATCH_TOOL, LIST_WATCHES_TOOL, CANCEL_WATCH_TOOL, CHECK_CALENDAR_TOOL, FIND_AVAILABILITY_TOOL, CREATE_CALENDAR_EVENT_TOOL, ASK_STRUCTURED_QUESTION_TOOL, QUICK_CONFIRM_TOOL, QUERY_SALES_TOOL],
+            tools: [ACTION_ITEM_TOOL, MANAGE_PROJECT_CONTEXT_TOOL, ARTIFACT_TOOL, SEARCH_GMAIL_TOOL, DRAFT_EMAIL_TOOL, MANAGE_PROJECT_TOOL, MANAGE_BOOKMARKS_TOOL, MANAGE_DASHBOARD_TOOL, MANAGE_NOTIFICATION_RULES_TOOL, MANAGE_PREFERENCES_TOOL, TRAINING_TOOL, MANAGE_NOTEPAD_TOOL, MANAGE_CONTACTS_TOOL, SEARCH_WEB_TOOL, SPAWN_BACKGROUND_JOB_TOOL, CREATE_WATCH_TOOL, LIST_WATCHES_TOOL, CANCEL_WATCH_TOOL, CHECK_CALENDAR_TOOL, FIND_AVAILABILITY_TOOL, CREATE_CALENDAR_EVENT_TOOL, ASK_STRUCTURED_QUESTION_TOOL, QUICK_CONFIRM_TOOL, QUERY_SALES_TOOL, SEARCH_TEXTS_TOOL, MANAGE_TEXT_CONTACTS_TOOL, MANAGE_GROUP_WHITELIST_TOOL],
             ...({ extra_body: { models: ['anthropic/claude-sonnet-4.6:exacto', 'google/gemini-3.1-pro-preview'], provider: { sort: 'latency' } } } as any),
+          })
+
+          // Catch stream-level errors (auth failures, rate limits, OpenRouter errors)
+          // that don't surface through the async iterator
+          response.on('error', (err) => {
+            console.error('Stream-level error:', err)
           })
 
           // Collect content blocks for this turn
@@ -1044,7 +1256,13 @@ export async function POST(req: NextRequest) {
               }
             } else if (event.type === 'content_block_stop') {
               if (currentToolUse) {
-                const toolInput = JSON.parse(currentToolUse.inputJson || '{}')
+                let toolInput: any
+                try {
+                  toolInput = JSON.parse(currentToolUse.inputJson || '{}')
+                } catch (_parseErr) {
+                  console.error('Tool input JSON parse failed for', currentToolUse.name, '- partial input:', currentToolUse.inputJson)
+                  toolInput = {}
+                }
                 contentBlocks.push({
                   type: 'tool_use',
                   id: currentToolUse.id,
@@ -1075,6 +1293,9 @@ export async function POST(req: NextRequest) {
                   ask_structured_question: 'Asking question',
                   quick_confirm: 'Asking for confirmation',
                   query_sales: 'Checking sales data',
+                  search_texts: 'Searching texts',
+                  manage_text_contacts: 'Updating text contacts',
+                  manage_group_whitelist: 'Managing group whitelist',
                 }
                 const statusLabel = toolStatusLabels[currentToolUse.name] || 'Working'
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ tool_status: statusLabel })}\n\n`))
@@ -1320,6 +1541,12 @@ export async function POST(req: NextRequest) {
                 } else if (currentToolUse.name === 'query_sales') {
                   toolResult = await executeQuerySales(toolInput)
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ sales_query: { status: toolResult.status, row_count: toolResult.rows?.length || 0 } })}\n\n`))
+                } else if (currentToolUse.name === 'search_texts') {
+                  toolResult = await executeSearchTexts(toolInput)
+                } else if (currentToolUse.name === 'manage_text_contacts') {
+                  toolResult = await executeManageTextContacts(toolInput)
+                } else if (currentToolUse.name === 'manage_group_whitelist') {
+                  toolResult = await executeManageGroupWhitelist(toolInput)
                 } else {
                   toolResult = await executeActionItemTool(toolInput, convId, actionItems)
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({
@@ -1389,8 +1616,9 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, conversation_id: convId, sources })}\n\n`))
         controller.close()
       } catch (error) {
-        console.error('Chat stream error:', error)
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Failed to generate response' })}\n\n`))
+        const errMsg = error instanceof Error ? `${error.name}: ${error.message}` : JSON.stringify(error)
+        console.error('Chat stream error:', errMsg, error)
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Failed to generate response', debug: errMsg })}\n\n`))
         controller.close()
       }
     },
