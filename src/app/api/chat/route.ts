@@ -1291,7 +1291,18 @@ export async function POST(req: NextRequest) {
           return acc
         }, [])
 
-        const chatMessages: Anthropic.Messages.MessageParam[] = trimmedHistory.map((m: any) => ({
+        // Collapse consecutive same-role messages — OpenRouter/Anthropic rejects them.
+        // This can happen when multiple user messages were sent without a reply (e.g. repeated
+        // timeouts that saved the user message but never got an assistant response).
+        const deduped = trimmedHistory.reduce((acc: any[], m: any) => {
+          if (acc.length > 0 && acc[acc.length - 1].role === m.role) return acc
+          acc.push(m)
+          return acc
+        }, [])
+        // Messages must start with user role
+        while (deduped.length > 0 && deduped[0].role !== 'user') deduped.shift()
+
+        const chatMessages: Anthropic.Messages.MessageParam[] = deduped.map((m: any) => ({
           role: m.role as 'user' | 'assistant',
           content: m.content,
         }))
