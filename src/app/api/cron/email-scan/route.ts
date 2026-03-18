@@ -203,17 +203,24 @@ export async function POST(req: NextRequest) {
       console.log(`[email-scan] ${account}: fetched ${emails.length} emails since ${since.toISOString()}`)
       let itemsFound = 0
 
+      // PRIORITY: Process sales emails first before anything else
       for (const email of emails) {
-        console.log(`[email-scan] Processing: "${email.subject}" from ${email.from} (${email.attachments?.length || 0} attachments)`)
-
-        // Check for sales emails
-        if (email.subject.includes('NBO Daily Reports') && email.subject.includes('DeMayo')) {
-          console.log(`[email-scan] Matched Wingstop sales email, parsing...`)
-          await parseWingstopSales(email)
-        } else if (email.subject.includes('[MP]') && email.subject.includes('Daily Sales')) {
-          console.log(`[email-scan] Matched Mr. Pickle's sales email, parsing...`)
-          await parseMrPicklesSales(email)
+        try {
+          if (email.subject.includes('NBO Daily Reports') && email.subject.includes('DeMayo')) {
+            console.log(`[email-scan] SALES: Wingstop email found, ${email.attachments?.length || 0} attachments`)
+            await parseWingstopSales(email)
+            console.log(`[email-scan] SALES: Wingstop parsing complete`)
+          } else if (email.subject.includes('[MP]') && email.subject.includes('Daily Sales')) {
+            console.log(`[email-scan] SALES: Mr. Pickle's email found, ${email.attachments?.length || 0} attachments`)
+            await parseMrPicklesSales(email)
+            console.log(`[email-scan] SALES: Mr. Pickle's parsing complete`)
+          }
+        } catch (e: any) {
+          console.error(`[email-scan] SALES_ERR: ${e.name}: ${e.message?.slice(0, 150)}`)
         }
+      }
+
+      for (const email of emails) {
 
         // Check notification rules and push if matched
         if (notificationRules?.length) {
