@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ChevronDown, X } from 'lucide-react'
+import { ChevronDown, X, RefreshCw } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase-browser'
 import { cn } from '@/lib/utils'
 
@@ -61,6 +61,8 @@ export function DigestBanner() {
   const [salesData, setSalesData] = useState<Record<string, number>>({})
   const [salesLoaded, setSalesLoaded] = useState(false)
   const [lastScanned, setLastScanned] = useState<string | null>(null)
+  const [scanning, setScanning] = useState(false)
+  const [scanResult, setScanResult] = useState<string | null>(null)
   const [sinceLastVisit, setSinceLastVisit] = useState<{
     newSales: number
     newProactive: number
@@ -113,6 +115,35 @@ export function DigestBanner() {
       })
       .catch(() => {}) // silently fail if user_state table doesn't exist yet
   }, [])
+
+  async function runScan() {
+    setScanning(true)
+    setScanResult(null)
+    try {
+      const res = await fetch('/api/cron/email-scan', {
+        method: 'POST',
+        headers: { 'x-cron-secret': 'manual' },
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setScanResult(`Done — ${data.emails_processed ?? 0} emails, ${data.action_items_found ?? 0} items`)
+        // Refresh sales data
+        const supabase = getSupabaseBrowser()
+        const today = new Date().toISOString().split('T')[0]
+        const { data: fresh } = await supabase.from('sales_data').select('*').eq('report_date', today)
+        const map: Record<string, number> = {}
+        ;(fresh || []).forEach((s: any) => { map[s.store_number] = s.net_sales })
+        setSalesData(map)
+        setLastScanned(new Date().toISOString())
+      } else {
+        setScanResult(`Error: ${data.error || 'Scan failed'}`)
+      }
+    } catch {
+      setScanResult('Error: Could not reach server')
+    } finally {
+      setScanning(false)
+    }
+  }
 
   const wsTotal = WINGSTOP_STORES.reduce((sum, s) => sum + (salesData[s.number] || 0), 0)
   const mpTotal = MP_STORES.reduce((sum, s) => sum + (salesData[s.number] || 0), 0)
@@ -254,6 +285,21 @@ export function DigestBanner() {
                   <p className="text-[0.6875rem] text-muted-foreground/60 mt-3">Waiting for today&apos;s reports.</p>
                 )}
               </div>
+            </div>
+
+            {/* Manual scan trigger */}
+            <div className="mt-3 pt-3 border-t border-border flex items-center gap-3">
+              <button
+                onClick={runScan}
+                disabled={scanning}
+                className="flex items-center gap-1.5 text-[0.6875rem] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={cn('size-3', scanning && 'animate-spin')} />
+                {scanning ? 'Scanning...' : 'Run email scan now'}
+              </button>
+              {scanResult && (
+                <span className="text-[0.6875rem] text-muted-foreground/60">{scanResult}</span>
+              )}
             </div>
           </div>
         </div>

@@ -47,7 +47,18 @@ export function buildSystemPrompt(options?: {
   notes?: Note[]
   contacts?: Contact[]
 }): string {
-  const parts: string[] = [BASE_SYSTEM_PROMPT]
+  const now = new Date()
+  const pacificTime = now.toLocaleString('en-US', {
+    timeZone: 'America/Los_Angeles',
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+  const parts: string[] = [BASE_SYSTEM_PROMPT, `\n\nCurrent date and time: ${pacificTime} (Pacific)`]
 
   if (options?.previousSessionSummary) {
     parts.push(`\n\n--- Previous Session Summary ---\n${options.previousSessionSummary}`)
