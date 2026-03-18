@@ -5,6 +5,7 @@ import { retrieveRelevantChunks, getPinnedDocuments, getRelevantMemories, retrie
 import { generateQueryEmbedding } from '@/lib/embeddings'
 import { chunkAndEmbedContext } from '@/lib/embed-context'
 import { buildSystemPrompt, CalendarEventEntry, RecentText } from '@/lib/system-prompt'
+import { classifyIntent, getToolsForDomains } from '@/lib/intent-classifier'
 import { normalizePhone } from '@/lib/phone'
 import { searchEmails, createDraft } from '@/lib/gmail'
 import { getConnectedCalendarAccount, fetchUpcomingEvents, createCalendarEvent } from '@/lib/calendar'
@@ -717,6 +718,36 @@ const CREATE_CALENDAR_EVENT_TOOL: Anthropic.Messages.Tool = {
   },
 }
 
+const ALL_TOOLS_MAP: Record<string, Anthropic.Messages.Tool> = {
+  manage_action_items: ACTION_ITEM_TOOL,
+  manage_artifact: ARTIFACT_TOOL,
+  manage_project: MANAGE_PROJECT_TOOL,
+  manage_project_context: MANAGE_PROJECT_CONTEXT_TOOL,
+  manage_notepad: MANAGE_NOTEPAD_TOOL,
+  search_web: SEARCH_WEB_TOOL,
+  spawn_background_job: SPAWN_BACKGROUND_JOB_TOOL,
+  ask_structured_question: ASK_STRUCTURED_QUESTION_TOOL,
+  quick_confirm: QUICK_CONFIRM_TOOL,
+  manage_training: TRAINING_TOOL,
+  create_watch: CREATE_WATCH_TOOL,
+  list_watches: LIST_WATCHES_TOOL,
+  cancel_watch: CANCEL_WATCH_TOOL,
+  manage_contacts: MANAGE_CONTACTS_TOOL,
+  search_gmail: SEARCH_GMAIL_TOOL,
+  draft_email: DRAFT_EMAIL_TOOL,
+  check_calendar: CHECK_CALENDAR_TOOL,
+  find_availability: FIND_AVAILABILITY_TOOL,
+  create_calendar_event: CREATE_CALENDAR_EVENT_TOOL,
+  manage_dashboard: MANAGE_DASHBOARD_TOOL,
+  manage_notification_rules: MANAGE_NOTIFICATION_RULES_TOOL,
+  manage_preferences: MANAGE_PREFERENCES_TOOL,
+  query_sales: QUERY_SALES_TOOL,
+  search_texts: SEARCH_TEXTS_TOOL,
+  manage_text_contacts: MANAGE_TEXT_CONTACTS_TOOL,
+  manage_group_whitelist: MANAGE_GROUP_WHITELIST_TOOL,
+  manage_bookmarks: MANAGE_BOOKMARKS_TOOL,
+}
+
 async function executeSearchTexts(input: {
   query?: string
   contact_name?: string
@@ -1070,7 +1101,7 @@ export async function POST(req: NextRequest) {
   // Load conversation history for current session only (last 20 messages)
   const { data: history } = await supabaseAdmin
     .from('messages')
-    .select('role, content')
+    .select('role, content, context_domains')
     .eq('conversation_id', convId)
     .eq('session_id', sessionId)
     .order('created_at', { ascending: true })
@@ -1080,13 +1111,24 @@ export async function POST(req: NextRequest) {
   // will latch onto whatever happens to be in the store and hallucinate context
   const isSubstantiveMessage = message.trim().split(/\s+/).length >= 4
 
+  // Classify intent to determine which domains (data + tools) are active for this message
+  const lastAssistantMsg = (history || []).slice().reverse().find((m: any) => m.role === 'assistant')
+  const recentDomains = lastAssistantMsg?.context_domains as string[] | null
+  const domains = classifyIntent(message, recentDomains)
+
+  // Contacts: inject when email, calendar, or people are active
+  if (domains.has('email') || domains.has('calendar') || domains.has('people')) {
+    domains.add('contacts')
+  }
+
   // Generate query embedding once and reuse for all vector searches
   const queryEmbedding = isSubstantiveMessage
     ? await generateQueryEmbedding(message).catch(e => { console.error('Query embedding failed:', e.message); return undefined })
     : undefined
 
   // RAG retrieval + action items + artifacts + all projects + training context in parallel
-  const [chunks, pinnedDocs, memories, actionItemsResult, projectResult, contextChunks, artifactsResult, allProjectsResult, dashboardCardsResult, notificationRulesResult, uiPreferencesResult, trainingContext, notesResult, contactsResult, relevantDecisions, awaitingRepliesResult, activeWatchesResult, calendarEventsResult] = await Promise.all([
+  // Domain-gated queries skip the DB call entirely when the domain is inactive
+  const [chunks, pinnedDocs, memories, actionItemsResult, projectResult, contextChunks, artifactsResult, allProjectsResult, dashboardCardsResult, notificationRulesResult, uiPreferencesResult, trainingContext, notesResult, contactsResult, relevantDecisions, awaitingRepliesResult, activeWatchesResult, calendarEventsResult, recentTextsResult] = await Promise.all([
     isSubstantiveMessage ? retrieveRelevantChunks(message, project_id, 8, 0.7, queryEmbedding).catch(e => { console.error('RAG retrieval failed:', e.message); return [] }) : Promise.resolve([]),
     project_id ? getPinnedDocuments(project_id) : Promise.resolve([]),
     isSubstantiveMessage ? getRelevantMemories(message) : Promise.resolve([]),
@@ -1104,20 +1146,32 @@ export async function POST(req: NextRequest) {
       ? supabaseAdmin.from('artifacts').select('*').eq('conversation_id', convId).order('updated_at', { ascending: false })
       : Promise.resolve({ data: [] }),
     supabaseAdmin.from('projects').select('id, name, description').order('name'),
-    supabaseAdmin.from('dashboard_cards').select('*').eq('is_active', true).order('position'),
-    supabaseAdmin.from('notification_rules').select('*').eq('is_active', true).order('created_at', { ascending: false }),
-    supabaseAdmin.from('ui_preferences').select('*'),
+    domains.has('dashboard')
+      ? supabaseAdmin.from('dashboard_cards').select('*').eq('is_active', true).order('position')
+      : Promise.resolve({ data: [] }),
+    domains.has('alerts')
+      ? supabaseAdmin.from('notification_rules').select('*').eq('is_active', true).order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] }),
+    domains.has('prefs')
+      ? supabaseAdmin.from('ui_preferences').select('*')
+      : Promise.resolve({ data: [] }),
     isSubstantiveMessage ? buildFewShotBlock(message, queryEmbedding).catch(e => { console.error('Training context failed:', e.message); return null }) : Promise.resolve(null),
-    supabaseAdmin.from('notes').select('*').or('expires_at.is.null,expires_at.gt.' + new Date().toISOString()).order('created_at', { ascending: false }),
-    supabaseAdmin.from('contacts').select('*').order('name'),
+    domains.has('notes')
+      ? supabaseAdmin.from('notes').select('*').or('expires_at.is.null,expires_at.gt.' + new Date().toISOString()).order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] }),
+    domains.has('contacts')
+      ? supabaseAdmin.from('contacts').select('*').order('name')
+      : Promise.resolve({ data: [] }),
     isSubstantiveMessage ? retrieveRelevantDecisions(message, 5, 0.7, queryEmbedding).catch(e => { console.error('Decision retrieval failed:', e.message); return [] }) : Promise.resolve([]),
-    supabaseAdmin
-      .from('email_threads')
-      .select('last_sender_email, subject, last_message_date')
-      .eq('direction', 'outbound')
-      .eq('response_detected', false)
-      .gte('last_message_date', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString())
-      .order('last_message_date', { ascending: false }),
+    domains.has('email')
+      ? supabaseAdmin
+          .from('email_threads')
+          .select('last_sender_email, subject, last_message_date')
+          .eq('direction', 'outbound')
+          .eq('response_detected', false)
+          .gte('last_message_date', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString())
+          .order('last_message_date', { ascending: false })
+      : Promise.resolve({ data: [] }),
     supabaseAdmin
       .from('conversation_watches')
       .select('id, watch_type, context, priority, created_at, match_criteria')
@@ -1125,20 +1179,24 @@ export async function POST(req: NextRequest) {
       .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false })
       .limit(20),
-    supabaseAdmin
-      .from('calendar_events')
-      .select('title, start_time, end_time, all_day, location, attendees, organizer_email, status')
-      .gte('start_time', new Date().toISOString())
-      .lte('start_time', new Date(Date.now() + 48 * 3600000).toISOString())
-      .order('start_time', { ascending: true }),
-    supabaseAdmin
-      .from('text_messages')
-      .select('contact_name, phone_number, message_text, service, message_date, is_from_me, is_group_chat, group_chat_name, flag_reason')
-      .eq('flagged', true)
-      .eq('is_from_me', false)
-      .gte('message_date', new Date(Date.now() - 48 * 3600000).toISOString())
-      .order('message_date', { ascending: false })
-      .limit(15),
+    domains.has('calendar')
+      ? supabaseAdmin
+          .from('calendar_events')
+          .select('title, start_time, end_time, all_day, location, attendees, organizer_email, status')
+          .gte('start_time', new Date().toISOString())
+          .lte('start_time', new Date(Date.now() + 48 * 3600000).toISOString())
+          .order('start_time', { ascending: true })
+      : Promise.resolve({ data: [] }),
+    domains.has('texts')
+      ? supabaseAdmin
+          .from('text_messages')
+          .select('contact_name, phone_number, message_text, service, message_date, is_from_me, is_group_chat, group_chat_name, flag_reason')
+          .eq('flagged', true)
+          .eq('is_from_me', false)
+          .gte('message_date', new Date(Date.now() - 48 * 3600000).toISOString())
+          .order('message_date', { ascending: false })
+          .limit(15)
+      : Promise.resolve({ data: [] }),
   ])
 
   const actionItems: ActionItem[] = actionItemsResult.data || []
@@ -1155,6 +1213,23 @@ export async function POST(req: NextRequest) {
   }))
   const activeWatches = (activeWatchesResult as any).data || []
   const calendarEvents: CalendarEventEntry[] = (calendarEventsResult as any).data || []
+  const recentTexts: RecentText[] = (recentTextsResult as any).data || []
+
+  // Add artifactContent domain when the active artifact panel is open,
+  // or when the message explicitly names an artifact
+  if (active_artifact_id) {
+    domains.add('artifactContent')
+  } else if (artifacts.length > 0) {
+    const msgLower = message.toLowerCase()
+    if (artifacts.some((a: Artifact) => msgLower.includes(a.name.toLowerCase()))) {
+      domains.add('artifactContent')
+    }
+  }
+
+  // Build filtered tools array based on active domains
+  const activeToolNames = getToolsForDomains(domains)
+  const activeTools = activeToolNames.map(n => ALL_TOOLS_MAP[n]).filter((t): t is Anthropic.Messages.Tool => !!t)
+
   // Build context
   const context = buildContext(chunks, pinnedDocs, memories, contextChunks)
   const systemPrompt = buildSystemPrompt({
@@ -1177,6 +1252,8 @@ export async function POST(req: NextRequest) {
     awaitingReplies: awaitingReplies.length > 0 ? awaitingReplies : undefined,
     activeWatches: activeWatches.length > 0 ? activeWatches : undefined,
     calendarEvents: calendarEvents.length > 0 ? calendarEvents : undefined,
+    recentTexts: recentTexts.length > 0 ? recentTexts : undefined,
+    domains,
   })
 
   // Build messages array for Claude, capped by character budget to avoid context overflow.
@@ -1214,7 +1291,7 @@ export async function POST(req: NextRequest) {
             max_tokens: 4096,
             system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }] as any,
             messages: currentMessages,
-            tools: [ACTION_ITEM_TOOL, MANAGE_PROJECT_CONTEXT_TOOL, ARTIFACT_TOOL, SEARCH_GMAIL_TOOL, DRAFT_EMAIL_TOOL, MANAGE_PROJECT_TOOL, MANAGE_BOOKMARKS_TOOL, MANAGE_DASHBOARD_TOOL, MANAGE_NOTIFICATION_RULES_TOOL, MANAGE_PREFERENCES_TOOL, TRAINING_TOOL, MANAGE_NOTEPAD_TOOL, MANAGE_CONTACTS_TOOL, SEARCH_WEB_TOOL, SPAWN_BACKGROUND_JOB_TOOL, CREATE_WATCH_TOOL, LIST_WATCHES_TOOL, CANCEL_WATCH_TOOL, CHECK_CALENDAR_TOOL, FIND_AVAILABILITY_TOOL, CREATE_CALENDAR_EVENT_TOOL, ASK_STRUCTURED_QUESTION_TOOL, QUICK_CONFIRM_TOOL, QUERY_SALES_TOOL, SEARCH_TEXTS_TOOL, MANAGE_TEXT_CONTACTS_TOOL, MANAGE_GROUP_WHITELIST_TOOL],
+            tools: activeTools,
             ...({ extra_body: { models: ['anthropic/claude-sonnet-4.6:exacto', 'google/gemini-3.1-pro-preview'], provider: { sort: 'latency' } } } as any),
           })
 
@@ -1598,6 +1675,7 @@ export async function POST(req: NextRequest) {
           content: fullResponse,
           sources,
           session_id: sessionId,
+          context_domains: Array.from(domains),
         })
 
         // Increment session message count (user + assistant = 2)

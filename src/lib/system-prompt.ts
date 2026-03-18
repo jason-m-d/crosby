@@ -236,6 +236,7 @@ export function buildSystemPrompt(options?: {
   activeWatches?: ActiveWatch[]
   calendarEvents?: CalendarEventEntry[]
   recentTexts?: RecentText[]
+  domains?: Set<string>
 }): string {
   const now = new Date()
   const pacificTime = now.toLocaleString('en-US', {
@@ -248,6 +249,11 @@ export function buildSystemPrompt(options?: {
     minute: '2-digit',
     hour12: true,
   })
+
+  // Domain helper: returns true when the domain is active (or when no domains filter is set)
+  const domains = options?.domains
+  const d = (domain: string) => !domains || domains.has(domain)
+
   const parts: string[] = [BASE_SYSTEM_PROMPT, `\n\nCurrent date and time: ${pacificTime} (Pacific). This timestamp is regenerated with every message, so it is always accurate - do not hedge or say it might be stale.`]
 
   if (options?.previousSessionSummary) {
@@ -297,7 +303,7 @@ RULES for managing projects (create/update/archive):
     )
   }
 
-  if (options?.contacts && options.contacts.length > 0) {
+  if (d('contacts') && options?.contacts && options.contacts.length > 0) {
     const lines = options.contacts.map(c => {
       const parts: string[] = [c.name]
       if (c.role || c.organization) parts.push(`${c.role || ''}${c.role && c.organization ? ', ' : ''}${c.organization || ''}`)
@@ -308,7 +314,7 @@ RULES for managing projects (create/update/archive):
     parts.push(`\n\n--- Contacts ---\n${lines.join('\n')}\n\nUse manage_contacts to add, update, or delete contacts. When Jason mentions a new person, save them.`)
   }
 
-  if (options?.notes && options.notes.length > 0) {
+  if (d('notes') && options?.notes && options.notes.length > 0) {
     const lines = options.notes.map(n =>
       `- ${n.title ? `[${n.title}] ` : ''}${n.content}${n.expires_at ? ` (expires ${new Date(n.expires_at).toLocaleDateString()})` : ' [pinned]'}`
     )
@@ -353,13 +359,13 @@ DELEGATION STYLE:
   }
 
   // Calendar events (next 48 hours)
-  if (options?.calendarEvents && options.calendarEvents.length > 0) {
+  if (d('calendar') && options?.calendarEvents && options.calendarEvents.length > 0) {
     const calSection = formatCalendarSection(options.calendarEvents, options.contacts, options.actionItems)
     if (calSection) parts.push(calSection)
   }
 
   // Flagged texts (last 48 hours)
-  if (options?.recentTexts && options.recentTexts.length > 0) {
+  if (d('texts') && options?.recentTexts && options.recentTexts.length > 0) {
     const now = new Date()
     const textLines = options.recentTexts.map(t => {
       const ageMs = now.getTime() - new Date(t.message_date).getTime()
@@ -376,7 +382,7 @@ DELEGATION STYLE:
     parts.push(`\n\n--- Recent Flagged Texts ---\n${textLines.join('\n')}\n\nThese are business-relevant texts from the last 48 hours. Reference them naturally when relevant. Use search_texts to look up older messages or search by contact/keyword. Use manage_text_contacts to save contact names and roles. Use manage_group_whitelist to add group chats to the sync whitelist.`)
   }
 
-  if (options?.awaitingReplies && options.awaitingReplies.length > 0) {
+  if (d('email') && options?.awaitingReplies && options.awaitingReplies.length > 0) {
     const now = new Date()
     const replyLines = options.awaitingReplies.map(r => {
       const sentDate = new Date(r.last_message_date)
@@ -412,7 +418,12 @@ ${watchLines.join('\n')}`)
     const activeId = options.activeArtifactId
     const artifactLines = options.artifacts.map((a) => {
       if (a.id === activeId) {
-        return `- [${a.id}] "${a.name}" (${a.type}, v${a.version}) [ACTIVE]\n${a.content}`
+        if (d('artifactContent')) {
+          return `- [${a.id}] "${a.name}" (${a.type}, v${a.version}) [ACTIVE]\n${a.content}`
+        } else {
+          const preview = a.content.slice(0, 100) + (a.content.length > 100 ? '...' : '')
+          return `- [${a.id}] "${a.name}" (${a.type}, v${a.version}) [ACTIVE]: ${preview}`
+        }
       }
       const preview = a.content.slice(0, 100) + (a.content.length > 100 ? '...' : '')
       return `- [${a.id}] "${a.name}" (${a.type}, v${a.version}): ${preview}`
@@ -429,23 +440,25 @@ RULES for managing artifacts:
   }
 
   // Dashboard cards
-  if (options?.dashboardCards && options.dashboardCards.length > 0) {
-    const cardLines = options.dashboardCards.map(
-      (c) => `- [${c.id}] "${c.title}" (${c.card_type}): ${c.content.slice(0, 100)}${c.content.length > 100 ? '...' : ''}`
-    )
-    parts.push(`\n\n--- Active Dashboard Cards ---
+  if (d('dashboard')) {
+    if (options?.dashboardCards && options.dashboardCards.length > 0) {
+      const cardLines = options.dashboardCards.map(
+        (c) => `- [${c.id}] "${c.title}" (${c.card_type}): ${c.content.slice(0, 100)}${c.content.length > 100 ? '...' : ''}`
+      )
+      parts.push(`\n\n--- Active Dashboard Cards ---
 ${cardLines.join('\n')}
 
 Use manage_dashboard to create/update/remove cards. Cards are pinned info boxes on the main dashboard.
 - Create cards when Jason wants to pin a summary, tracker, or alert to the dashboard
 - Update cards when the content changes - don't let them go stale
 - Remove cards when they're no longer needed or the situation is resolved`)
-  } else {
-    parts.push(`\n\nNo dashboard cards are active. Use manage_dashboard to create summary/alert/custom cards that pin to the main dashboard when Jason asks.`)
+    } else {
+      parts.push(`\n\nNo dashboard cards are active. Use manage_dashboard to create summary/alert/custom cards that pin to the main dashboard when Jason asks.`)
+    }
   }
 
   // Notification rules
-  if (options?.notificationRules && options.notificationRules.length > 0) {
+  if (d('alerts') && options?.notificationRules && options.notificationRules.length > 0) {
     const ruleLines = options.notificationRules.map(
       (r) => `- [${r.id}] "${r.description}" (${r.match_type}: "${r.match_value}", active: ${r.is_active})`
     )
@@ -498,7 +511,7 @@ These are decisions Jason has made recently. Reference them when relevant - don'
 - Cite the source when sharing searched information.`)
 
   // Email drafting
-  parts.push(`\n\nEMAIL DRAFTING:
+  if (d('email')) parts.push(`\n\nEMAIL DRAFTING:
 - Use draft_email to create Gmail drafts when Jason needs to send something or when you're helping delegate.
 - Draft in Jason's voice: direct, casual, professional. No fluff.
 - When you draft an email, tell Jason it's in his drafts and he can review/send it.
@@ -539,7 +552,7 @@ Do NOT use quick_confirm when there are more than 2 choices - use ask_structured
 IMPORTANT: After calling either tool, STOP and wait for the user's response. Do not continue generating text or take further action until the user answers.`)
 
   // UI preferences
-  if (options?.uiPreferences && options.uiPreferences.length > 0) {
+  if (d('prefs') && options?.uiPreferences && options.uiPreferences.length > 0) {
     const prefLines = options.uiPreferences.map((p) => `- ${p.key}: ${p.value}`)
     parts.push(`\n\n--- UI Preferences ---
 ${prefLines.join('\n')}

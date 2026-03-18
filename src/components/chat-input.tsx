@@ -10,8 +10,8 @@ interface UploadedFile {
 }
 
 const MODELS = [
-  { id: 'anthropic/claude-sonnet-4.6', label: 'Claude Sonnet' },
-  { id: 'anthropic/claude-opus-4.6', label: 'Claude Opus' },
+  { id: 'anthropic/claude-sonnet-4.6', label: 'Claude Sonnet 4.6' },
+  { id: 'anthropic/claude-opus-4.6', label: 'Claude Opus 4.6' },
   { id: 'google/gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro' },
   { id: 'openai/gpt-5.4', label: 'GPT-5.4' },
 ]
@@ -150,7 +150,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
 
   return (
     <div>
-      <div className="max-w-3xl mx-auto px-4 pb-3">
+      <div className="max-w-[52rem] mx-auto pb-3">
         <div className="border border-border input-container">
           {/* Attached files */}
           {files.length > 0 && (
@@ -201,7 +201,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             <button
               onClick={handleSubmit}
               disabled={!canSend}
-              className="flex-shrink-0 mb-[9px] mr-2.5 p-1.5 bg-foreground text-background disabled:opacity-20 transition-opacity"
+              className="flex-shrink-0 mb-[10px] mr-2.5 p-1.5 bg-foreground text-background disabled:opacity-20 transition-opacity"
             >
               {loading ? (
                 <Loader2 className="size-3.5 animate-spin" />

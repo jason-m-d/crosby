@@ -1,0 +1,23 @@
+{
+  "skill_name": "ui-audit",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Can you do a full UI audit of my app? I want to know if there are any visual inconsistencies or things that look unprofessional",
+      "expected_output": "A comprehensive report covering visual consistency, polish, mobile responsiveness, interactions, performance, and accessibility - with severity tiers, specific file paths, and plain English fix suggestions",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Review the chat page UI - does it look polished? Flag anything that feels off",
+      "expected_output": "A focused report on the chat page only, identifying styling inconsistencies, polish issues, and UX problems specific to the chat interface",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "I feel like my app looks a little rough around the edges but I can't pinpoint why. Can you take a look?",
+      "expected_output": "A report that identifies subtle polish issues and inconsistencies that contribute to the rough feeling, organized by severity with actionable fixes",
+      "files": []
+    }
+  ]
+}
