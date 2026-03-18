@@ -347,7 +347,9 @@ export async function POST(req: NextRequest) {
       }, { onConflict: 'account' })
 
     } catch (e: any) {
-      console.error(`[email-scan] Failed to scan ${account}: ${e.message}`, e.stack?.slice(0, 300))
+      console.error(`[email-scan] SCAN_ERR name=${e.name}`)
+      console.error(`[email-scan] SCAN_ERR msg=${e.message?.slice(0, 200)}`)
+      console.error(`[email-scan] SCAN_ERR stack=${e.stack?.slice(0, 200)}`)
     }
   }
 
