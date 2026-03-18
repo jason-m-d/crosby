@@ -1289,6 +1289,7 @@ export async function POST(req: NextRequest) {
         while (continueLoop) {
           continueLoop = false
 
+          console.log('[Chat] calling OpenRouter, model:', selectedModel, 'tools:', activeTools.length, 'msgs:', currentMessages.length)
           const response = anthropic.messages.stream({
             model: selectedModel,
             max_tokens: 4096,
@@ -1699,7 +1700,9 @@ export async function POST(req: NextRequest) {
         controller.close()
       } catch (error) {
         const errMsg = error instanceof Error ? `${error.name}: ${error.message}` : JSON.stringify(error)
-        console.error('Chat stream error:', errMsg, error)
+        console.error('[Chat] error name:', error instanceof Error ? error.name : typeof error)
+        console.error('[Chat] error msg:', error instanceof Error ? error.message : String(error))
+        console.error('[Chat] error full:', errMsg)
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Failed to generate response', debug: errMsg })}\n\n`))
         controller.close()
       }
