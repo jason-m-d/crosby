@@ -601,7 +601,9 @@ export async function POST(req: NextRequest) {
           } catch (iterErr: any) {
             clearTimeout(timeoutId)
             const isTimeout = abortController.signal.aborted || iterErr?.name === 'AbortError'
-            console.error('[Chat] stream iteration error (attempt', streamAttempt, '):', iterErr?.message)
+            const iterErrDetail = JSON.stringify({ message: iterErr?.message, name: iterErr?.name, status: iterErr?.status, error: iterErr?.error })
+            console.error('[Chat] stream iteration error (attempt', streamAttempt, '):', iterErrDetail)
+            void supabaseAdmin.from('notes').insert({ title: 'DEBUG iter error', content: iterErrDetail.slice(0, 500) })
 
             if (streamAttempt === 1) {
               console.log('[Chat] retrying with simplified context')
@@ -679,6 +681,7 @@ export async function POST(req: NextRequest) {
         console.error('[Chat] error name:', error instanceof Error ? error.name : typeof error)
         console.error('[Chat] error msg:', error instanceof Error ? error.message : String(error))
         console.error('[Chat] error full:', errMsg)
+        void supabaseAdmin.from('notes').insert({ title: 'DEBUG outer error', content: errMsg.slice(0, 500) })
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Failed to generate response', debug: errMsg })}\n\n`))
         controller.close()
       }
