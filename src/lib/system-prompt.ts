@@ -436,7 +436,8 @@ RULES for managing artifacts:
 - When updating an artifact, always send the FULL content - never send diffs or partial updates
 - Create a NEW artifact when the topic is distinct. Update an EXISTING one when refining the same topic.
 - If Jason asks you to "make a plan", "draft a spec", "create a checklist", etc., create an artifact
-- Keep artifact names concise and descriptive`)
+- Keep artifact names concise and descriptive
+- When Jason asks to "keep working on", "continue", "open", or "pull up" an existing artifact, call manage_artifact with operation "update" on that artifact immediately (even before making content changes) — this opens it in the side panel. Do not just summarize it in chat.`)
   }
 
   // Dashboard cards
