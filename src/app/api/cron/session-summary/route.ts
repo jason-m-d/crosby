@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { openrouterClient } from '@/lib/openrouter'
+import { extractNotepadEntries, extractCommitments, extractDecisions, extractWatches, detectProcesses } from '@/lib/session-extraction'
 
-export const maxDuration = 30
+export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
   const cronSecret = req.headers.get('x-cron-secret') || req.headers.get('authorization')
@@ -73,6 +74,15 @@ export async function POST(req: NextRequest) {
 
       summarized++
       console.log(`[SessionSummary] summarized session ${session.id} (${messages.length} messages)`)
+
+      // Run extraction jobs in parallel (fire-and-forget within the try block)
+      await Promise.allSettled([
+        extractNotepadEntries(summary),
+        extractCommitments(session.id, session.conversation_id, transcript),
+        extractDecisions(session.id, session.conversation_id, transcript),
+        extractWatches(session.conversation_id, transcript),
+        detectProcesses(session.conversation_id, transcript, summary),
+      ])
     } catch (err) {
       console.error(`[SessionSummary] failed for session ${session.id}:`, err)
     }
