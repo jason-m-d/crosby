@@ -220,7 +220,30 @@ For every response you assess, evaluate across these five dimensions:
 - Is it interpreting the data correctly (e.g., comparing sales to the right benchmarks)?
 - Is the RAG retrieval pulling relevant documents?
 
-### 5. System Prompt Adherence
+### 5. OpenRouter & API Health
+**For any API-level issues, read `.claude/commands/openrouter-expert/SKILL.md` for full diagnostic guidance.**
+
+Quick checklist:
+- **Wrong model served?** Check the `model` field in the API response - if fallback triggered, it will differ from the requested model. Log as [MEDIUM] [api-issue].
+- **Slow responses?** Check provider sort config, account balance (low balance = extra verification latency), whether Auto Exacto is interfering with price-sorted requests.
+- **Router falling back to regex frequently?** Check server logs for "Router timed out" or "Router failed". The router uses `google/gemini-3.1-flash-lite-preview` via the OpenAI SDK client with a 3-second timeout. If OpenRouter latency is high, it'll fall back.
+- **JSON parse failures in background jobs?** Verify `response-healing` plugin is enabled, schema has `additionalProperties: false` on every object, and `parseJSON()` fallback exists.
+- **404 errors on non-Anthropic models?** Almost certainly the `anthropic-version` header bug - check if a Google/Perplexity model is being called through the Anthropic SDK client instead of `openrouterClient`.
+- **Tool calls failing or incomplete?** Check if `:exacto` variant is being used for tool-heavy responses. Verify tool schema is valid.
+- **Prompt caching not hitting?** Check `usage.prompt_tokens_details.cached_tokens` in responses. If 0, the system prompt may be below the minimum token threshold for caching, or the TTL expired.
+- **Cost seems high?** Check if background jobs accidentally use Claude instead of Gemini Flash Lite, or if `sort: 'price'` is missing on background calls.
+
+When you find an API-level issue, log it with the **[api-issue]** category:
+```
+[SEVERITY] [api-issue] Description
+  - What happened: <actual behavior>
+  - What should have happened: <expected behavior>
+  - Fix suggestion: <file path + what to change>
+```
+
+Reference the openrouter-expert skill's debugging section for root cause analysis.
+
+### 6. System Prompt Adherence
 - Is it following the proactive behavior rules? (action item creation, email drafting offers, watch suggestions)
 - Is it respecting project context management rules? (not creating context on greetings, asking before adding)
 - Is it cross-referencing correctly? (calendar attendees vs contacts vs action items)
@@ -233,9 +256,29 @@ For every response you assess, evaluate across these five dimensions:
   These are learned preferences from Jason's feedback (e.g., "never flag newsletter emails as action items"). If Crosby violated an active training rule, that's a system prompt adherence issue - the training context should have prevented it. Check `src/lib/training.ts` for how training rules get injected into the prompt.
 - Is it using `ask_structured_question` and `quick_confirm` appropriately? (structured questions for multi-choice, quick confirm for yes/no, not using either for open-ended questions)
 
-### 6. Overall Grade
+### 7. Prefetch & Typing Prediction
 
-After the four-dimension breakdown, give a quick overall grade so Jason can track improvement over time without re-reading details:
+Crosby has a real-time feature that fires while Jason is typing — before he hits send. The `/api/chat/prefetch` endpoint runs the router and returns specialist predictions, which appear as chips above the input. It also caches the router result so the real chat request can skip re-running the router entirely.
+
+**How to evaluate:**
+
+Ask Jason what chips (if any) appeared while he was typing the message. Then compare to `context_domains` on the actual response.
+
+- **Chip accuracy** — did the chips shown while typing match the specialists that actually activated? If chips showed `email` but the response used `sales`, that's a prefetch miss.
+- **Cache hit** — if the prefetch ran and got a result, the real chat request should log something like "prefetch cache hit" in server logs. A miss means the router ran twice (once in prefetch, once in chat) — wasted latency.
+- **Prefetch timeout** — the prefetch has a 2s timeout (vs 3s for the real router). If the router is slow, prefetch may time out and show no chips even when the real request routes correctly. That's a latency issue, not a logic issue.
+- **No chips shown** — could mean: prefetch timed out, prefetch returned empty (correct for a casual greeting), or the prefetch endpoint errored. Ask Jason if he saw chips or not.
+
+**When to log a prefetch issue:**
+- Chips were wrong (showed wrong specialists)
+- Chips were missing when they clearly should have appeared (e.g., asking about sales, no sales chip)
+- Chips matched but the cache wasn't used (router ran twice) — harder to detect without server logs
+
+**Note:** You generally can't query the DB to verify prefetch behavior — it doesn't write to the DB. You have to ask Jason what he saw in the UI, then compare to `context_domains`.
+
+### 8. Overall Grade
+
+After the seven-dimension breakdown, give a quick overall grade so Jason can track improvement over time without re-reading details:
 
 - **A** - Nailed it. Right tools, right tone, right data, proactive where it should be.
 - **B** - Solid but missed something. Maybe skipped a proactive suggestion or tone was slightly off.
@@ -270,6 +313,7 @@ Maintain a running issue log throughout the session. Each issue looks like this:
 - **data-error** - Wrong data pulled, bad interpretation, stale info
 - **missing-behavior** - Should have done something proactive but didn't
 - **wrong-behavior** - Did something it shouldn't have
+- **api-issue** - OpenRouter/API-level problem (wrong model served, fallback triggered, JSON parse failure, slow response, caching miss). See `.claude/commands/openrouter-expert/SKILL.md` for diagnostics
 
 When logging an issue, always include a specific fix suggestion pointing to the actual file and roughly where in the file the change should go:
 - For routing issues, reference `src/lib/router.ts` (router prompt/schema) or `src/lib/specialists/built-in/<specialist>.ts` (trigger rules)
@@ -390,6 +434,7 @@ These are the most important files for eval work. Read them during orientation t
 | Calendar integration | `src/lib/calendar.ts` |
 | Intent classifier (legacy fallback) | `src/lib/intent-classifier.ts` |
 | OpenRouter client | `src/lib/openrouter.ts` |
+| OpenRouter expert skill | `.claude/commands/openrouter-expert/SKILL.md` |
 | App manual (RAG source) | `scripts/seed-app-manual.ts` |
 
 **Cron jobs** (discover dynamically - new crons get added as features ship):
@@ -443,7 +488,7 @@ You: [generates grouped, prioritized fix plan]
 - **Timestamp verification is critical.** If Crosby says "I created an action item" but there's no matching action item in the DB with a recent `created_at`, that's a CRITICAL issue - it means the tool call failed silently or never happened.
 - The system prompt is now assembled from specialist sections via `buildSpecialistPrompt()`. Issues may come from the base prompt in `system-prompt.ts`, from a specialist's `systemPromptSection` in `src/lib/specialists/built-in/`, or from the prompt builder's interpolation logic.
 - Background jobs are async. If Crosby spawned a job, check `background_jobs` for its status. A job stuck in 'queued' or 'running' for more than a few minutes is a problem. Check `result` and `error` fields.
-- **Prefetch accuracy.** If Jason mentions the specialist chips above the input were wrong or missing, that's a prefetch issue. The prefetch endpoint (`src/app/api/chat/prefetch/route.ts`) runs the same router but with a 2s timeout and uses cached context. Check if the chips matched what actually activated when the message was sent.
+- **Prefetch accuracy.** Evaluate this in every session under Dimension 7. Ask Jason what chips appeared while typing, then compare to `context_domains` on the actual response. The prefetch endpoint (`src/app/api/chat/prefetch/route.ts`) runs the router with a 2s timeout. Chips wrong or missing = prefetch issue. No DB record exists for prefetch runs — you have to ask Jason what he saw.
 - When in doubt about whether something is an issue, flag it as LOW and discuss with Jason. Better to over-report than miss things.
 - **Don't forget the structured question tools:** `ask_structured_question` and `quick_confirm`. Check if Crosby is using them when it should be (multi-choice questions, yes/no confirmations) and NOT using them when it shouldn't (open-ended questions, mid-conversation flow).
 - **Max 8 tool calls per message.** The refactored route caps tool calls at 8 per response. If Crosby hits this limit, check whether it was doing something legitimately complex or spinning in a loop.
