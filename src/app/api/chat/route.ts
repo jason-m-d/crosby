@@ -272,7 +272,7 @@ export async function POST(req: NextRequest) {
           const abortController = new AbortController()
           const timeoutId = setTimeout(() => abortController.abort(), 30000)
 
-          console.log('[Chat] calling OpenRouter, model:', selectedModel, 'tools:', activeTools.length, 'msgs:', currentMessages.length, 'attempt:', streamAttempt)
+          console.log('[Chat] calling OpenRouter, model:', selectedModel, 'tools:', activeTools.length, 'msgs:', currentMessages.length, 'attempt:', streamAttempt, 'system_len:', systemPrompt.length)
 
           let response: ReturnType<typeof anthropic.messages.stream>
           try {
@@ -298,8 +298,10 @@ export async function POST(req: NextRequest) {
           }
 
           let streamError: Error | null = null
-          response.on('error', (err: Error) => {
+          response.on('error', (err: any) => {
             console.error('Stream-level error:', err?.message || err)
+            console.error('Stream-level error status:', err?.status)
+            console.error('Stream-level error body:', JSON.stringify(err?.error || err?.body || ''))
             streamError = err
           })
 
