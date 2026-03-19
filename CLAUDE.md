@@ -51,6 +51,18 @@ All AI calls go through OpenRouter (`ANTHROPIC_BASE_URL`). Do not call Anthropic
 - The manual covers: all tools, background processes, feature connections, proactive behavior guidelines, and how the app layout works. Keep it accurate.
 - Small UI tweaks and copy changes don't need a manual update — only changes that affect what the bot can do or how features work.
 
+## Architecture Refactor Plan
+- The full architecture refactor plan lives in `CROSBY-ARCHITECTURE-REFACTOR.md` in the project root. Reference it for context on the router, specialist system, typing prediction, and overall direction.
+- The refactor is phased: Phase 0 (stability guards) -> Phase 1 (AI router replacing regex classifier) -> Phase 2 (typing prediction + specialist chips + inline autocomplete) -> Phase 3 (route decomposition) -> Phase 4 (specialist system) -> Phase 5 (QA).
+- **Key architectural concepts:**
+  - **Router:** A fast Gemini Flash Lite call that replaces the regex-based `classifyIntent()` in `src/lib/intent-classifier.ts`. It determines what data to load, what tools to activate, and what projects are relevant. Lives in `src/lib/router.ts`.
+  - **Specialists:** Self-contained modules (email, calendar, sales, tasks, documents, texts, core) that each have their own prompt section, tools, and data requirements. The router activates only the specialists needed for each message. Defined with declarative `triggerRules` (JSON-serializable, not functions) so they can eventually be stored in a database for user-created specialists.
+  - **Prefetch:** A `/api/chat/prefetch` endpoint called while the user types. Returns specialist classifications (shown as chips above the input) and inline autocomplete suggestions. Results are cached server-side so the real chat request can skip the router call.
+  - **Tool executor registry:** A `Map<string, ExecutorFunction>` in `src/lib/chat/tools/registry.ts` that replaces the if/else tool dispatch chain. Groundwork for future dynamic tool registration.
+  - **`request_additional_context` tool:** A self-correction mechanism - if the router misclassifies and the model needs data that wasn't loaded, it can call this tool to fetch additional data blocks mid-response.
+- **When making changes during the refactor:** always keep the old `classifyIntent()` as a fallback. The router has a 3-second timeout and falls back to regex classification if it fails.
+- **Terminology:** "Conversation" = the one long-running chat. "Session" = a chapter within it (auto-closes after 30 messages or 2hr idle). Don't use "new conversation" when you mean "new session."
+
 ## Crosby Eval Skill (QA Co-Pilot)
 - The eval skill lives at `.claude/commands/crosby-eval/SKILL.md`. It's what Jason uses with Claude Code to QA Crosby's responses.
 - The skill is designed to dynamically discover the current app state (tables, tools, prompt rules, crons) at the start of each eval session, so it stays current without manual updates for most changes.

@@ -1,7 +1,11 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react'
-import { Loader2, ArrowUp, Paperclip, X, FileText, ChevronDown } from 'lucide-react'
+import {
+  Loader2, ArrowUp, Paperclip, X, FileText, ChevronDown,
+  Mail, Calendar, TrendingUp, CheckSquare, MessageSquare,
+  Globe, Brain, Users, StickyNote, LayoutDashboard,
+} from 'lucide-react'
 
 interface UploadedFile {
   id: string
@@ -16,8 +20,23 @@ const MODELS = [
   { id: 'openai/gpt-5.4', label: 'GPT-5.4' },
 ]
 
+// Specialist name → icon + label
+const SPECIALIST_META: Record<string, { icon: React.ElementType; label: string }> = {
+  Email:        { icon: Mail,            label: 'Email' },
+  Calendar:     { icon: Calendar,        label: 'Calendar' },
+  Sales:        { icon: TrendingUp,      label: 'Sales' },
+  Tasks:        { icon: CheckSquare,     label: 'Tasks' },
+  Texts:        { icon: MessageSquare,   label: 'Texts' },
+  'Web Search': { icon: Globe,           label: 'Web Search' },
+  Documents:    { icon: FileText,        label: 'Documents' },
+  Contacts:     { icon: Users,           label: 'Contacts' },
+  Notes:        { icon: StickyNote,      label: 'Notes' },
+  Dashboard:    { icon: LayoutDashboard, label: 'Dashboard' },
+  Memory:       { icon: Brain,           label: 'Memory' },
+}
+
 interface ChatInputProps {
-  onSubmit: (message: string, model: string) => void
+  onSubmit: (message: string, model: string, prefetchCacheKey?: string) => void
   loading: boolean
   storageKey?: string
 }
@@ -35,13 +54,21 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [model, setModel] = useState(MODELS[0].id)
   const [modelPickerOpen, setModelPickerOpen] = useState(false)
+
+  // Prefetch state
+  const [specialists, setSpecialists] = useState<string[]>([])
+  const [autocompleteSuggestion, setAutocompleteSuggestion] = useState<string | null>(null)
+  const prefetchTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const lastPrefetchCacheKey = useRef<string>('')
+  // Track which specialist set is "stable" (already rendered) vs incoming
+  const prevSpecialistsRef = useRef<string[]>([])
+
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useImperativeHandle(ref, () => ({
     setInputText(text: string) {
       setInput(text)
-      // Wait for state update then resize textarea
       setTimeout(() => {
         if (textareaRef.current) {
           textareaRef.current.style.height = 'auto'
@@ -71,26 +98,109 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     }
   }, [])
 
+  // Cleanup prefetch timer on unmount
+  useEffect(() => {
+    return () => {
+      if (prefetchTimerRef.current) clearTimeout(prefetchTimerRef.current)
+    }
+  }, [])
+
+  // Fire prefetch when input changes
   const handleInput = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value)
+    const value = e.target.value
+    setInput(value)
+    setAutocompleteSuggestion(null) // dismiss stale suggestion immediately on any keystroke
+
     const el = e.target
     el.style.height = 'auto'
     el.style.height = Math.min(el.scrollHeight, 200) + 'px'
-  }, [])
+
+    // Clear previous debounce
+    if (prefetchTimerRef.current) clearTimeout(prefetchTimerRef.current)
+
+    if (value.trim().length <= 3) {
+      setSpecialists([])
+      return
+    }
+
+    prefetchTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/chat/prefetch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ partial_message: value.trim() }),
+        })
+        if (!res.ok) return
+        const data = await res.json()
+
+        // Update specialists — stable ones stay, new ones animate in
+        prevSpecialistsRef.current = specialists
+        setSpecialists(data.specialists || [])
+
+        // Store cache key for the submit
+        lastPrefetchCacheKey.current = data.cache_key || ''
+
+        // Set autocomplete suggestion if cursor is at end
+        const ta = textareaRef.current
+        if (
+          data.autocomplete?.length > 0 &&
+          ta &&
+          ta.selectionStart === ta.value.length &&
+          ta.value.trim().length > 0
+        ) {
+          setAutocompleteSuggestion(data.autocomplete[0].text)
+        }
+      } catch {
+        // silently ignore prefetch errors — they're speculative
+      }
+    }, 500)
+  }, [specialists])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Accept autocomplete with Tab or ArrowRight at end of input
+    if (autocompleteSuggestion && (e.key === 'Tab' || e.key === 'ArrowRight')) {
+      const ta = e.currentTarget
+      if (ta.selectionStart === ta.value.length) {
+        e.preventDefault()
+        const newValue = input + autocompleteSuggestion
+        setInput(newValue)
+        setAutocompleteSuggestion(null)
+        // Re-trigger prefetch for new value immediately
+        if (prefetchTimerRef.current) clearTimeout(prefetchTimerRef.current)
+        prefetchTimerRef.current = setTimeout(async () => {
+          try {
+            const res = await fetch('/api/chat/prefetch', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ partial_message: newValue.trim() }),
+            })
+            if (!res.ok) return
+            const data = await res.json()
+            setSpecialists(data.specialists || [])
+            lastPrefetchCacheKey.current = data.cache_key || ''
+          } catch { /* ignore */ }
+        }, 100) // shorter delay after accept
+        return
+      }
+    }
+
+    // Dismiss autocomplete with Escape
+    if (e.key === 'Escape' && autocompleteSuggestion) {
+      setAutocompleteSuggestion(null)
+      return
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSubmit()
     }
-  }, [input, loading, files])
+  }, [input, loading, files, autocompleteSuggestion])
 
   function handleSubmit() {
     const hasFiles = files.some(f => !f.uploading)
     if ((!input.trim() && !hasFiles) || loading) return
     if (files.some(f => f.uploading)) return
 
-    // Build message with file references
     let message = input.trim()
     const uploadedFiles = files.filter(f => !f.uploading)
     if (uploadedFiles.length > 0) {
@@ -99,13 +209,19 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       message = message ? prefix + message : prefix + `I just uploaded ${uploadedFiles.length === 1 ? 'a document' : 'some documents'}. Please review.`
     }
 
+    const cacheKey = lastPrefetchCacheKey.current
+
     setInput('')
     setFiles([])
+    setSpecialists([])
+    setAutocompleteSuggestion(null)
+    lastPrefetchCacheKey.current = ''
+    if (prefetchTimerRef.current) clearTimeout(prefetchTimerRef.current)
     if (lsKey) localStorage.removeItem(lsKey)
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
     }
-    onSubmit(message, model)
+    onSubmit(message, model, cacheKey || undefined)
   }
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -138,7 +254,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       }
     }
 
-    // Reset input so the same file can be selected again
     e.target.value = ''
   }
 
@@ -146,11 +261,16 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     setFiles(prev => prev.filter(f => f.id !== fileId))
   }
 
+  function dismissSpecialist(label: string) {
+    setSpecialists(prev => prev.filter(s => s !== label))
+  }
+
   const canSend = (input.trim() || files.some(f => !f.uploading)) && !loading && !files.some(f => f.uploading)
+  const prevSet = new Set(prevSpecialistsRef.current)
 
   return (
     <div>
-      <div className="max-w-[52rem] mx-auto pb-3">
+      <div className="mx-8 pb-3">
         <div className="border border-border input-container">
           {/* Attached files */}
           {files.length > 0 && (
@@ -179,8 +299,39 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             </div>
           )}
 
-          {/* Input row */}
-          <div className="flex items-end gap-1">
+          {/* Specialist chips */}
+          {specialists.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 px-3.5 py-2">
+              {specialists.map(s => {
+                const meta = SPECIALIST_META[s]
+                if (!meta) return null
+                const Icon = meta.icon
+                const isNew = !prevSet.has(s)
+                return (
+                  <div
+                    key={s}
+                    className="group flex items-center gap-1 px-2 py-0.5 text-[0.7rem] text-muted-foreground bg-muted/30 border border-border/50 rounded-full transition-all duration-150 ease-out"
+                    style={{
+                      animation: isNew ? 'chip-enter 150ms ease-out both' : undefined,
+                    }}
+                  >
+                    <Icon className="size-3 shrink-0" />
+                    <span>{meta.label}</span>
+                    <button
+                      onClick={() => dismissSpecialist(s)}
+                      className="ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-100"
+                      aria-label={`Remove ${meta.label}`}
+                    >
+                      <X className="size-2.5" />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Input row with ghost text overlay */}
+          <div className="flex items-end gap-1 relative">
             <button
               onClick={() => fileInputRef.current?.click()}
               className="flex-shrink-0 mb-[9px] ml-1.5 p-1.5 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
@@ -188,16 +339,33 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             >
               <Paperclip className="size-4" />
             </button>
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={handleInput}
-              onKeyDown={handleKeyDown}
-              placeholder="Message..."
-              rows={1}
-              className="flex-1 resize-none bg-transparent py-3 pr-2 text-[0.875rem] leading-relaxed outline-none placeholder:text-muted-foreground/40"
-              style={{ minHeight: '46px', maxHeight: '200px' }}
-            />
+
+            {/* Ghost text overlay — sits exactly over the textarea */}
+            <div className="relative flex-1">
+              {autocompleteSuggestion && (
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 py-3 pr-2 text-[0.875rem] leading-relaxed whitespace-pre-wrap break-words overflow-hidden"
+                  style={{ paddingLeft: 0 }}
+                >
+                  {/* Invisible spacer matching the typed text */}
+                  <span className="invisible">{input}</span>
+                  {/* Ghost continuation */}
+                  <span className="text-muted-foreground/30">{autocompleteSuggestion}</span>
+                </div>
+              )}
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={handleInput}
+                onKeyDown={handleKeyDown}
+                placeholder="Message..."
+                rows={1}
+                className="w-full resize-none bg-transparent py-3 pr-2 text-[0.875rem] leading-relaxed outline-none placeholder:text-muted-foreground/40"
+                style={{ minHeight: '46px', maxHeight: '200px' }}
+              />
+            </div>
+
             <button
               onClick={handleSubmit}
               disabled={!canSend}
@@ -245,6 +413,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           )}
         </div>
       </div>
+
     </div>
   )
 })

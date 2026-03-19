@@ -50,7 +50,7 @@ export default function ConversationPage() {
       })
   }, [id])
 
-  async function handleSubmit(userMessage: string, model?: string) {
+  async function handleSubmit(userMessage: string, model?: string, _prefetchCacheKey?: string) {
     if (!userMessage.trim() || loading) return
 
     setMessages(prev => [...prev, { role: 'user', content: userMessage }])

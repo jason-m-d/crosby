@@ -71,7 +71,7 @@ export function ChatMessages({ messages, streamingContent, loading, toolStatus, 
 
   return (
     <div className="px-4 pt-6 pb-2">
-      <div className="max-w-[52rem] mx-auto">
+      <div className="mx-8">
         {greetingData && (
           <GreetingCard
             greeting={greetingData.text}

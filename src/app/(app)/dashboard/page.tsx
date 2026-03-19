@@ -211,7 +211,7 @@ export default function HomePage() {
     }
   }
 
-  async function handleSubmit(userMessage: string) {
+  async function handleSubmit(userMessage: string, _model?: string, _prefetchCacheKey?: string) {
     if (!userMessage.trim() || loading) return
 
     setMessages(prev => [...prev, { role: 'user', content: userMessage }])
