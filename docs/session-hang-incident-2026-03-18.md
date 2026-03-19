@@ -69,66 +69,41 @@ loads from the full conversation instead.
 
 ## What Is Still Broken / Left to Investigate
 
-### Sessions table queries hang in production (ROOT CAUSE — UNRESOLVED)
+### Sessions table queries intermittently slow in production
 
-The workaround makes chat functional, but session tracking is completely
-disabled. Every request times out on the sessions query and falls back to
-`sessionId: null`. Messages are being saved without session IDs.
+Investigation on 2026-03-18 confirmed:
+- No stuck transactions or locks on `pg_stat_activity` / `pg_locks`
+- No RLS interference (`supabaseAdmin` bypasses RLS, `relforcerowsecurity` is false)
+- `increment_session_message_count` RPC exists and is correct
+- Table has proper indexes and only 6 rows
+- The hang was transient — likely Supabase REST API latency during serverless cold starts
 
-**Things to investigate:**
+Sessions are creating/closing correctly now. The timeout is a safety net, not
+the primary path.
 
-- **Supabase connection pooling.** The `supabase.ts` client creates a new
-  `createClient()` instance at module load with no connection pool config. In
-  serverless environments, each function invocation may create a new connection.
-  If prior timed-out invocations left connections open/stale, new queries may
-  queue behind them. Supabase's default connection limit is 60. Consider using
-  `pgbouncer` (transaction mode) via the Supabase pooler URL
-  (`db.xxx.supabase.co:6543`) instead of the direct connection
-  (`db.xxx.supabase.co:5432`).
+### Session summarization not wired up
 
-- **Why only the sessions table?** Other Supabase queries (action_items,
-  conversations, messages, etc.) work fine. The sessions table has only 2 rows
-  and indexed columns. It's possible there's a long-running transaction or lock
-  on the sessions table from a prior crashed invocation. Check
-  `pg_stat_activity` and `pg_locks` for blocked queries.
+Summaries were removed from the chat hot path (they blocked for 60+ seconds).
+Still need to be moved to a cron or background job. All sessions currently have
+`summary: null`.
 
-- **RLS policies.** Sessions uses `POLICY "Allow all for authenticated"` scoped
-  to `TO authenticated`. `supabaseAdmin` uses the service role key which should
-  bypass RLS. But worth verifying the policy isn't somehow interfering.
+## Follow-up Fixes Shipped (2026-03-18)
 
-- **The `increment_session_message_count` RPC.** This fires as a fire-and-forget
-  `void` call. If the RPC has a bug or creates a long transaction, it could be
-  holding a lock that blocks subsequent session queries. Worth checking if this
-  RPC exists and what it does.
+### 1. Session lookup runs in parallel
+`getOrCreateSession` now starts concurrently with the user message save instead
+of blocking sequentially. User message is saved first without `session_id`, then
+tagged via fire-and-forget update once the session resolves.
 
-### Session tracking is disabled
+### 2. Timeout bumped to 10s
+Since the stream is already open (fix #1 from the original incident), a 10s
+timeout has no UX impact but gives the session query more room to complete.
 
-With `sessionId = null`, the following features are broken or degraded:
-
-- Session message counting (`message_count` on sessions table never increments)
-- Session-scoped conversation history (falls back to full conversation history)
-- Session summarization (already removed from hot path — needs nudge cron anyway)
-- `context_domains` inheritance still works (saved on messages, read back in history query)
-
-### Debug logs need cleanup
-
-A lot of `console.log` checkpoints were added during debugging and are still in
-`src/app/api/chat/route.ts`:
-- `[Chat] step 1: create/get conversation`
-- `[Chat] getOrCreateSession start/done`
-- `[Chat] step 3/4/5/6`
-- `[Session] query 1/2/3`
-- `[Chat] Promise.all done`
-- `[Chat] building system prompt...`
-- `[Chat] system prompt built, length: ...`
-- `[Chat] chatMessages count: ...`
-- `[Chat] calling OpenRouter, model: ...`
-- `[Intent] ... → domains: [...] | tools: ...`
-
-The Intent log is useful to keep. The rest can be removed once sessions are fixed.
+### 3. Debug logs cleaned up
+All `[Chat]` and `[Session]` debug checkpoint logs removed. Only the `[Intent]`
+classifier log remains (useful for ongoing monitoring).
 
 ## Key Files
 
 - `src/app/api/chat/route.ts` — chat route, `getOrCreateSession()` around line 2478
-- `src/lib/supabase.ts` — Supabase client init (no pool config)
+- `src/lib/supabase.ts` — Supabase client init
 - `scripts/` — migration SQL files

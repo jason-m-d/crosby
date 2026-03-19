@@ -1088,7 +1088,6 @@ export async function POST(req: NextRequest) {
 
       try {
         // Create or get conversation
-        console.log('[Chat] step 1: create/get conversation')
         let convId = conversation_id
         if (!convId) {
           const title = message.slice(0, 50) + (message.length > 50 ? '...' : '')
@@ -1100,22 +1099,32 @@ export async function POST(req: NextRequest) {
           convId = conv.id
         }
 
-        // Get or create session
-        console.log('[Chat] getOrCreateSession start')
-        const { sessionId, previousSummary } = await getOrCreateSession(convId)
-        console.log('[Chat] getOrCreateSession done, sessionId:', sessionId)
+        // Start session lookup in parallel — don't block on it yet
+        const sessionPromise = getOrCreateSession(convId)
 
-        // Save user message
-        console.log('[Chat] step 3: save user message')
+        // Save user message (without session_id for now — we'll tag it after)
         await supabaseAdmin.from('messages').insert({
           conversation_id: convId,
           role: 'user',
           content: message,
-          ...(sessionId ? { session_id: sessionId } : {}),
         })
 
+        // Now await session — it's been running in parallel with the message save
+        const { sessionId, previousSummary } = await sessionPromise
+
+        // Tag the user message with session_id if we got one
+        if (sessionId) {
+          void supabaseAdmin
+            .from('messages')
+            .update({ session_id: sessionId })
+            .eq('conversation_id', convId)
+            .eq('role', 'user')
+            .is('session_id', null)
+            .order('created_at', { ascending: false })
+            .limit(1)
+        }
+
         // Load conversation history — scoped to session if we have one, otherwise whole conversation
-        console.log('[Chat] step 4: load history')
         const historyQuery = supabaseAdmin
           .from('messages')
           .select('role, content, context_domains')
@@ -1139,14 +1148,12 @@ export async function POST(req: NextRequest) {
         }
 
         // Generate query embedding once and reuse for all vector searches
-        console.log('[Chat] step 5: generate embedding (isSubstantive:', isSubstantiveMessage, ')')
         const queryEmbedding = isSubstantiveMessage
           ? await generateQueryEmbedding(message).catch(e => { console.error('Query embedding failed:', e.message); return undefined })
           : undefined
 
         // RAG retrieval + action items + artifacts + all projects + training context in parallel
         // Domain-gated queries skip the DB call entirely when the domain is inactive
-        console.log('[Chat] step 6: Promise.all start')
         const [chunks, pinnedDocs, memories, actionItemsResult, projectResult, contextChunks, artifactsResult, allProjectsResult, dashboardCardsResult, notificationRulesResult, uiPreferencesResult, trainingContext, notesResult, contactsResult, relevantDecisions, awaitingRepliesResult, activeWatchesResult, calendarEventsResult, recentTextsResult] = await Promise.all([
           isSubstantiveMessage ? retrieveRelevantChunks(message, project_id, 8, 0.7, queryEmbedding).catch(e => { console.error('RAG retrieval failed:', e.message); return [] }) : Promise.resolve([]),
           project_id ? getPinnedDocuments(project_id) : Promise.resolve([]),
@@ -1218,7 +1225,6 @@ export async function POST(req: NextRequest) {
             : Promise.resolve({ data: [] }),
         ])
 
-        console.log('[Chat] Promise.all done')
         const actionItems: ActionItem[] = actionItemsResult.data || []
         const artifacts: Artifact[] = artifactsResult.data || []
         const projectPrompt = projectResult.data?.system_prompt || ''
@@ -1251,7 +1257,6 @@ export async function POST(req: NextRequest) {
         const activeTools = activeToolNames.map(n => ALL_TOOLS_MAP[n]).filter((t): t is Anthropic.Messages.Tool => !!t)
         console.log(`[Intent] "${message.slice(0, 50)}" → domains: [${Array.from(domains).join(', ')}] | tools: ${activeTools.length}/${Object.keys(ALL_TOOLS_MAP).length}`)
 
-        console.log('[Chat] building system prompt, size will be...')
         // Build context
         const context = buildContext(chunks, pinnedDocs, memories, contextChunks)
         const systemPrompt = buildSystemPrompt({
@@ -1277,7 +1282,6 @@ export async function POST(req: NextRequest) {
           recentTexts: recentTexts.length > 0 ? recentTexts : undefined,
           domains,
         })
-        console.log('[Chat] system prompt built, length:', systemPrompt.length)
 
         // Build messages array for Claude, capped by character budget to avoid context overflow.
         // 40K chars ~= 10K tokens, leaving room for system prompt + tool schemas + operational data.
@@ -1307,7 +1311,6 @@ export async function POST(req: NextRequest) {
           content: m.content,
         }))
 
-        console.log('[Chat] chatMessages count:', chatMessages.length, '| calling OpenRouter now')
 
         let currentMessages = [...chatMessages]
         let continueLoop = true
@@ -1315,7 +1318,6 @@ export async function POST(req: NextRequest) {
         while (continueLoop) {
           continueLoop = false
 
-          console.log('[Chat] calling OpenRouter, model:', selectedModel, 'tools:', activeTools.length, 'msgs:', currentMessages.length)
           const response = anthropic.messages.stream({
             model: selectedModel,
             max_tokens: 4096,
@@ -2480,7 +2482,6 @@ async function getOrCreateSession(convId: string): Promise<{ sessionId: string |
   // Wrap entire session logic in a 5s timeout — if Supabase is slow/hung, chat still works.
   const sessionPromise = (async () => {
     // Look for open session
-    console.log('[Session] query 1: looking for open session')
     const { data: openSession } = await supabaseAdmin
       .from('sessions')
       .select('*')
@@ -2489,13 +2490,11 @@ async function getOrCreateSession(convId: string): Promise<{ sessionId: string |
       .order('started_at', { ascending: false })
       .limit(1)
       .single()
-    console.log('[Session] query 1 done, found:', !!openSession)
 
     const now = new Date()
 
     if (openSession) {
       // Check if we should close this session: 30+ messages OR last message > 2 hours ago
-      console.log('[Session] query 2: getting last message')
       const { data: lastMsg } = await supabaseAdmin
         .from('messages')
         .select('created_at')
@@ -2503,7 +2502,6 @@ async function getOrCreateSession(convId: string): Promise<{ sessionId: string |
         .order('created_at', { ascending: false })
         .limit(1)
         .single()
-      console.log('[Session] query 2 done')
 
       const lastMsgAge = lastMsg
         ? (now.getTime() - new Date(lastMsg.created_at).getTime()) / (1000 * 60 * 60)
@@ -2513,7 +2511,6 @@ async function getOrCreateSession(convId: string): Promise<{ sessionId: string |
 
       if (!shouldClose) {
         // Fetch previous closed session summary for injection
-        console.log('[Session] query 3: getting prev session summary')
         const { data: prevSession } = await supabaseAdmin
           .from('sessions')
           .select('summary')
@@ -2522,7 +2519,6 @@ async function getOrCreateSession(convId: string): Promise<{ sessionId: string |
           .order('ended_at', { ascending: false })
           .limit(1)
           .single()
-        console.log('[Session] query 3 done, returning')
 
         return { sessionId: openSession.id, previousSummary: prevSession?.summary || null }
       }
@@ -2559,9 +2555,9 @@ async function getOrCreateSession(convId: string): Promise<{ sessionId: string |
 
   const timeout = new Promise<{ sessionId: string | null; previousSummary: string | null }>((resolve) =>
     setTimeout(() => {
-      console.warn('[Session] timed out after 5s, skipping session tracking')
+      console.warn('[Session] timed out after 10s, skipping session tracking')
       resolve({ sessionId: null, previousSummary: null })
-    }, 5000)
+    }, 10000)
   )
 
   return Promise.race([sessionPromise, timeout])
