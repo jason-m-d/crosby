@@ -44,6 +44,7 @@ export const maxDuration = 60
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, baseURL: process.env.ANTHROPIC_BASE_URL })
 
 export async function POST(req: NextRequest) {
+  console.log("[Chat] ANTHROPIC_BASE_URL =", JSON.stringify(process.env.ANTHROPIC_BASE_URL))
   const { message, conversation_id, project_id, active_artifact_id, model } = await req.json()
   const selectedModel = model || 'anthropic/claude-sonnet-4.6:exacto'
 
@@ -289,7 +290,7 @@ export async function POST(req: NextRequest) {
             console.error('[Chat] stream init error:', streamInitErr?.message)
             if (streamAttempt === 1) {
               currentMessages = chatMessages.slice(-5)
-              streamAttempt = 1
+              streamAttempt = 2
               continueLoop = true
               continue
             }
@@ -607,7 +608,7 @@ export async function POST(req: NextRequest) {
               console.log('[Chat] retrying with simplified context')
               currentMessages = chatMessages.slice(-5)
               toolCallCount = 0
-              streamAttempt = 1
+              streamAttempt = 2
               continueLoop = true
               continue
             }
@@ -628,7 +629,7 @@ export async function POST(req: NextRequest) {
             if (streamAttempt === 1) {
               currentMessages = chatMessages.slice(-5)
               toolCallCount = 0
-              streamAttempt = 1
+              streamAttempt = 2
               continueLoop = true
               continue
             }
