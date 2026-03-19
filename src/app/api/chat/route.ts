@@ -604,6 +604,7 @@ export async function POST(req: NextRequest) {
             const isTimeout = abortController.signal.aborted || iterErr?.name === 'AbortError'
             const iterErrDetail = JSON.stringify({ message: iterErr?.message, name: iterErr?.name, status: iterErr?.status, error: iterErr?.error })
             console.error('[Chat] stream iteration error (attempt', streamAttempt, '):', iterErrDetail)
+            await supabaseAdmin.from('notes').insert({ title: 'DEBUG iter error', content: iterErrDetail.slice(0, 2000) })
 
             if (streamAttempt === 1) {
               console.log('[Chat] retrying with simplified context')
