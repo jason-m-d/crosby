@@ -302,7 +302,6 @@ export async function POST(req: NextRequest) {
             const errDetail = JSON.stringify({ message: err?.message, status: err?.status, error: err?.error, body: err?.body })
             console.error('Stream-level error:', errDetail)
             // Write to DB so we can read it even when Vercel logs truncate
-            void supabaseAdmin.from('notes').insert({ title: 'DEBUG stream error', content: errDetail.slice(0, 500) })
             streamError = err
           })
 
@@ -603,7 +602,6 @@ export async function POST(req: NextRequest) {
             const isTimeout = abortController.signal.aborted || iterErr?.name === 'AbortError'
             const iterErrDetail = JSON.stringify({ message: iterErr?.message, name: iterErr?.name, status: iterErr?.status, error: iterErr?.error })
             console.error('[Chat] stream iteration error (attempt', streamAttempt, '):', iterErrDetail)
-            await supabaseAdmin.from('notes').insert({ title: 'DEBUG iter error', content: iterErrDetail.slice(0, 500) })
 
             if (streamAttempt === 1) {
               console.log('[Chat] retrying with simplified context')
@@ -627,7 +625,6 @@ export async function POST(req: NextRequest) {
           if (deferredStreamError) {
             const deferredDetail = JSON.stringify({ message: (deferredStreamError as any)?.message, status: (deferredStreamError as any)?.status, error: (deferredStreamError as any)?.error })
             console.error('[Chat] deferred stream error after iteration (attempt', streamAttempt, '):', deferredDetail)
-            await supabaseAdmin.from('notes').insert({ title: 'DEBUG deferred error', content: deferredDetail.slice(0, 500) })
             if (streamAttempt === 1) {
               currentMessages = chatMessages.slice(-5)
               toolCallCount = 0
@@ -683,7 +680,6 @@ export async function POST(req: NextRequest) {
         console.error('[Chat] error name:', error instanceof Error ? error.name : typeof error)
         console.error('[Chat] error msg:', error instanceof Error ? error.message : String(error))
         console.error('[Chat] error full:', errMsg)
-        await supabaseAdmin.from('notes').insert({ title: 'DEBUG outer error', content: errMsg.slice(0, 500) })
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Failed to generate response', debug: errMsg })}\n\n`))
         controller.close()
       }
