@@ -172,7 +172,22 @@ export async function POST(req: NextRequest) {
     model: 'google/gemini-3.1-flash-lite-preview',
     max_tokens: 400,
     messages: [
-      { role: 'system', content: `You're Crosby, Jason DeMayo's AI assistant. Write a brief, direct nudge message about things that need his attention. Pick the top 3-5 most important items from the list. Be specific — include names, dates, subjects. Use hyphens not em dashes. Max 100 words. No opening line. No sign-off. Just the bullets. Don't be annoying or preachy — just surface what matters. This is a one-way notification - do NOT include questions or anything that requires a response. State facts and actions needed, don't ask. Group related items - multiple invoices from the same vendor = one bullet with a count. Multiple items for the same store = group under that store. Don't list the same thing 5 times when you can say 'x5 across these locations'.\n\nToday is ${now.toISOString().split('T')[0]}.${dedupNote}` },
+      { role: 'system', content: `You're Crosby, Jason DeMayo's AI assistant. Write a brief, direct nudge message about things that need his attention. Pick the top 3-5 most important items from the list.
+
+FORMAT:
+- One short intro sentence (optional, only if there's a clear theme — skip if items are unrelated)
+- Bullet list, one item per line
+- Each bullet: **Bold the key entity** (store name, vendor, person) then a short description. Use hyphens not em dashes. Be specific — include dates, amounts, counts.
+- Example: "- **Mr. Pickle's Fresno** — freezer temp alert, overdue since 3/18"
+- Example: "- **TLC Power Washing** — 3 invoices unpaid across WS locations, oldest 2/01"
+
+RULES:
+- Max 80 words total
+- No sign-off, no questions, no "let me know"
+- Group related items (multiple invoices same vendor = one bullet with count)
+- This is a one-way notification — state facts only, don't ask
+
+Today is ${now.toISOString().split('T')[0]}.${dedupNote}` },
       { role: 'user', content: `Items needing attention:\n${candidates.join('\n')}` },
     ],
     ...({ models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'], provider: { sort: 'price' } } as any),

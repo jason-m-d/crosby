@@ -9,6 +9,7 @@ import { GreetingCard } from '@/components/greeting-card'
 import { StructuredQuestionCard } from '@/components/structured-question-card'
 import { QuickConfirmCard } from '@/components/quick-confirm-card'
 import { CronMessageGroup } from '@/components/cron-message-group'
+import { CronMessageCard, CronMessageType } from '@/components/cron-message-card'
 
 interface SurfacedItem {
   id: string
@@ -149,11 +150,11 @@ export function ChatMessages({ messages, streamingContent, loading, toolStatus, 
                 messages={cronBatch}
                 resolveType={resolveMessageType}
                 renderExpanded={(msg, idx) => (
-                  <MessageBlock
+                  <CronMessageCard
                     key={msg.id || idx}
                     message={msg}
+                    messageType={(resolveMessageType(msg) || 'bridge_status') as CronMessageType}
                     isLatest={idx === cronBatch.length - 1 && !streamingContent}
-                    onArtifactClick={onArtifactClick}
                     onSendMessage={onSendMessage}
                   />
                 )}
@@ -287,6 +288,18 @@ function MessageBlock({ message, isLatest, isStreaming, toolStatus, onArtifactCl
   const messageType = !isUser ? resolveMessageType(message) : null
   const typeConfig = messageType ? MESSAGE_TYPE_CONFIG[messageType] : null
   const isProactive = !!typeConfig
+
+  // Proactive (cron) messages get their own card component
+  if (isProactive && messageType) {
+    return (
+      <CronMessageCard
+        message={message}
+        messageType={messageType as CronMessageType}
+        isLatest={isLatest}
+        onSendMessage={onSendMessage}
+      />
+    )
+  }
 
   return (
     <div className={cn("py-5 group", isLatest && "animate-in-up", isUser && "flex flex-col items-end")}>

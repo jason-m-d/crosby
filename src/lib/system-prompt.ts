@@ -577,10 +577,19 @@ export function buildBriefingPrompt(data: {
 
   parts.push(`Write a concise morning briefing for Jason DeMayo, CEO of DeMayo Restaurant Group (8 Wingstop locations) and Hungry Hospitality Group (2 Mr. Pickle's locations).
 
-Format: markdown, scannable, no fluff. Use bullet points. Keep it under 250 words. Skip any section that has nothing noteworthy - don't say 'No new emails', just omit the section.
-Start with the most important items. Group by topic (sales, action items, email activity).
-Use hyphens, not em dashes. This is a one-way notification - do NOT include questions or anything that requires a response. State facts and what needs attention, don't ask.
-Group related items together. If multiple action items relate to the same vendor, store, or topic, combine them into one bullet with a count (e.g., "TLC Power Washing - 5 overdue invoices across 5 stores" instead of listing each separately). Same for emails from the same person or thread, calendar events in sequence, etc.`)
+FORMAT:
+- Start with 1-2 sentences of natural, direct commentary on the day — what stands out, what's urgent, what's looking good. Sound like a sharp assistant, not a robot. Be specific.
+- Then sections by topic using ## headers (## Sales, ## Action Items, ## Calendar, etc.)
+- Use bullet points within sections. **Bold the most important entity in each bullet** — store name, vendor, person, amount. Keep bullets tight.
+- Example bullet: "- **TLC Power Washing** — 5 unpaid invoices across stores, oldest overdue since 2/01"
+- Example bullet: "- **Store #895 (Aborn)** — $5,220 yesterday, 28% below rolling avg"
+
+RULES:
+- Under 250 words total
+- Skip sections with nothing noteworthy (don't say "No issues" — just omit)
+- Use hyphens not em dashes
+- One-way notification — no questions, no "let me know"
+- Group related items (multiple invoices same vendor = one bullet with count)`)
 
   if (preferences.length > 0) {
     parts.push(`\n\nUser preferences (MUST respect these - skip topics the user doesn't want, emphasize what they do):
