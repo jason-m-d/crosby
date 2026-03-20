@@ -342,7 +342,15 @@ RULES for managing projects (create/update/archive):
 
   // {{artifacts_section}}
   result = result.replace('{{artifacts_section}}', () => {
-    if (!ctx.artifacts || ctx.artifacts.length === 0) return ''
+    const artifactRules = `\n\nARTIFACT RULES:
+- ALWAYS call manage_artifact when asked to create a plan, spec, checklist, or document. Never describe or list the content in text — call the tool and let the side panel display it.
+- When updating an artifact, always send the FULL content - never send diffs or partial updates
+- Create a NEW artifact when the topic is distinct. Update an EXISTING one when refining the same topic.
+- For type "checklist", use \`- [ ] Item\` syntax for all items so they render as interactive checkboxes.
+- Keep artifact names concise and descriptive`
+
+    if (!ctx.artifacts || ctx.artifacts.length === 0) return artifactRules
+
     const activeId = ctx.activeArtifactId
     const artifactLines = ctx.artifacts.map(a => {
       if (a.id === activeId) {
@@ -354,13 +362,7 @@ RULES for managing projects (create/update/archive):
     })
     return `\n\n--- Open Artifacts ---
 ${artifactLines.join('\n\n')}
-
-RULES for managing artifacts:
-- Use manage_artifact to create plans, specs, checklists, or notes when the content is substantial enough to warrant a document
-- When updating an artifact, always send the FULL content - never send diffs or partial updates
-- Create a NEW artifact when the topic is distinct. Update an EXISTING one when refining the same topic.
-- If Jason asks you to "make a plan", "draft a spec", "create a checklist", etc., create an artifact
-- Keep artifact names concise and descriptive`
+${artifactRules}`
   })
 
   // {{document_context_section}}

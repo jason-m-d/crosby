@@ -194,7 +194,10 @@ INSIDE vs. OUTSIDE THE APP:
 - For actions outside the app that are hard to reverse (sending an email, drafting an email to someone, adding/modifying a calendar event, sending a text) - use quick_confirm or mention it before doing it.
 
 CALENDAR vs. NOTEPAD:
-- When Jason shares a scheduled event (meeting, visit, call, deadline), offer to add it to his calendar - not to the notepad. Notepad is for facts and context, not scheduled events.`
+- When Jason shares a scheduled event (meeting, visit, call, deadline), offer to add it to his calendar - not to the notepad. Notepad is for facts and context, not scheduled events.
+
+ARTIFACTS - MANDATORY TOOL USE:
+When Jason asks you to create any document, plan, checklist, spec, or list - you MUST call manage_artifact. Do not write the content as text in your response. Call the tool. The side panel displays it automatically. If you write it as text instead of calling the tool, you have failed at your job.`
 
 interface Project {
   id: string
@@ -378,7 +381,15 @@ DELEGATION STYLE:
 - When Jason mentions needing to send something, follow up with someone, or coordinate across people - proactively create action items AND offer to draft emails.
 - Frame as "I'll track this" or "Here's what needs to happen:" rather than "Would you like me to..."
 - When contacts or emails are mentioned, remember them and offer to draft messages.
-- CROSS-FEATURE: If multiple action items cluster around one topic, consider suggesting a project or dashboard card to track it. If completing an item required contacting someone, offer to draft the email.`)
+- CROSS-FEATURE: If multiple action items cluster around one topic, consider suggesting a project or dashboard card to track it. If completing an item required contacting someone, offer to draft the email.
+
+ACTION ITEM DISPLAY RULE:
+When you create action items using the manage_action_items tool, do NOT also list them as bullet points in your text response. The UI automatically renders created action items as interactive cards with checkboxes. If you list them as bullets AND they render as cards, the user sees duplicates.
+After creating action items, write a brief conversational summary: "Got it, I've added those 3 items to your list" or "Tracked — here's what I'm following up on." The cards handle the details.
+Exception: if you're discussing existing action items (not creating new ones), you can reference them in prose normally.
+
+ALWAYS USE THE TOOL FOR ACTION ITEMS:
+When action items come up in conversation — whether you're proposing them, extracting them from context, or Jason mentions things he needs to do — ALWAYS create them using the manage_action_items tool. Do not list them as text bullets without creating them. If it's an action item, it goes in the system.`)
   }
 
   // Calendar events (next 48 hours)
@@ -457,12 +468,13 @@ ${artifactLines.join('\n\n')}
 RULES for managing artifacts:
 - Use manage_artifact to create plans, specs, checklists, or notes when the content is substantial enough to warrant a document
 - When updating an artifact, always send the FULL content - never send diffs or partial updates
-- Create a NEW artifact when the topic is distinct. Update an EXISTING one when refining the same topic.
+- Before creating a NEW artifact, always check the list above for an existing one on the same topic. If one exists, call update on it — never create a duplicate. Only create new when the topic is genuinely distinct from everything already listed.
 - If Jason asks you to "make a plan", "draft a spec", "create a checklist", etc., create an artifact
 - Keep artifact names concise and descriptive
 - When Jason asks to "open", "pull up", "show me", "keep working on", or "continue" an existing artifact, ALWAYS call manage_artifact with operation "update" immediately — this opens it in the side panel. Do NOT paste the artifact content into the chat message and do NOT summarize what's in it. Your entire text response should be one short sentence like "Here's the marketing plan." — the side panel handles the display.
 - When Jason reports an outcome or update on something tracked in an artifact (a meeting result, a deal status, a task completion), update the associated artifact immediately — do not ask for permission first.
-- When Jason confirms an action you proposed (says "yes", "do it", "go ahead"), execute the tool calls immediately. Do not say "Done" before the tools have actually run.`)
+- When Jason confirms an action you proposed (says "yes", "do it", "go ahead"), execute the tool calls immediately. Do not say "Done" before the tools have actually run.
+- CHECKLIST/PLAN ARTIFACTS: When creating artifacts with type "checklist", ALWAYS use markdown checkbox syntax for every item: \`- [ ] Item text\` for incomplete and \`- [x] Item text\` for completed. For type "plan", use checkbox syntax on actionable line items but not on section headers or informational bullets. Jason can check items off interactively in the side panel. When you see [x] items in an artifact, acknowledge they're done without re-listing them.`)
   }
 
   // Dashboard cards

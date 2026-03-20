@@ -36,6 +36,7 @@ export function ArtifactPanel({
   const [showProjectPicker, setShowProjectPicker] = useState(false)
   const [savingProject, setSavingProject] = useState(false)
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const contentRef = useRef('')
 
   const active = artifacts.find(a => a.id === activeArtifactId)
 
@@ -44,6 +45,7 @@ export function ArtifactPanel({
     if (active) {
       setEditContent(active.content)
       setEditName(active.name)
+      contentRef.current = active.content
       setMode('view')
       setShowVersions(false)
     }
@@ -54,6 +56,7 @@ export function ArtifactPanel({
     if (active && mode === 'view') {
       setEditContent(active.content)
       setEditName(active.name)
+      contentRef.current = active.content
     }
   }, [active?.content, active?.name])
 
@@ -75,6 +78,7 @@ export function ArtifactPanel({
 
   function handleContentChange(newContent: string) {
     setEditContent(newContent)
+    contentRef.current = newContent
     if (active) debouncedSave(active.id, newContent, editName)
   }
 
@@ -298,7 +302,22 @@ export function ArtifactPanel({
               />
             ) : (
               <div className="px-3 py-2 text-[0.8125rem] leading-[1.7] text-foreground/85">
-                <FormattedContent content={active.content} />
+                <FormattedContent
+                  content={active.content}
+                  onCheckboxToggle={(lineIndex, checked) => {
+                    const lines = contentRef.current.split('\n')
+                    const line = lines[lineIndex]
+                    if (!line) return
+                    if (checked) {
+                      lines[lineIndex] = line.replace('[ ]', '[x]')
+                    } else {
+                      lines[lineIndex] = line.replace('[x]', '[ ]')
+                    }
+                    const newContent = lines.join('\n')
+                    contentRef.current = newContent
+                    handleContentChange(newContent)
+                  }}
+                />
               </div>
             )}
           </div>

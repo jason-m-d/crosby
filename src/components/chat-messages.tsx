@@ -6,6 +6,7 @@ import { Bell, Check, ChevronDown, Clock, Copy, FileText, FolderOpen, FolderPen,
 import Link from 'next/link'
 import { getSupabaseBrowser } from '@/lib/supabase-browser'
 import { GreetingCard } from '@/components/greeting-card'
+import { ActionItemCheckbox } from '@/components/action-item-checkbox'
 import { StructuredQuestionCard } from '@/components/structured-question-card'
 import { QuickConfirmCard } from '@/components/quick-confirm-card'
 import { CronMessageGroup } from '@/components/cron-message-group'
@@ -573,7 +574,7 @@ function MessageBlock({ message, isLatest, isStreaming, toolStatus, onArtifactCl
   )
 }
 
-export function FormattedContent({ content }: { content: string }) {
+export function FormattedContent({ content, onCheckboxToggle }: { content: string; onCheckboxToggle?: (lineIndex: number, checked: boolean) => void }) {
   const lines = content.split('\n')
   const elements: JSX.Element[] = []
   let inCodeBlock = false
@@ -669,6 +670,48 @@ export function FormattedContent({ content }: { content: string }) {
           {formatInline(line.slice(2))}
         </h1>
       )
+    } else if (/^[-*] \[[ x]\] /.test(line) || /^\d+\. \[[ x]\] /.test(line)) {
+      const isNumbered = /^\d+\. \[[ x]\] /.test(line)
+      const withoutPrefix = isNumbered ? line.replace(/^\d+\. /, '') : line.slice(2)
+      const checked = withoutPrefix.startsWith('[x] ')
+      const label = withoutPrefix.slice(4)
+      if (onCheckboxToggle) {
+        elements.push(
+          <div key={i} className="flex gap-2 pl-1 items-start py-0.5">
+            <button
+              onClick={() => onCheckboxToggle(i, !checked)}
+              className={cn(
+                "mt-[3px] size-3.5 shrink-0 rounded-[3px] border transition-all duration-150 flex items-center justify-center",
+                checked
+                  ? "border-border/60 bg-muted-foreground/20"
+                  : "border-border/60 hover:border-muted-foreground/60 active:scale-95"
+              )}
+              aria-checked={checked}
+              role="checkbox"
+            >
+              {checked && <Check className="size-2.5 text-muted-foreground" />}
+            </button>
+            <span className={cn(checked && "line-through text-muted-foreground/50")}>
+              {formatInline(label)}
+            </span>
+          </div>
+        )
+      } else {
+        // Read-only rendering (chat messages, etc.)
+        elements.push(
+          <div key={i} className="flex gap-2 pl-1 items-start py-0.5">
+            <span className={cn(
+              "mt-[3px] size-3.5 shrink-0 rounded-[3px] border border-border/60 flex items-center justify-center",
+              checked && "bg-muted-foreground/20"
+            )}>
+              {checked && <Check className="size-2.5 text-muted-foreground" />}
+            </span>
+            <span className={cn(checked && "line-through text-muted-foreground/50")}>
+              {formatInline(label)}
+            </span>
+          </div>
+        )
+      }
     } else if (line.startsWith('- ') || line.startsWith('* ')) {
       elements.push(
         <div key={i} className="flex gap-2 pl-1">
@@ -709,19 +752,24 @@ function ActionItemCard({ event }: { event: any }) {
 
   if (operation === 'list') return null
 
+  if (result.status === 'duplicate') {
+    return null // Claude handles this conversationally
+  }
+
+  // Create operations get an interactive checkbox
+  if (operation === 'create' && item?.id) {
+    return (
+      <ActionItemCardInteractive item={item} />
+    )
+  }
+
   const configs: Record<string, { icon: typeof Plus; label: string; color: string }> = {
-    create: { icon: Plus, label: 'Action item added', color: 'text-emerald-500' },
     complete: { icon: Check, label: 'Marked complete', color: 'text-blue-500' },
     update: { icon: RefreshCw, label: 'Updated', color: 'text-amber-500' },
     dismiss: { icon: X, label: 'Dismissed', color: 'text-muted-foreground' },
     snooze: { icon: Clock, label: 'Snoozed', color: 'text-blue-400' },
   }
   const config = configs[operation] || { icon: Plus, label: operation, color: 'text-muted-foreground' }
-
-  if (result.status === 'duplicate') {
-    return null // Claude handles this conversationally
-  }
-
   const Icon = config.icon
 
   return (
@@ -730,6 +778,29 @@ function ActionItemCard({ event }: { event: any }) {
       <span className="text-muted-foreground">{config.label}:</span>
       <span className="text-foreground/80 truncate">{item?.title || 'Unknown'}</span>
       {item?.priority === 'high' && (
+        <span className="text-[0.625rem] uppercase tracking-wider text-red-500/70 ml-auto shrink-0">high</span>
+      )}
+    </div>
+  )
+}
+
+function ActionItemCardInteractive({ item }: { item: any }) {
+  const [completed, setCompleted] = useState(item.status === 'completed')
+
+  return (
+    <div className="flex items-center gap-2 text-[0.75rem] border border-border px-3 py-2">
+      <ActionItemCheckbox
+        itemId={item.id}
+        initialStatus={item.status}
+        onCheckedChange={setCompleted}
+      />
+      <span className={cn(
+        "text-foreground/80 truncate flex-1",
+        completed && "line-through text-muted-foreground/50"
+      )}>
+        {item.title || 'Unknown'}
+      </span>
+      {item.priority === 'high' && (
         <span className="text-[0.625rem] uppercase tracking-wider text-red-500/70 ml-auto shrink-0">high</span>
       )}
     </div>

@@ -256,10 +256,36 @@ export async function POST(req: NextRequest) {
         while (deduped.length > 0 && deduped[0].role !== 'user') deduped.shift()
         while (deduped.length > 0 && deduped[deduped.length - 1].role !== 'user') deduped.pop()
 
-        const chatMessages: Anthropic.Messages.MessageParam[] = deduped.map((m: any) => ({
-          role: m.role as 'user' | 'assistant',
-          content: m.content,
-        }))
+        // Few-shot primer: inject a synthetic artifact tool call at the start of history.
+        // This shows the model it calls manage_artifact for document/checklist requests,
+        // overriding any conversational patterns baked in from long history.
+        const artifactFewShot: Anthropic.Messages.MessageParam[] = activeToolNames.includes('manage_artifact') ? [
+          { role: 'user' as const, content: 'make a quick checklist' },
+          {
+            role: 'assistant' as const,
+            content: [
+              {
+                type: 'tool_use' as const,
+                id: 'primer_artifact_1',
+                name: 'manage_artifact',
+                input: { operation: 'create', name: 'Checklist', type: 'checklist', content: '- [ ] Item 1\n- [ ] Item 2' },
+              },
+            ],
+          },
+          {
+            role: 'user' as const,
+            content: [{ type: 'tool_result' as const, tool_use_id: 'primer_artifact_1', content: '{"status":"created"}' }],
+          },
+          { role: 'assistant' as const, content: 'Done.' },
+        ] : []
+
+        const chatMessages: Anthropic.Messages.MessageParam[] = [
+          ...artifactFewShot,
+          ...deduped.map((m: any) => ({
+            role: m.role as 'user' | 'assistant',
+            content: m.content,
+          })),
+        ]
 
 
         // Keep the raw RAG query for request_additional_context fallback
