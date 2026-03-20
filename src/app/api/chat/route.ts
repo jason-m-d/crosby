@@ -58,6 +58,9 @@ export async function POST(req: NextRequest) {
       controller.enqueue(encoder.encode('data: {"type":"ping"}\n\n'))
 
       try {
+        const t0 = Date.now()
+        const elapsed = () => `+${Date.now() - t0}ms`
+
         // Create or get conversation
         let convId = conversation_id
         if (!convId) {
@@ -87,7 +90,7 @@ export async function POST(req: NextRequest) {
           .maybeSingle()
 
         // Load all messages after the summary pointer (or all messages if no summary exists)
-        console.log('[Chat] step 4: load history')
+        console.log(`[Chat] step 4: load history ${elapsed()}`)
         const historyQuery = supabaseAdmin
           .from('messages')
           .select('role, content, context_domains')
@@ -106,7 +109,7 @@ export async function POST(req: NextRequest) {
 
         // Route the message via AI router (with classifyIntent fallback built in).
         // Check the prefetch cache first.
-        console.log('[Chat] step 5: routing message')
+        console.log(`[Chat] step 5: routing message ${elapsed()}`)
         const recentMessages = ((history || []).slice(-3)).map((m: any) => ({
           role: m.role as 'user' | 'assistant',
           content: m.content || '',
@@ -144,7 +147,7 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        console.log(`[Router] result: intent="${routerResult.intent.slice(0, 60)}" | data=[${routerResult.data_needed.join(', ')}] | tools=${routerResult.tools_needed.length}${routerResult.fromFallback ? ' (fallback)' : ''}`)
+        console.log(`[Chat] step 5 done: router ${elapsed()} | intent="${routerResult.intent.slice(0, 60)}" | data=[${routerResult.data_needed.join(', ')}]${routerResult.fromFallback ? ' (fallback)' : ''}`)
 
         // Resolve specialists for this message
         const activeSpecialists = resolveSpecialists(routerResult)
@@ -182,7 +185,7 @@ export async function POST(req: NextRequest) {
             : Promise.resolve({ data: null }),
         ])
 
-        console.log('[Chat] data loaded')
+        console.log(`[Chat] step 6 done: data loaded ${elapsed()}`)
 
         // Determine active artifact — check if named in the message
         const artifacts = loadedData.artifacts || []
@@ -275,7 +278,7 @@ export async function POST(req: NextRequest) {
           const abortController = new AbortController()
           const timeoutId = setTimeout(() => abortController.abort(), 30000)
 
-          console.log('[Chat] calling OpenRouter, model:', selectedModel, 'tools:', activeTools.length, 'msgs:', currentMessages.length, 'attempt:', streamAttempt, 'system_len:', systemPrompt.length)
+          console.log(`[Chat] step 7: calling OpenRouter ${elapsed()} | model: ${selectedModel} | tools: ${activeTools.length} | msgs: ${currentMessages.length} | system_len: ${systemPrompt.length}`)
 
           let response: ReturnType<typeof anthropic.messages.stream>
           try {
@@ -311,12 +314,17 @@ export async function POST(req: NextRequest) {
           const contentBlocks: Anthropic.Messages.ContentBlockParam[] = []
           let currentTextBlock = ''
           let currentToolUse: { id: string; name: string; inputJson: string } | null = null
+          let firstTokenLogged = false
 
           try {
             for await (const event of response) {
               if (abortController.signal.aborted) {
                 console.warn('[Chat] stream aborted (30s timeout)')
                 break
+              }
+              if (!firstTokenLogged && (event.type === 'content_block_start' || event.type === 'content_block_delta')) {
+                console.log(`[Chat] step 8: first token ${elapsed()}`)
+                firstTokenLogged = true
               }
               if (event.type === 'content_block_start') {
                 if (event.content_block.type === 'text') {
