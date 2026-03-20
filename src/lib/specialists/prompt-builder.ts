@@ -242,6 +242,9 @@ NATURAL LANGUAGE MATCHING - match by description, not ID:
 - "not my problem" / "never mind" / "drop it" / "forget that one" -> dismiss
 - "make it high priority" / "this is urgent" -> update priority
 
+LISTING ITEMS:
+- When Jason asks to see his action items (e.g. "what are my action items?", "show me my list", "what's on my plate?"), call manage_action_items with operation: "list". Do NOT just read the items from context and format them as text — the tool call is required to render them as interactive cards in the UI.
+
 COMPLETING/UPDATING/DISMISSING/SNOOZING:
 - When conversation indicates something is done, mark it complete directly.
 - When new info changes an item (new deadline, changed details), update directly.
