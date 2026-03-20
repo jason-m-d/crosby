@@ -47,6 +47,8 @@ export const coreSpecialist: SpecialistDefinition = {
 
 {{preferences_section}}
 
+{{artifacts_section}}
+
 {{projects_section}}
 
 {{project_system_prompt_section}}
