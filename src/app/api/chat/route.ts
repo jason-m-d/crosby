@@ -3,7 +3,6 @@ import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '@/lib/supabase'
 import { classifyIntent, getToolsForDomains } from '@/lib/intent-classifier'
 import { routeMessage } from '@/lib/router'
-import { prefetchCache } from '@/app/api/chat/prefetch/route'
 import { searchEmails, createDraft } from '@/lib/gmail'
 import { spawnBackgroundJob } from '@/lib/background-jobs'
 import { ALL_TOOLS_MAP, REQUEST_ADDITIONAL_CONTEXT_TOOL } from '@/lib/chat/tools/definitions'
@@ -103,49 +102,54 @@ export async function POST(req: NextRequest) {
 
         const { data: history } = await historyQuery
 
-        // Always load all projects first — router needs them for project matching, cheap query
-        const allProjectsResult = await supabaseAdmin.from('projects').select('id, name, description').order('name')
-        const allProjects: { id: string; name: string; description: string | null }[] = allProjectsResult.data || []
-
-        // Route the message via AI router (with classifyIntent fallback built in).
-        // Check the prefetch cache first.
         console.log(`[Chat] step 5: routing message ${elapsed()}`)
         const recentMessages = ((history || []).slice(-3)).map((m: any) => ({
           role: m.role as 'user' | 'assistant',
           content: m.content || '',
         }))
-        let routerResult: Awaited<ReturnType<typeof routeMessage>>
-        const PREFETCH_TTL_MS = 10_000
-        const prefetchHit = prefetchCache.get(message) ||
-          (() => {
-            for (const [key, entry] of prefetchCache) {
-              if (message.startsWith(key) && Date.now() - entry.timestamp < PREFETCH_TTL_MS) return entry
-            }
-            return null
-          })()
 
-        if (prefetchHit && Date.now() - prefetchHit.timestamp < PREFETCH_TTL_MS) {
-          console.log(`[Chat] prefetch cache hit — skipping router call`)
-          routerResult = prefetchHit.routerResult
-        } else {
-          try {
-            routerResult = await routeMessage(message, recentMessages, allProjects)
-          } catch (routerErr: any) {
-            console.error('[Chat] routeMessage threw unexpectedly, falling back:', routerErr?.message)
-            const lastAssistantMsg = (history || []).slice().reverse().find((m: any) => m.role === 'assistant')
-            const recentDomains = lastAssistantMsg?.context_domains as string[] | null
-            const fallbackDomains = classifyIntent(message, recentDomains)
-            routerResult = {
-              intent: message.slice(0, 100),
-              data_needed: Array.from(fallbackDomains),
-              tools_needed: getToolsForDomains(fallbackDomains),
-              rag_query: message,
-              complexity: 'medium',
-              relevant_projects: [],
-              fromFallback: true,
+        // Fire router + always-on data blocks + projects in parallel.
+        // Always-on blocks don't depend on routing — loading them now saves ~0.7-0.9s.
+        const ALWAYS_ON_BLOCKS = new Set(['action_items_critical', 'watches', 'training', 'artifacts', 'projects'])
+
+        const [routerResult, earlyData, allProjectsResult, projectResult] = await Promise.all([
+          // Router call
+          (async () => {
+            try {
+              return await routeMessage(message, recentMessages, [])
+            } catch (routerErr: any) {
+              console.error('[Chat] routeMessage threw unexpectedly, falling back:', routerErr?.message)
+              const lastAssistantMsg = (history || []).slice().reverse().find((m: any) => m.role === 'assistant')
+              const recentDomains = lastAssistantMsg?.context_domains as string[] | null
+              const fallbackDomains = classifyIntent(message, recentDomains)
+              return {
+                intent: message.slice(0, 100),
+                data_needed: Array.from(fallbackDomains),
+                tools_needed: getToolsForDomains(fallbackDomains),
+                rag_query: message,
+                complexity: 'medium' as const,
+                relevant_projects: [],
+                fromFallback: true,
+              }
             }
-          }
-        }
+          })(),
+          // Always-on data blocks — no router result needed
+          loadDataBlocks({
+            message,
+            ragQuery: message,
+            dataNeeded: ALWAYS_ON_BLOCKS,
+            project_id,
+            conversation_id: convId,
+          }),
+          // Projects — needed for router project matching and specialist resolution
+          supabaseAdmin.from('projects').select('id, name, description').order('name'),
+          // Project system prompt (if viewing a project)
+          project_id
+            ? supabaseAdmin.from('projects').select('system_prompt').eq('id', project_id).single()
+            : Promise.resolve({ data: null }),
+        ]) as any
+
+        const allProjects: { id: string; name: string; description: string | null }[] = allProjectsResult.data || []
 
         console.log(`[Chat] step 5 done: router ${elapsed()} | intent="${routerResult.intent.slice(0, 60)}" | data=[${routerResult.data_needed.join(', ')}]${routerResult.fromFallback ? ' (fallback)' : ''}`)
 
@@ -157,33 +161,35 @@ export async function POST(req: NextRequest) {
         const relevantProjectIds: string[] = routerResult.relevant_projects.length > 0
           ? allProjects
               .filter(p => routerResult.relevant_projects.some(
-                name => p.name.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(p.name.toLowerCase())
+                (name: string) => p.name.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(p.name.toLowerCase())
               ))
               .map(p => p.id)
           : []
 
-        // Build the data needed set from active specialists (union of all their dataNeeded)
-        // Plus anything the router explicitly requested (handles edge cases and fallback path)
+        // Build full data needed set from specialists + router, minus already-loaded always-on blocks
         const specialistDataNeeded = new Set<string>()
         for (const s of activeSpecialists) {
-          for (const block of s.dataNeeded) specialistDataNeeded.add(block)
+          for (const block of s.dataNeeded) {
+            if (!ALWAYS_ON_BLOCKS.has(block)) specialistDataNeeded.add(block)
+          }
         }
-        for (const block of routerResult.data_needed) specialistDataNeeded.add(block)
+        for (const block of routerResult.data_needed) {
+          if (!ALWAYS_ON_BLOCKS.has(block)) specialistDataNeeded.add(block)
+        }
 
-        // Load project system prompt in parallel with data (needed for prompt builder)
-        const [loadedData, projectResult] = await Promise.all([
-          loadDataBlocks({
-            message,
-            ragQuery: routerResult.rag_query,
-            dataNeeded: specialistDataNeeded,
-            relevantProjectIds,
-            project_id,
-            conversation_id: convId,
-          }),
-          project_id
-            ? supabaseAdmin.from('projects').select('system_prompt').eq('id', project_id).single()
-            : Promise.resolve({ data: null }),
-        ])
+        // Load router-specific data blocks, then merge with already-loaded always-on data
+        const routerData = specialistDataNeeded.size > 0
+          ? await loadDataBlocks({
+              message,
+              ragQuery: routerResult.rag_query,
+              dataNeeded: specialistDataNeeded,
+              relevantProjectIds,
+              project_id,
+              conversation_id: convId,
+            })
+          : {}
+
+        const loadedData = { ...earlyData, ...routerData }
 
         console.log(`[Chat] step 6 done: data loaded ${elapsed()}`)
 

@@ -16,8 +16,8 @@ import type { RouterResult } from '@/lib/router'
 export const maxDuration = 10
 
 // ---------------------------------------------------------------------------
-// Prefetch result cache — shared across requests in the same server process.
-// Key: partial_message. TTL: 10s.
+// Prefetch result cache — in-process cache for deduplicating rapid prefetch
+// calls for the same partial message within the same serverless instance.
 // ---------------------------------------------------------------------------
 interface CacheEntry {
   result: PrefetchResult
@@ -25,8 +25,7 @@ interface CacheEntry {
   timestamp: number
 }
 
-// Exported so route.ts can import and check it
-export const prefetchCache = new Map<string, CacheEntry>()
+const prefetchCache = new Map<string, CacheEntry>()
 const PREFETCH_TTL_MS = 10_000
 
 function evictStale() {
