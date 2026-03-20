@@ -17,6 +17,14 @@
 - Anthropic Claude API for the AI chat (routed through OpenRouter via ANTHROPIC_BASE_URL)
 - OpenAI text-embedding-3-small via OpenRouter for embeddings (RAG) — see `src/lib/embeddings.ts`
 
+## UI Design
+**Before designing or building any UI**, read `STYLE-GUIDE.md` in the project root. It defines the color system, typography, spacing, component patterns, and visual personality for Crosby. All new UI must follow it. Key rules:
+- Use semantic color tokens (`bg-background`, `text-muted-foreground`, etc.) — never hardcode hex/rgb
+- Use the `cn()` utility for conditional classes
+- Use shadcn/ui components from `src/components/ui/` — don't reinvent them
+- Use Lucide React for all icons
+- Dark, minimal, utilitarian aesthetic — no gradients, no glassmorphism, no decorative elements
+
 ## AI Routing (OpenRouter)
 All AI calls go through OpenRouter (`ANTHROPIC_BASE_URL`). Do not call Anthropic directly.
 
