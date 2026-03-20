@@ -1,5 +1,6 @@
 import { supabaseAdmin } from './supabase'
 import { openrouterClient } from './openrouter'
+import { BACKGROUND_LITE_MODELS, buildMetadata } from './openrouter-models'
 
 // Jason's emails - filter out self-sent emails
 const JASON_EMAILS = ['jason@demayorestaurantgroup.com', 'jason@hungryhospitality.com', 'jasondemayo@gmail.com', 'jason@hungry.llc']
@@ -177,7 +178,7 @@ export async function checkWatchesAgainstEmails(
 
     try {
       const response = await openrouterClient.chat.completions.create({
-        model: 'google/gemini-3.1-flash-lite-preview',
+        model: BACKGROUND_LITE_MODELS.primary,
         max_tokens: 1024,
         messages: [
           {
@@ -189,9 +190,10 @@ export async function checkWatchesAgainstEmails(
             content: `WATCHES:\n${watchDescriptions}\n\nEMAILS:\n${emailDescriptions}\n\nReturn matches as JSON.`,
           },
         ],
-        models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'],
-        provider: { sort: 'price' },
+        models: [BACKGROUND_LITE_MODELS.primary, ...BACKGROUND_LITE_MODELS.fallbacks],
+        provider: { ...BACKGROUND_LITE_MODELS.provider, require_parameters: true },
         plugins: [{ id: 'response-healing' }],
+        metadata: buildMetadata({ call_type: 'watch_check' }),
         response_format: {
           type: 'json_schema',
           json_schema: {

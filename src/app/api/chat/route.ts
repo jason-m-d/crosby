@@ -41,6 +41,7 @@ import { buildSpecialistPrompt } from '@/lib/specialists/prompt-builder'
 import type { SpecialistDefinition } from '@/lib/specialists/types'
 import { logChatMessage } from '@/lib/activity-log'
 import { getPrefetchedRouterResult } from '@/app/api/chat/prefetch/route'
+import { CHAT_MODELS, buildMetadata } from '@/lib/openrouter-models'
 
 export const maxDuration = 60
 
@@ -48,7 +49,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, baseURL
 
 export async function POST(req: NextRequest) {
   const { message, conversation_id, project_id, active_artifact_id, model, prefetch_message } = await req.json()
-  const selectedModel = model || 'anthropic/claude-sonnet-4.6:exacto'
+  const selectedModel = model || CHAT_MODELS.primary
 
   const encoder = new TextEncoder()
   let fullResponse = ''
@@ -235,7 +236,7 @@ export async function POST(req: NextRequest) {
         })
 
         console.log('[Chat] building system prompt')
-        const systemPrompt = buildSpecialistPrompt(activeSpecialists, loadedData, {
+        let systemPrompt = buildSpecialistPrompt(activeSpecialists, loadedData, {
           previousSessionSummary: latestSummary?.summary_text || null,
           currentTime: pacificTime,
           relevantProjects: routerResult.relevant_projects.length > 0 ? routerResult.relevant_projects : undefined,
@@ -243,6 +244,12 @@ export async function POST(req: NextRequest) {
           activeArtifactId: effectiveActiveArtifactId,
           trainingContext: loadedData.training,
         })
+
+        // If the router flagged web search as needed, inject a strong directive so
+        // the model calls the tool instead of answering from training data.
+        if (routerResult?.tools_needed?.includes('search_web')) {
+          systemPrompt += '\n\nIMPORTANT: This message requires current real-world information. You MUST call the search_web tool before answering. Do not answer from memory or training data — search first, then respond based on the results.'
+        }
 
         // Use all unsummarized history — the summarization cron keeps this window manageable
         const trimmedHistory = history || []
@@ -359,7 +366,7 @@ export async function POST(req: NextRequest) {
               system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }] as any,
               messages: currentMessages,
               tools: toolCallCount >= 8 ? [] : activeTools,
-              ...({ extra_body: { models: ['anthropic/claude-sonnet-4.6:exacto', 'google/gemini-3.1-pro-preview'], provider: { sort: 'latency' } } } as any),
+              ...({ extra_body: { models: [CHAT_MODELS.primary, ...CHAT_MODELS.fallbacks], provider: CHAT_MODELS.provider, metadata: buildMetadata({ call_type: 'main_chat', conversation_id: convId }) } } as any),
             })
           } catch (streamInitErr: any) {
             clearTimeout(timeoutId)

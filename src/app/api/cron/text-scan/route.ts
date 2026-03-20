@@ -2,21 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { openrouterClient } from '@/lib/openrouter'
 import { logCronJob } from '@/lib/activity-log'
+import { BACKGROUND_LITE_MODELS, buildMetadata } from '@/lib/openrouter-models'
 
 export const maxDuration = 60
 
-const BACKGROUND_MODEL = 'google/gemini-3.1-flash-lite-preview'
-const BACKGROUND_FALLBACK = 'google/gemini-3-flash-preview'
 const BATCH_SIZE = 20
 
 function jsonBody(schema: Record<string, unknown>) {
   return {
-    model: BACKGROUND_MODEL,
+    model: BACKGROUND_LITE_MODELS.primary,
     extra_body: {
-      models: [BACKGROUND_MODEL, BACKGROUND_FALLBACK],
-      provider: { sort: 'price' },
+      models: [BACKGROUND_LITE_MODELS.primary, ...BACKGROUND_LITE_MODELS.fallbacks],
+      provider: { ...BACKGROUND_LITE_MODELS.provider, require_parameters: true },
       plugins: [{ id: 'response-healing' }],
       response_format: { type: 'json_schema', json_schema: { name: 'response', strict: true, schema } },
+      metadata: buildMetadata({ call_type: 'cron_text_scan' }),
     },
   }
 }

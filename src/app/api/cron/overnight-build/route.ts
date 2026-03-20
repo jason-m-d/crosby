@@ -21,6 +21,7 @@ import { getMainConversation } from '@/lib/proactive'
 import { spawnBackgroundJob, getDailyAutoTriggerCount, logAutoTrigger } from '@/lib/background-jobs'
 import { openrouterClient } from '@/lib/openrouter'
 import { logCronJob } from '@/lib/activity-log'
+import { BACKGROUND_LITE_MODELS, buildMetadata } from '@/lib/openrouter-models'
 
 export const maxDuration = 60
 
@@ -115,7 +116,7 @@ export async function POST(req: NextRequest) {
 
   // Analyze for opportunities
   const response = await openrouterClient.chat.completions.create({
-    model: 'google/gemini-3.1-flash-lite-preview',
+    model: BACKGROUND_LITE_MODELS.primary,
     max_tokens: 1200,
     messages: [
       { role: 'system', content: `You are analyzing conversation transcripts to find opportunities to proactively build something useful for Jason DeMayo (CEO of DeMayo Restaurant Group - 8 Wingstop, 2 Mr. Pickle's).
@@ -144,10 +145,11 @@ Return {"opportunities": []} if nothing actionable found.` },
       { role: 'user', content: `Recent conversations (last 48h):\n\n${transcript}` },
     ],
     ...({
-      models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'],
-      provider: { sort: 'price' },
+      models: [BACKGROUND_LITE_MODELS.primary, ...BACKGROUND_LITE_MODELS.fallbacks],
+      provider: { ...BACKGROUND_LITE_MODELS.provider, require_parameters: true },
       plugins: [{ id: 'response-healing' }],
       response_format: { type: 'json_schema', json_schema: { name: 'response', strict: true, schema: ANALYSIS_SCHEMA } },
+      metadata: buildMetadata({ call_type: 'cron_overnight_build' }),
     } as any),
   } as any)
 

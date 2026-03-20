@@ -12,6 +12,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { parseJSON } from './memory-extraction'
 import { getMainConversation } from '@/lib/proactive'
 import { spawnBackgroundJob } from '@/lib/background-jobs'
+import { BACKGROUND_LITE_MODELS, buildMetadata } from '@/lib/openrouter-models'
 
 const client = () => new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, baseURL: process.env.ANTHROPIC_BASE_URL })
 
@@ -20,16 +21,17 @@ const EXTRACTION_WINDOW = 20 // look at last N messages
 async function llmJSON(system: string, content: string, schema: any, maxTokens = 400): Promise<any> {
   const c = client()
   const response = await c.messages.create({
-    model: 'google/gemini-3.1-flash-lite-preview',
+    model: BACKGROUND_LITE_MODELS.primary,
     max_tokens: maxTokens,
     system,
     messages: [{ role: 'user', content }],
     ...({
       extra_body: {
-        models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'],
-        provider: { sort: 'price' },
+        models: [BACKGROUND_LITE_MODELS.primary, ...BACKGROUND_LITE_MODELS.fallbacks],
+        provider: { ...BACKGROUND_LITE_MODELS.provider, require_parameters: true },
         plugins: [{ id: 'response-healing' }],
         response_format: { type: 'json_schema', json_schema: { name: 'response', strict: true, schema } },
+        metadata: buildMetadata({ call_type: 'session_extraction' }),
       },
     } as any),
   })
@@ -398,11 +400,11 @@ async function detectAndTrackProcesses(convId: string, transcript: string): Prom
   // First get a quick summary so we can pass it to the detector
   const c = client()
   const summaryResp = await c.messages.create({
-    model: 'google/gemini-3.1-flash-lite-preview',
+    model: BACKGROUND_LITE_MODELS.primary,
     max_tokens: 300,
     system: `Summarize this conversation in 2-3 sentences focusing on any business processes or workflows discussed.`,
     messages: [{ role: 'user', content: transcript.slice(0, 3000) }],
-    ...({ extra_body: { models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'], provider: { sort: 'price' } } } as any),
+    ...({ extra_body: { models: [BACKGROUND_LITE_MODELS.primary, ...BACKGROUND_LITE_MODELS.fallbacks], provider: BACKGROUND_LITE_MODELS.provider, metadata: buildMetadata({ call_type: 'session_extraction' }) } } as any),
   })
   const summary = summaryResp.content[0].type === 'text' ? summaryResp.content[0].text : ''
 

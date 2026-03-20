@@ -9,38 +9,24 @@ import { sendPushToAll } from '@/lib/push'
 import { spawnBackgroundJob, isAutoTriggerRateLimited, getDailyAutoTriggerCount, logAutoTrigger } from '@/lib/background-jobs'
 import { openrouterClient } from '@/lib/openrouter'
 import { checkWatchesAgainstEmails, buildWatchMessage, createAutoWatch } from '@/lib/watches'
+import { BACKGROUND_LITE_MODELS, buildMetadata } from '@/lib/openrouter-models'
 
 // Anthropic client used only for Claude models (main chat, etc.)
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, baseURL: process.env.ANTHROPIC_BASE_URL })
 
-// Background Google model calls go through openrouterClient (OpenAI-compatible)
-// to avoid the Anthropic SDK header that forces routing to Anthropic providers.
-const BACKGROUND_MODEL = 'google/gemini-2.0-flash-001'
-const BACKGROUND_FALLBACK = 'google/gemini-flash-1.5'
-
 // extra_body for openrouterClient calls (passed as request_options body extras)
 function jsonBody(schema: Record<string, unknown>) {
   return {
-    models: [BACKGROUND_MODEL, BACKGROUND_FALLBACK],
-    provider: { sort: 'price' },
+    models: [BACKGROUND_LITE_MODELS.primary, ...BACKGROUND_LITE_MODELS.fallbacks],
+    provider: { ...BACKGROUND_LITE_MODELS.provider, require_parameters: true },
     plugins: [{ id: 'response-healing' }],
     response_format: { type: 'json_schema', json_schema: { name: 'response', strict: true, schema } },
+    metadata: buildMetadata({ call_type: 'cron_email_scan' }),
   }
 }
 
-// Keep BACKGROUND_EXTRA_BODY for the Anthropic-SDK alert call (uses Claude-compatible path)
-const BACKGROUND_EXTRA_BODY = { extra_body: { models: [BACKGROUND_MODEL, BACKGROUND_FALLBACK], provider: { sort: 'price' } } }
-
-// Legacy helper kept for the alert call which still uses the Anthropic client
-function jsonExtraBody(schema: Record<string, unknown>) {
-  return {
-    extra_body: {
-      ...BACKGROUND_EXTRA_BODY.extra_body,
-      plugins: [{ id: 'response-healing' }],
-      response_format: { type: 'json_schema', json_schema: { name: 'response', strict: true, schema } },
-    },
-  }
-}
+// For the Anthropic-SDK alert call
+const BACKGROUND_EXTRA_BODY = { extra_body: { models: [BACKGROUND_LITE_MODELS.primary, ...BACKGROUND_LITE_MODELS.fallbacks], provider: BACKGROUND_LITE_MODELS.provider, metadata: buildMetadata({ call_type: 'cron_email_scan' }) } }
 
 const WINGSTOP_STORES = ['326', '451', '895', '1870', '2067', '2428', '2262', '2289']
 
@@ -318,7 +304,7 @@ export async function POST(req: NextRequest) {
             : systemPrompt
 
           const response = await openrouterClient.chat.completions.create({
-            model: 'google/gemini-3.1-flash-lite-preview',
+            model: BACKGROUND_LITE_MODELS.primary,
             max_tokens: 1024,
             messages: [
               { role: 'system', content: fullSystemPrompt },
@@ -702,7 +688,7 @@ async function maybeGenerateAlert(newActionItemCount: number) {
 
   // Generate a short alert via Claude
   const response = await anthropic.messages.create({
-    model: 'google/gemini-3.1-flash-lite-preview',
+    model: BACKGROUND_LITE_MODELS.primary,
     max_tokens: 256,
     system: `Write a short alert (2-3 sentences) for Jason DeMayo. Be direct and specific. Use markdown bold (**text**) to highlight the most important entity — store name, vendor, amount, or person. Use hyphens not em dashes. This is a one-way notification — state what needs attention and why it's urgent, no questions. If action is needed, state what it is. Group multiple stores/vendors into a count.${preferences.length > 0 ? `\n\nUser preferences:\n${preferences.map((p: string) => `- ${p}`).join('\n')}` : ''}`,
     messages: [{ role: 'user', content: `Alert items:\n${alertWorthy.map(a => `- ${a}`).join('\n')}` }],
@@ -883,7 +869,7 @@ async function parseWingstopSales(email: any) {
     }
 
     const response = await openrouterClient.chat.completions.create({
-      model: BACKGROUND_MODEL,
+      model: BACKGROUND_LITE_MODELS.primary,
       max_tokens: 1024,
       messages: [
         {
@@ -956,7 +942,7 @@ async function parseMrPicklesSales(email: any) {
     }
 
     const response = await openrouterClient.chat.completions.create({
-      model: BACKGROUND_MODEL,
+      model: BACKGROUND_LITE_MODELS.primary,
       max_tokens: 1024,
       messages: [
         {

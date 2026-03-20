@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase'
 import { openrouterClient } from '@/lib/openrouter'
+import { BACKGROUND_LITE_MODELS, buildMetadata } from '@/lib/openrouter-models'
 
 export function parseJSON(text: string) {
   let cleaned = text.trim()
@@ -75,7 +76,7 @@ export async function extractMemories(conversationId: string, userMessage: strin
     }
 
     const response = await openrouterClient.chat.completions.create({
-      model: 'google/gemini-3.1-flash-lite-preview',
+      model: BACKGROUND_LITE_MODELS.primary,
       max_tokens: 1024,
       messages: [
         { role: 'system', content: `You manage a memory system for Jason DeMayo (also goes by "Jerry"). Extract genuinely NEW information from this conversation turn.
@@ -106,10 +107,11 @@ Return raw JSON only:
         { role: 'user', content: `User said: ${userMessage}\n\nAssistant replied: ${assistantResponse}` },
       ],
       ...({
-        models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'],
-        provider: { sort: 'price' },
+        models: [BACKGROUND_LITE_MODELS.primary, ...BACKGROUND_LITE_MODELS.fallbacks],
+        provider: { ...BACKGROUND_LITE_MODELS.provider, require_parameters: true },
         plugins: [{ id: 'response-healing' }],
         response_format: { type: 'json_schema', json_schema: { name: 'response', strict: true, schema: memorySchema } },
+        metadata: buildMetadata({ call_type: 'memory_extraction' }),
       } as any),
     } as any)
 

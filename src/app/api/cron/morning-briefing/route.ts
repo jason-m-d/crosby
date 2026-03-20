@@ -5,6 +5,7 @@ import { getMainConversation, insertProactiveMessage, getUserPreferences } from 
 import { sendPushToAll } from '@/lib/push'
 import { openrouterClient } from '@/lib/openrouter'
 import { logCronJob } from '@/lib/activity-log'
+import { BACKGROUND_LITE_MODELS, buildMetadata } from '@/lib/openrouter-models'
 
 export async function POST(req: NextRequest) {
   const cronSecret = req.headers.get('x-cron-secret') || req.headers.get('authorization')
@@ -118,13 +119,13 @@ export async function POST(req: NextRequest) {
 
     // Generate briefing via Gemini
     const response = await openrouterClient.chat.completions.create({
-      model: 'google/gemini-3.1-flash-lite-preview',
+      model: BACKGROUND_LITE_MODELS.primary,
       max_tokens: 1024,
       messages: [
         { role: 'system', content: fullPrompt },
         { role: 'user', content: 'Generate the morning briefing.' },
       ],
-      ...({ models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'], provider: { sort: 'price' } } as any),
+      ...({ models: [BACKGROUND_LITE_MODELS.primary, ...BACKGROUND_LITE_MODELS.fallbacks], provider: BACKGROUND_LITE_MODELS.provider, metadata: buildMetadata({ call_type: 'cron_morning_briefing' }) } as any),
     } as any)
 
     const briefingText = response.choices[0]?.message?.content || ''

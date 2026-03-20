@@ -1,8 +1,9 @@
 import { openrouterClient } from './openrouter'
+import { EMBEDDINGS_MODEL } from './openrouter-models'
 
 export async function generateEmbedding(text: string): Promise<number[]> {
   const response = await openrouterClient.embeddings.create({
-    model: 'openai/text-embedding-3-small',
+    model: EMBEDDINGS_MODEL,
     input: text,
     dimensions: 1024,
   })
@@ -15,7 +16,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 
 export async function generateQueryEmbedding(text: string): Promise<number[]> {
   const response = await openrouterClient.embeddings.create({
-    model: 'openai/text-embedding-3-small',
+    model: EMBEDDINGS_MODEL,
     input: text,
     dimensions: 1024,
   })

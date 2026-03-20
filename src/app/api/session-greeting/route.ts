@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getUserPreferences } from '@/lib/proactive'
 import { openrouterClient } from '@/lib/openrouter'
+import { BACKGROUND_LITE_MODELS, buildMetadata } from '@/lib/openrouter-models'
 
 type SessionType = 'morning' | 'midday' | 'afternoon' | 'evening' | 'weekend' | 'continuation'
 
@@ -491,10 +492,10 @@ FORMATTING (critical):
 
     // Call Gemini via openrouterClient
     const response = await openrouterClient.chat.completions.create({
-      model: 'google/gemini-3.1-flash-lite-preview',
+      model: BACKGROUND_LITE_MODELS.primary,
       max_tokens: 500,
       messages: [{ role: 'user', content: prompt }],
-      ...({ models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'], provider: { sort: 'price' } } as any),
+      ...({ models: [BACKGROUND_LITE_MODELS.primary, ...BACKGROUND_LITE_MODELS.fallbacks], provider: BACKGROUND_LITE_MODELS.provider, metadata: buildMetadata({ call_type: 'session_greeting' }) } as any),
     } as any)
 
     const greetingText = response.choices[0]?.message?.content || ''

@@ -9,6 +9,7 @@
 import { openrouterClient } from '@/lib/openrouter'
 import { classifyIntent, getToolsForDomains } from '@/lib/intent-classifier'
 import { logRouterDecision } from '@/lib/activity-log'
+import { BACKGROUND_LITE_MODELS, buildMetadata } from '@/lib/openrouter-models'
 
 export interface RouterResult {
   intent: string
@@ -71,7 +72,9 @@ const ROUTER_SCHEMA = {
   additionalProperties: false,
 }
 
-const ROUTER_SYSTEM_PROMPT = `You are a message router for an AI executive assistant app called Crosby. Your job is to analyze the user's message and determine exactly what data and tools are needed to respond. Be precise - only request what's actually needed. A greeting needs nothing. A question about email needs email tools and emails_awaiting data. A question about store performance needs sales data and the query_sales tool. When multiple topics are mentioned, include data/tools for all of them. The rag_query should be a rewritten version of the user's message optimized for semantic search against the user's documents and project context - make it keyword-rich and specific. Set it to null for greetings, simple questions, or messages that clearly don't need document retrieval. For relevant_projects: identify which projects this message likely relates to based on topic, keywords, or explicit mentions. The active projects will be provided to you. This is critical for two things: (1) scoping RAG retrieval to the right project's documents, and (2) triggering the assistant to ask about saving conversation context to that project. Include search_conversation_history in tools_needed when the message references past conversations or asks about something discussed before (e.g. "what did we talk about", "go back to", "remember when", "earlier you said", "what I said about", "our conversation about", "you mentioned"). Include get_activity_log in tools_needed when the user asks what Crosby has been doing, what crons ran, recent errors, system activity, or whether a background job succeeded. Include manage_artifact in tools_needed when the user asks to create or update any document, plan, checklist, spec, or artifact (e.g. "make a checklist", "create a plan", "draft a spec", "update the plan"). Include open_artifact in tools_needed when the user asks to open, show, view, or find a specific existing artifact by name (e.g. "show me the van nuys plan", "open the closure plan", "pull up that checklist").`
+const ROUTER_SYSTEM_PROMPT = `You are a message router for an AI executive assistant app called Crosby. Your job is to analyze the user's message and determine exactly what data and tools are needed to respond. Be precise - only request what's actually needed. A greeting needs nothing. A question about email needs email tools and emails_awaiting data. A question about store performance needs sales data and the query_sales tool. When multiple topics are mentioned, include data/tools for all of them. The rag_query should be a rewritten version of the user's message optimized for semantic search against the user's documents and project context - make it keyword-rich and specific. Set it to null for greetings, simple questions, or messages that clearly don't need document retrieval. For relevant_projects: identify which projects this message likely relates to based on topic, keywords, or explicit mentions. The active projects will be provided to you. This is critical for two things: (1) scoping RAG retrieval to the right project's documents, and (2) triggering the assistant to ask about saving conversation context to that project. Include search_conversation_history in tools_needed when the message references past conversations or asks about something discussed before (e.g. "what did we talk about", "go back to", "remember when", "earlier you said", "what I said about", "our conversation about", "you mentioned"). Include get_activity_log in tools_needed when the user asks what Crosby has been doing, what crons ran, recent errors, system activity, or whether a background job succeeded. Include manage_artifact in tools_needed when the user asks to create or update any document, plan, checklist, spec, or artifact (e.g. "make a checklist", "create a plan", "draft a spec", "update the plan"). Include open_artifact in tools_needed when the user asks to open, show, view, or find a specific existing artifact by name (e.g. "show me the van nuys plan", "open the closure plan", "pull up that checklist").
+
+SEARCH_WEB SIGNAL: Include 'search_web' in tools_needed when the message involves any of the following: current events, news, or anything time-sensitive ("latest", "current", "today", "this week", "right now"); prices, ticket availability, hours, or anything that changes frequently; addresses, locations, directions, or "where is X"; looking up a specific business, venue, person, product, or app that Crosby may not know about; anything the user is explicitly asking to "look up", "find", "search for", or "check" externally; questions about real-world facts that may have changed (stock prices, sports scores, event schedules, business info). When in doubt, include search_web.`
 
 /**
  * Route a message using the AI router. Returns a RouterResult with exactly what
@@ -87,8 +90,8 @@ export async function routeMessage(
   model?: string,
 ): Promise<RouterResult & { fromFallback?: boolean }> {
   const start = Date.now()
-  const routerModel = model || 'google/gemini-3.1-flash-lite-preview'
-  const fallbackModel = model ? undefined : 'google/gemini-3-flash-preview'
+  const routerModel = model || BACKGROUND_LITE_MODELS.primary
+  const fallbackModel = model ? undefined : BACKGROUND_LITE_MODELS.fallbacks[0]
 
   const projectList = activeProjects.length > 0
     ? `\n\nActive projects:\n${activeProjects.map(p => `- ${p.name}${p.description ? `: ${p.description}` : ''}`).join('\n')}`
@@ -111,12 +114,13 @@ export async function routeMessage(
         ],
         ...({
           ...(fallbackModel ? { models: [routerModel, fallbackModel] } : { models: [routerModel] }),
-          provider: { sort: 'price' },
+          provider: { ...BACKGROUND_LITE_MODELS.provider, require_parameters: true },
           plugins: [{ id: 'response-healing' }],
           response_format: {
             type: 'json_schema',
             json_schema: { name: 'router_result', strict: true, schema: ROUTER_SCHEMA },
           },
+          metadata: buildMetadata({ call_type: 'router' }),
         } as any),
       } as any),
       new Promise<never>((_, reject) =>

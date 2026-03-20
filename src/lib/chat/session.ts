@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { spawnBackgroundJob } from '@/lib/background-jobs'
 import { getMainConversation } from '@/lib/proactive'
 import { parseJSON } from './memory-extraction'
+import { BACKGROUND_LITE_MODELS, buildMetadata } from '@/lib/openrouter-models'
 
 export async function getOrCreateSession(convId: string): Promise<{ sessionId: string | null; previousSummary: string | null }> {
 
@@ -113,11 +114,11 @@ export async function summarizeSession(sessionId: string, convId: string) {
   const anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, baseURL: process.env.ANTHROPIC_BASE_URL })
 
   const response = await anthropicClient.messages.create({
-    model: 'google/gemini-3.1-flash-lite-preview',
+    model: BACKGROUND_LITE_MODELS.primary,
     max_tokens: 800,
     system: `Summarize this conversation session for Jason DeMayo's AI workspace. Write bullet points under 400 words. Focus on: decisions made, information shared, action items created or discussed, open questions, and anything Crosby should remember for the next session. Be specific - include names, numbers, and dates.`,
     messages: [{ role: 'user', content: transcript }],
-    ...({ extra_body: { models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'], provider: { sort: 'price' } } } as any),
+    ...({ extra_body: { models: [BACKGROUND_LITE_MODELS.primary, ...BACKGROUND_LITE_MODELS.fallbacks], provider: BACKGROUND_LITE_MODELS.provider, metadata: buildMetadata({ call_type: 'session_extraction' }) } } as any),
   })
 
   const summary = response.content[0].type === 'text' ? response.content[0].text : ''
@@ -169,16 +170,17 @@ async function extractNotepadEntriesFromSummary(summary: string) {
   }
 
   const response = await anthropicClient.messages.create({
-    model: 'google/gemini-3.1-flash-lite-preview',
+    model: BACKGROUND_LITE_MODELS.primary,
     max_tokens: 400,
     system: `Extract 0-3 time-sensitive operational facts from this session summary that should go on the notepad. These are short-lived facts like "ordered deposit slips for 2262", "Roger is out this week", "waiting on callback from landlord at 1008". NOT general business knowledge. Return JSON: {"entries": [{"content": "...", "title": "..."}]} or {"entries": []} if nothing fits.`,
     messages: [{ role: 'user', content: summary }],
     ...({
       extra_body: {
-        models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'],
-        provider: { sort: 'price' },
+        models: [BACKGROUND_LITE_MODELS.primary, ...BACKGROUND_LITE_MODELS.fallbacks],
+        provider: { ...BACKGROUND_LITE_MODELS.provider, require_parameters: true },
         plugins: [{ id: 'response-healing' }],
         response_format: { type: 'json_schema', json_schema: { name: 'response', strict: true, schema: notepadSchema } },
+        metadata: buildMetadata({ call_type: 'session_extraction' }),
       },
     } as any),
   })
@@ -229,7 +231,7 @@ async function extractCommitmentsFromSession(sessionId: string, convId: string, 
   }
 
   const response = await anthropicClient.messages.create({
-    model: 'google/gemini-3.1-flash-lite-preview',
+    model: BACKGROUND_LITE_MODELS.primary,
     max_tokens: 400,
     system: `Extract commitments that JASON (the user) made during this conversation. Only extract things Jason said HE would do - not things Crosby (the AI) offered or did. Look for phrases like "I'll", "I need to", "I'm going to", "let me", "I should", "remind me to".
 
@@ -247,10 +249,11 @@ Return {"commitments": []} if none found.`,
     messages: [{ role: 'user', content: transcript.slice(0, 6000) }],
     ...({
       extra_body: {
-        models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'],
-        provider: { sort: 'price' },
+        models: [BACKGROUND_LITE_MODELS.primary, ...BACKGROUND_LITE_MODELS.fallbacks],
+        provider: { ...BACKGROUND_LITE_MODELS.provider, require_parameters: true },
         plugins: [{ id: 'response-healing' }],
         response_format: { type: 'json_schema', json_schema: { name: 'response', strict: true, schema: commitmentSchema } },
+        metadata: buildMetadata({ call_type: 'session_extraction' }),
       },
     } as any),
   })
@@ -303,7 +306,7 @@ async function extractDecisionsFromSession(sessionId: string, convId: string, tr
   }
 
   const response = await anthropicClient.messages.create({
-    model: 'google/gemini-3.1-flash-lite-preview',
+    model: BACKGROUND_LITE_MODELS.primary,
     max_tokens: 600,
     system: `Extract decisions that JASON (the user) made during this conversation. Decisions are choices, directions, policies, or strategic calls - not tasks or commitments.
 
@@ -329,10 +332,11 @@ Return {"decisions": []} if none found.`,
     messages: [{ role: 'user', content: transcript.slice(0, 6000) }],
     ...({
       extra_body: {
-        models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'],
-        provider: { sort: 'price' },
+        models: [BACKGROUND_LITE_MODELS.primary, ...BACKGROUND_LITE_MODELS.fallbacks],
+        provider: { ...BACKGROUND_LITE_MODELS.provider, require_parameters: true },
         plugins: [{ id: 'response-healing' }],
         response_format: { type: 'json_schema', json_schema: { name: 'response', strict: true, schema: decisionSchema } },
+        metadata: buildMetadata({ call_type: 'session_extraction' }),
       },
     } as any),
   })
@@ -396,7 +400,7 @@ async function extractWatchesFromSession(convId: string, transcript: string) {
   }
 
   const response = await anthropicClient.messages.create({
-    model: 'google/gemini-3.1-flash-lite-preview',
+    model: BACKGROUND_LITE_MODELS.primary,
     max_tokens: 600,
     system: `Review this conversation and identify things Jason is waiting for, tracking, or monitoring. Look for:
 - Outreach he made ("I reached out to...", "I emailed...", "I sent that to...")
@@ -418,10 +422,11 @@ Return {"watches": []} if nothing found. Don't extract watches for vague or triv
     messages: [{ role: 'user', content: transcript.slice(0, 6000) }],
     ...({
       extra_body: {
-        models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'],
-        provider: { sort: 'price' },
+        models: [BACKGROUND_LITE_MODELS.primary, ...BACKGROUND_LITE_MODELS.fallbacks],
+        provider: { ...BACKGROUND_LITE_MODELS.provider, require_parameters: true },
         plugins: [{ id: 'response-healing' }],
         response_format: { type: 'json_schema', json_schema: { name: 'response', strict: true, schema: watchSchema } },
+        metadata: buildMetadata({ call_type: 'session_extraction' }),
       },
     } as any),
   })
@@ -554,7 +559,7 @@ async function detectAndTrackProcesses(convId: string, transcript: string, summa
 
   // Detect if a process was explained step-by-step
   const response = await anthropicClient.messages.create({
-    model: 'google/gemini-3.1-flash-lite-preview',
+    model: BACKGROUND_LITE_MODELS.primary,
     max_tokens: 200,
     system: `Detect if Jason DeMayo explained a business process, procedure, or workflow step-by-step during this conversation. Examples: how they handle vendor invoices, how they open a new store, how they onboard GMs, how they handle a health inspection. NOT generic discussions - only when he clearly described steps/stages.
 
@@ -563,10 +568,11 @@ If no process detected: {"process_detected": false, "process_name": "", "step_co
     messages: [{ role: 'user', content: `Summary:\n${summary}\n\nKey transcript excerpts:\n${transcript.slice(0, 3000)}` }],
     ...({
       extra_body: {
-        models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'],
-        provider: { sort: 'price' },
+        models: [BACKGROUND_LITE_MODELS.primary, ...BACKGROUND_LITE_MODELS.fallbacks],
+        provider: { ...BACKGROUND_LITE_MODELS.provider, require_parameters: true },
         plugins: [{ id: 'response-healing' }],
         response_format: { type: 'json_schema', json_schema: { name: 'response', strict: true, schema: SOP_DETECTION_SCHEMA } },
+        metadata: buildMetadata({ call_type: 'session_extraction' }),
       },
     } as any),
   })

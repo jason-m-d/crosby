@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase'
 import { openrouterClient } from '@/lib/openrouter'
+import { BACKGROUND_LITE_MODELS, buildMetadata } from '@/lib/openrouter-models'
 
 function parseJSON(text: string) {
   let cleaned = text.trim()
@@ -15,17 +16,18 @@ function parseJSON(text: string) {
 
 async function llmJSON(system: string, userContent: string, schema: any, maxTokens = 400): Promise<any> {
   const response = await openrouterClient.chat.completions.create({
-    model: 'google/gemini-3.1-flash-lite-preview',
+    model: BACKGROUND_LITE_MODELS.primary,
     max_tokens: maxTokens,
     messages: [
       { role: 'system', content: system },
       { role: 'user', content: userContent },
     ],
     ...({
-      models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'],
-      provider: { sort: 'price' },
+      models: [BACKGROUND_LITE_MODELS.primary, ...BACKGROUND_LITE_MODELS.fallbacks],
+      provider: { ...BACKGROUND_LITE_MODELS.provider, require_parameters: true },
       plugins: [{ id: 'response-healing' }],
       response_format: { type: 'json_schema', json_schema: { name: 'response', strict: true, schema } },
+      metadata: buildMetadata({ call_type: 'session_extraction' }),
     } as any),
   })
 

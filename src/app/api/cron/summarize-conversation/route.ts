@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import Anthropic from '@anthropic-ai/sdk'
 import { logCronJob } from '@/lib/activity-log'
+import { BACKGROUND_LITE_MODELS, buildMetadata } from '@/lib/openrouter-models'
 
 export const maxDuration = 60
 
@@ -121,7 +122,7 @@ async function maybeRunSummarization(convId: string): Promise<boolean> {
 
 async function generateSummary(transcript: string, previousSummary: string | null): Promise<string> {
   const response = await client.messages.create({
-    model: 'google/gemini-3.1-flash-lite-preview',
+    model: BACKGROUND_LITE_MODELS.primary,
     max_tokens: 2000,
     system: `You are summarizing a conversation between Jason (CEO of DeMayo Restaurant Group and Hungry Hospitality Group) and his AI assistant Crosby.
 
@@ -136,8 +137,9 @@ Keep it under 2000 words. Write it as a narrative brief, not bullet points. This
     messages: [{ role: 'user', content: `Messages to summarize:\n\n${transcript}` }],
     ...({
       extra_body: {
-        models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'],
-        provider: { sort: 'price' },
+        models: [BACKGROUND_LITE_MODELS.primary, ...BACKGROUND_LITE_MODELS.fallbacks],
+        provider: BACKGROUND_LITE_MODELS.provider,
+        metadata: buildMetadata({ call_type: 'cron_summarize' }),
       },
     } as any),
   })

@@ -1,6 +1,7 @@
 import { supabaseAdmin } from './supabase'
 import { openrouterClient } from './openrouter'
 import type { NotificationRule } from './types'
+import { BACKGROUND_LITE_MODELS, buildMetadata } from './openrouter-models'
 
 /**
  * Find the main (non-project) conversation, most recent, or create one.
@@ -138,13 +139,13 @@ export async function rewriteForTone(rawContent: string, context: {
 - 3 lines max. No bold or markdown formatting.`
 
     const response = await openrouterClient.chat.completions.create({
-      model: 'google/gemini-2.0-flash-001',
+      model: BACKGROUND_LITE_MODELS.primary,
       max_tokens: 256,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: rawContent },
       ],
-      ...({ models: ['google/gemini-2.0-flash-001', 'google/gemini-flash-1.5'], provider: { sort: 'price' } } as any),
+      ...({ models: [BACKGROUND_LITE_MODELS.primary, ...BACKGROUND_LITE_MODELS.fallbacks], provider: BACKGROUND_LITE_MODELS.provider, metadata: buildMetadata({ call_type: 'background_job' }) } as any),
     } as any)
 
     const rewritten = response.choices[0]?.message?.content?.trim()

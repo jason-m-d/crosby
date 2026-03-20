@@ -380,7 +380,7 @@ export const TRAINING_TOOL: Anthropic.Messages.Tool = {
 
 export const SEARCH_WEB_TOOL: Anthropic.Messages.Tool = {
   name: 'search_web',
-  description: 'Search the web for current information - locations, addresses, business info, current events, venue details, anything you\'re not certain about.',
+  description: 'Search the web for current information. Use this tool whenever you need: current events or news, prices or availability, addresses or business hours, information about specific people/companies/products/places, or anything time-sensitive. When in doubt, search — do not guess or answer from training data.',
   input_schema: {
     type: 'object' as const,
     properties: {

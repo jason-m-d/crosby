@@ -5,6 +5,7 @@ import { sendPushToAll } from '@/lib/push'
 import { spawnBackgroundJob, isAutoTriggerRateLimited, getDailyAutoTriggerCount, logAutoTrigger } from '@/lib/background-jobs'
 import { openrouterClient } from '@/lib/openrouter'
 import { logCronJob, logNudgeDecision } from '@/lib/activity-log'
+import { BACKGROUND_LITE_MODELS, buildMetadata } from '@/lib/openrouter-models'
 
 export const maxDuration = 30
 
@@ -176,7 +177,7 @@ export async function POST(req: NextRequest) {
 
   // Generate nudge message via AI — pick top 3-5
   const response = await openrouterClient.chat.completions.create({
-    model: 'google/gemini-3.1-flash-lite-preview',
+    model: BACKGROUND_LITE_MODELS.primary,
     max_tokens: 400,
     messages: [
       { role: 'system', content: `You're Crosby, Jason DeMayo's AI assistant. Write a brief, direct nudge message about things that need his attention. Pick the top 3-5 most important items from the list.
@@ -197,7 +198,7 @@ RULES:
 Today is ${now.toISOString().split('T')[0]}.${dedupNote}` },
       { role: 'user', content: `Items needing attention:\n${candidates.join('\n')}` },
     ],
-    ...({ models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'], provider: { sort: 'price' } } as any),
+    ...({ models: [BACKGROUND_LITE_MODELS.primary, ...BACKGROUND_LITE_MODELS.fallbacks], provider: BACKGROUND_LITE_MODELS.provider, metadata: buildMetadata({ call_type: 'cron_nudge' }) } as any),
   } as any)
 
   const nudgeText = response.choices[0]?.message?.content || ''
@@ -354,7 +355,7 @@ async function analyzeDismissalPatterns(convId: string) {
   }
 
   const response = await openrouterClient.chat.completions.create({
-    model: 'google/gemini-3.1-flash-lite-preview',
+    model: BACKGROUND_LITE_MODELS.primary,
     max_tokens: 400,
     messages: [
       { role: 'system', content: `Analyze these dismissed action items and identify 0-3 patterns. A pattern is a category or type of item that Jason consistently dismisses. Only suggest rules if there's a clear pattern (3+ similar dismissals).
@@ -374,10 +375,11 @@ Return {"rules": []} if no clear patterns found.` },
       }))) },
     ],
     ...({
-      models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'],
-      provider: { sort: 'price' },
+      models: [BACKGROUND_LITE_MODELS.primary, ...BACKGROUND_LITE_MODELS.fallbacks],
+      provider: { ...BACKGROUND_LITE_MODELS.provider, require_parameters: true },
       plugins: [{ id: 'response-healing' }],
       response_format: { type: 'json_schema', json_schema: { name: 'response', strict: true, schema: ruleSchema } },
+      metadata: buildMetadata({ call_type: 'cron_nudge' }),
     } as any),
   } as any)
 

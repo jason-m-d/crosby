@@ -14,6 +14,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '@/lib/supabase'
 import { openrouterClient } from '@/lib/openrouter'
 import { getMainConversation, insertProactiveMessage } from '@/lib/proactive'
+import { CHAT_MODELS, BACKGROUND_LITE_MODELS, buildMetadata } from '@/lib/openrouter-models'
 import { sendPushToAll } from '@/lib/push'
 import {
   retrieveRelevantChunks,
@@ -125,14 +126,15 @@ export async function POST(req: NextRequest) {
 async function executeJob(job: BackgroundJob): Promise<string> {
   const isComplex = COMPLEX_JOB_TYPES.includes(job.job_type)
   const model = isComplex
-    ? 'anthropic/claude-sonnet-4.6:exacto'
-    : 'google/gemini-3.1-flash-lite-preview'
+    ? CHAT_MODELS.primary
+    : BACKGROUND_LITE_MODELS.primary
 
   // Complex jobs use Claude via Anthropic SDK; simple jobs use Gemini via openrouterClient
   const extraBody = {
     extra_body: {
-      models: ['anthropic/claude-sonnet-4.6:exacto', 'google/gemini-3.1-pro-preview'],
-      provider: { sort: 'latency' },
+      models: [CHAT_MODELS.primary, ...CHAT_MODELS.fallbacks],
+      provider: CHAT_MODELS.provider,
+      metadata: buildMetadata({ call_type: 'background_job' }),
     },
   }
 
@@ -222,8 +224,9 @@ ${contextBlock ? `\n\n${contextBlock}` : ''}`
         { role: 'user', content: job.prompt },
       ],
       ...({
-        models: ['google/gemini-3.1-flash-lite-preview', 'google/gemini-3-flash-preview'],
-        provider: { sort: 'price' },
+        models: [BACKGROUND_LITE_MODELS.primary, ...BACKGROUND_LITE_MODELS.fallbacks],
+        provider: BACKGROUND_LITE_MODELS.provider,
+        metadata: buildMetadata({ call_type: 'background_job' }),
       } as any),
     } as any)
     text = response.choices[0]?.message?.content || ''

@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { routeMessage } from '@/lib/router'
 import type { RouterResult } from '@/lib/router'
+import { BACKGROUND_LITE_MODELS } from '@/lib/openrouter-models'
 
 export const maxDuration = 15
 
@@ -317,7 +318,7 @@ export async function POST(req: NextRequest) {
 
     const [routerRes, ctx] = await Promise.race([
       Promise.all([
-        routeMessage(trimmed, recent_messages, [], 'google/gemini-3.1-flash-lite-preview'),
+        routeMessage(trimmed, recent_messages, [], BACKGROUND_LITE_MODELS.primary),
         getContextBundle(),
       ]),
       new Promise<never>((_, reject) =>
