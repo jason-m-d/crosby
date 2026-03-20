@@ -8,29 +8,28 @@ Check this file at the start of every work session. If Jason asks "what's on the
 
 ## Active Issues
 
-### [MEDIUM] Duplicate ANTHROPIC_API_KEY on Vercel
-- **Found:** 2026-03-19
-- **What:** Two `ANTHROPIC_API_KEY` entries exist in Vercel env vars. Production has the correct OpenRouter key (`sk-or-v1-...`). "All Pre-Production Environments" has an actual Anthropic key (`sk-ant-api03-...`). Preview deploys will try to talk directly to Anthropic instead of OpenRouter.
-- **Fix:** Remove the `sk-ant-api03-...` entry from Vercel, or update it to the OpenRouter key so preview deploys work too.
-- **Risk:** Preview/dev deploys on Vercel are broken. Production is fine.
-
-### [LOW] CRON_SECRET mismatch between local and Vercel
-- **Found:** 2026-03-19
-- **What:** `.env.local` has `crosby-cron-2026` but Vercel has `jdrg-cron-2026`. If cron routes check this secret for auth, one environment will reject cron requests.
-- **Fix:** Decide which value is correct and sync both environments.
-- **Risk:** Cron jobs might fail auth in one environment.
-
-### [LOW] Missing BRIDGE_API_KEY on Vercel
-- **Found:** 2026-03-19
-- **What:** `BRIDGE_API_KEY` exists in `.env.local` but is not set in Vercel env vars. If any production code references it, those calls will fail.
-- **Fix:** Check if any production code uses `process.env.BRIDGE_API_KEY`. If so, add it to Vercel.
-- **Risk:** Unknown until we check if it's used in production routes.
+_No active issues._
 
 ---
 
 ## Resolved
 
 _Move items here when fixed. Include date and what was done._
+
+### [MEDIUM] Duplicate ANTHROPIC_API_KEY on Vercel
+- **Found:** 2026-03-19
+- **Resolved:** 2026-03-20
+- **What was done:** Removed the bad `sk-ant-api03-...` key from preview/dev environments, replaced with the correct OpenRouter key (`sk-or-v1-...`) on all environments. Deployed to production.
+
+### [LOW] CRON_SECRET mismatch between local and Vercel
+- **Found:** 2026-03-19
+- **Resolved:** 2026-03-20
+- **What was done:** Removed old `jdrg-cron-2026` value and replaced with `crosby-cron-2026` across all environments (production, preview, development).
+
+### [LOW] Missing BRIDGE_API_KEY on Vercel
+- **Found:** 2026-03-19
+- **Resolved:** 2026-03-20
+- **What was done:** Added `BRIDGE_API_KEY` to all three Vercel environments (production, preview, development).
 
 ### [MEDIUM] Retry logic bug - streamAttempt never increments
 - **Found:** 2026-03-19
