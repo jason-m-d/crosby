@@ -29,21 +29,10 @@ export async function getMainConversation(): Promise<string> {
  * Insert a proactive assistant message into a conversation.
  */
 export async function insertProactiveMessage(conversationId: string, content: string) {
-  // Find open session for this conversation, if any
-  const { data: openSession } = await supabaseAdmin
-    .from('sessions')
-    .select('id')
-    .eq('conversation_id', conversationId)
-    .is('ended_at', null)
-    .order('started_at', { ascending: false })
-    .limit(1)
-    .single()
-
   await supabaseAdmin.from('messages').insert({
     conversation_id: conversationId,
     role: 'assistant',
     content,
-    session_id: openSession?.id || null,
   })
 
   // Touch conversation timestamp so it surfaces

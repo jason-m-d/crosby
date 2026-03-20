@@ -12,6 +12,7 @@ import type { Artifact } from '@/lib/types'
 export default function ConversationPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [messages, setMessages] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [projectId, setProjectId] = useState<string>('none')
@@ -260,12 +261,13 @@ export default function ConversationPage() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-auto flex flex-col">
+        <div ref={scrollContainerRef} className="flex-1 overflow-auto flex flex-col">
           <ChatMessages
             messages={messages}
             streamingContent={streamingContent}
             loading={loading}
             toolStatus={toolStatus}
+            scrollContainerRef={scrollContainerRef}
             onArtifactClick={handleArtifactClick}
             onCopyMessage={(content) => {
               chatInputRef.current?.setInputText(content)

@@ -460,6 +460,7 @@ export default function HomePage() {
             toolStatus={toolStatus}
             onArtifactClick={handleArtifactClick}
             greetingData={greetingData}
+            scrollContainerRef={scrollContainerRef}
             onGreetingItemHandled={(itemId) => {
               setGreetingData(prev => {
                 if (!prev) return prev

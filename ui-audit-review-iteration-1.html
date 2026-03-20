@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #faf9f5;
+      --surface: #ffffff;
+      --border: #e8e6dc;
+      --text: #141413;
+      --text-muted: #b0aea5;
+      --accent: #d97757;
+      --accent-hover: #c4613f;
+      --green: #788c5d;
+      --green-bg: #eef2e8;
+      --red: #c44;
+      --red-bg: #fceaea;
+      --header-bg: #141413;
+      --header-text: #faf9f5;
+      --radius: 6px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Lora', Georgia, serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Header ---- */
+    .header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .header h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .header .instructions {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-top: 0.25rem;
+    }
+    .header .progress {
+      font-size: 0.875rem;
+      opacity: 0.8;
+      text-align: right;
+    }
+
+    /* ---- Main content ---- */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ---- Sections ---- */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      flex-shrink: 0;
+    }
+    .section-header {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .section-body {
+      padding: 1rem;
+    }
+
+    /* ---- Config badge ---- */
+    .config-badge {
+      display: inline-block;
+      padding: 0.2rem 0.625rem;
+      border-radius: 9999px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-left: 0.75rem;
+      vertical-align: middle;
+    }
+    .config-badge.config-primary {
+      background: rgba(33, 150, 243, 0.12);
+      color: #1976d2;
+    }
+    .config-badge.config-baseline {
+      background: rgba(255, 193, 7, 0.15);
+      color: #f57f17;
+    }
+
+    /* ---- Prompt ---- */
+    .prompt-text {
+      white-space: pre-wrap;
+      font-size: 0.9375rem;
+      line-height: 1.6;
+    }
+
+    /* ---- Outputs ---- */
+    .output-file {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .output-file + .output-file {
+      margin-top: 1rem;
+    }
+    .output-file-header {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .output-file-header .dl-btn {
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-decoration: none;
+      cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 500;
+      opacity: 0.8;
+    }
+    .output-file-header .dl-btn:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+    .output-file-content {
+      padding: 0.75rem;
+      overflow-x: auto;
+    }
+    .output-file-content pre {
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    .output-file-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .output-file-content iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+    }
+    .output-file-content table {
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+      width: 100%;
+    }
+    .output-file-content table td,
+    .output-file-content table th {
+      border: 1px solid var(--border);
+      padding: 0.375rem 0.5rem;
+      text-align: left;
+    }
+    .output-file-content table th {
+      background: var(--bg);
+      font-weight: 600;
+    }
+    .output-file-content .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .output-file-content .download-link:hover {
+      background: var(--border);
+    }
+    .empty-state {
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    /* ---- Feedback ---- */
+    .prev-feedback {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.625rem 0.75rem;
+      margin-top: 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .prev-feedback-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.25rem;
+      color: var(--text-muted);
+    }
+    .feedback-textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      resize: vertical;
+      color: var(--text);
+    }
+    .feedback-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .feedback-status {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      min-height: 1.1em;
+    }
+
+    /* ---- Grades (collapsible) ---- */
+    .grades-toggle {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .grades-toggle:hover {
+      color: var(--accent);
+    }
+    .grades-toggle .arrow {
+      margin-right: 0.5rem;
+      transition: transform 0.15s;
+      font-size: 0.75rem;
+    }
+    .grades-toggle .arrow.open {
+      transform: rotate(90deg);
+    }
+    .grades-content {
+      display: none;
+      margin-top: 0.75rem;
+    }
+    .grades-content.open {
+      display: block;
+    }
+    .grades-summary {
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .grade-badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .grade-pass { background: var(--green-bg); color: var(--green); }
+    .grade-fail { background: var(--red-bg); color: var(--red); }
+    .assertion-list {
+      list-style: none;
+    }
+    .assertion-item {
+      padding: 0.625rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8125rem;
+    }
+    .assertion-item:last-child { border-bottom: none; }
+    .assertion-status {
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+    .assertion-status.pass { color: var(--green); }
+    .assertion-status.fail { color: var(--red); }
+    .assertion-evidence {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+      padding-left: 1.5rem;
+    }
+
+    /* ---- View tabs ---- */
+    .view-tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 2rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .view-tab {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.625rem 1.25rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .view-tab:hover { color: var(--text); }
+    .view-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .view-panel { display: none; }
+    .view-panel.active { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    /* ---- Benchmark view ---- */
+    .benchmark-view {
+      padding: 1.5rem 2rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .benchmark-table {
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.8125rem;
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+    .benchmark-table th, .benchmark-table td {
+      padding: 0.625rem 0.75rem;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+    .benchmark-table th {
+      font-family: 'Poppins', sans-serif;
+      background: var(--header-bg);
+      color: var(--header-text);
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .benchmark-table tr:hover { background: var(--bg); }
+    .benchmark-table tr.benchmark-row-with { background: rgba(33, 150, 243, 0.06); }
+    .benchmark-table tr.benchmark-row-without { background: rgba(255, 193, 7, 0.06); }
+    .benchmark-table tr.benchmark-row-with:hover { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-without:hover { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-table tr.benchmark-row-avg { font-weight: 600; border-top: 2px solid var(--border); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-with { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-without { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-delta-positive { color: var(--green); font-weight: 600; }
+    .benchmark-delta-negative { color: var(--red); font-weight: 600; }
+    .benchmark-notes {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+    .benchmark-notes h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+    .benchmark-notes ul {
+      list-style: disc;
+      padding-left: 1.25rem;
+    }
+    .benchmark-notes li {
+      font-size: 0.8125rem;
+      line-height: 1.6;
+      margin-bottom: 0.375rem;
+    }
+    .benchmark-empty {
+      color: var(--text-muted);
+      font-style: italic;
+      text-align: center;
+      padding: 3rem;
+    }
+
+    /* ---- Navigation ---- */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .nav-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .nav-btn:hover:not(:disabled) {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .nav-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .done-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .done-btn:hover {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .done-btn.ready {
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+    }
+    .done-btn.ready:hover {
+      background: var(--accent-hover);
+    }
+    /* ---- Done overlay ---- */
+    .done-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .done-overlay.visible {
+      display: flex;
+    }
+    .done-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 2rem 3rem;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+    }
+    .done-card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .done-card p {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+    .done-card .btn-row {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .done-card button {
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+    .done-card button:hover {
+      background: var(--bg);
+    }
+    /* ---- Toast ---- */
+    .toast {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 200;
+    }
+    .toast.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" style="height:100vh; display:flex; flex-direction:column;">
+    <div class="header">
+      <div>
+        <h1>Eval Review: <span id="skill-name"></span></h1>
+        <div class="instructions">Review each output and leave feedback below. Navigate with arrow keys or buttons. When done, copy feedback and paste into Claude Code.</div>
+      </div>
+      <div class="progress" id="progress"></div>
+    </div>
+
+    <!-- View tabs (only shown when benchmark data exists) -->
+    <div class="view-tabs" id="view-tabs" style="display:none;">
+      <button class="view-tab active" onclick="switchView('outputs')">Outputs</button>
+      <button class="view-tab" onclick="switchView('benchmark')">Benchmark</button>
+    </div>
+
+    <!-- Outputs panel (qualitative review) -->
+    <div class="view-panel active" id="panel-outputs">
+    <div class="main">
+      <!-- Prompt -->
+      <div class="section">
+        <div class="section-header">Prompt <span class="config-badge" id="config-badge" style="display:none;"></span></div>
+        <div class="section-body">
+          <div class="prompt-text" id="prompt-text"></div>
+        </div>
+      </div>
+
+      <!-- Outputs -->
+      <div class="section">
+        <div class="section-header">Output</div>
+        <div class="section-body" id="outputs-body">
+          <div class="empty-state">No output files found</div>
+        </div>
+      </div>
+
+      <!-- Previous Output (collapsible) -->
+      <div class="section" id="prev-outputs-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="togglePrevOutputs()">
+            <span class="arrow" id="prev-outputs-arrow">&#9654;</span>
+            Previous Output
+          </div>
+        </div>
+        <div class="grades-content" id="prev-outputs-content"></div>
+      </div>
+
+      <!-- Grades (collapsible) -->
+      <div class="section" id="grades-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="toggleGrades()">
+            <span class="arrow" id="grades-arrow">&#9654;</span>
+            Formal Grades
+          </div>
+        </div>
+        <div class="grades-content" id="grades-content"></div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="section">
+        <div class="section-header">Your Feedback</div>
+        <div class="section-body">
+          <textarea
+            class="feedback-textarea"
+            id="feedback"
+            placeholder="What do you think of this output? Any issues, suggestions, or things that look great?"
+          ></textarea>
+          <div class="feedback-status" id="feedback-status"></div>
+          <div class="prev-feedback" id="prev-feedback" style="display:none;">
+            <div class="prev-feedback-label">Previous feedback</div>
+            <div id="prev-feedback-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav" id="outputs-nav">
+      <button class="nav-btn" id="prev-btn" onclick="navigate(-1)">&#8592; Previous</button>
+      <button class="done-btn" id="done-btn" onclick="showDoneDialog()">Submit All Reviews</button>
+      <button class="nav-btn" id="next-btn" onclick="navigate(1)">Next &#8594;</button>
+    </div>
+    </div><!-- end panel-outputs -->
+
+    <!-- Benchmark panel (quantitative stats) -->
+    <div class="view-panel" id="panel-benchmark">
+      <div class="benchmark-view" id="benchmark-content">
+        <div class="benchmark-empty">No benchmark data available. Run a benchmark to see quantitative results here.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Done overlay -->
+  <div class="done-overlay" id="done-overlay">
+    <div class="done-card">
+      <h2>Review Complete</h2>
+      <p>Your feedback has been saved. Go back to your Claude Code session and tell Claude you're done reviewing.</p>
+      <div class="btn-row">
+        <button onclick="closeDoneDialog()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ---- Embedded data (injected by generate_review.py) ----
+    const EMBEDDED_DATA = {"skill_name": "ui-audit", "runs": [{"id": "eval-1-full-app-audit-with_skill", "prompt": "Can you do a full UI audit of my app? I want to know if there are any visual inconsistencies or things that look unprofessional", "eval_id": 1, "outputs": [{"name": "report.md", "type": "text", "content": "# UI/UX Design Audit Report: Crosby App\n**Date:** March 18, 2026  \n**Scope:** Full Application Audit  \n**App Stack:** Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui components\n\n---\n\n## Executive Summary\n\nThe Crosby app presents a **solid, intentional design foundation** with a dark theme and minimal aesthetic. The app successfully maintains visual consistency across pages and demonstrates thoughtful use of typography, spacing, and color. However, there are several **subtle but impactful inconsistencies** in spacing, component sizing, and interactive feedback that prevent the app from feeling as polished as it could be. The primary issues fall into two categories: (1) **spacing inconsistencies** across similar components, particularly padding/margin values that drift slightly depending on context, and (2) **interactive feedback gaps** where some interactive elements lack clear hover/focus states or loading indicators. These are not breaking issues, but addressing them would elevate the overall craft and make the interface feel more premium and responsive.\n\n---\n\n## Design System Reference\n\nThe Crosby app uses an inferred design system derived from the codebase analysis:\n\n### Colors\n- **Primary:** `hsl(40 10% 87%)` \u2014 Light cream/off-white for primary actions and foreground\n- **Secondary:** `hsl(30 5% 18%)` \u2014 Slightly raised neutral for secondary surfaces\n- **Accent:** `hsl(30 5% 18%)` \u2014 Same as secondary\n- **Destructive:** `hsl(0 62.8% 40%)` \u2014 Red for destructive actions\n- **Background:** `hsl(30 6% 12%)` \u2014 Very dark gray/warm black for main background\n- **Muted:** `hsl(30 5% 18%)` \u2014 For disabled/muted text and backgrounds\n- **Muted Foreground:** `hsl(30 8% 68%)` \u2014 Mid-gray for secondary text\n\n**Theme:** Dark mode (class-based). Warm brown/cream color palette with good contrast.\n\n### Typography\n- **Root font size:** 18px (desktop), 16px (mobile \u2264767px)\n- **Common text sizes in use:**\n  - Labels/caps: `0.5625rem` (9px), `0.625rem` (10px), `0.6875rem` (11px)\n  - Small UI text: `0.75rem` (12px), `0.8125rem` (13px)\n  - Body text: `0.875rem` (14px), `text-base` (16px-18px depending on context)\n  - Headings: `text-2xl` (1.5rem on main page only), no consistent h1-h6 usage\n- **Font weights:** Light (300), Normal (400), Medium (500)\n- **Line height:** `leading-relaxed` (1.625) for readable body text, `leading-snug` for headings\n- **Letter spacing:** Heavy use of `tracking-[0.1em]` to `tracking-[0.2em]` for uppercase labels (very intentional design)\n\n### Spacing & Layout\n- **Padding standard:** `px-4` (1rem) / `px-5` (1.25rem) / `px-6` (1.5rem) are the primary values\n- **Vertical spacing:** `py-3`, `py-4`, `py-6` are common\n- **Gaps in flex/grid:** `gap-2`, `gap-3`, `gap-4` are standard\n- **Border radius:** `--radius: 0` (no rounding by default) \u2014 Very intentional minimal aesthetic\n- **Shadow:** Cards use `ring-1 ring-foreground/10` for subtle elevation (not drop shadows)\n\n### Components\n- **Buttons:** Multiple variants (default, outline, secondary, ghost, destructive, link). Sizes: xs (6h), sm (7h), default (8h), lg (9h), icon variants\n- **Cards:** Rounded-xl (16px), padding py-4/px-4, has ring and gap-4 between elements\n- **Inputs:** h-8, rounded-lg, border, transparent background, focus:ring\n- **Icons:** Lucide React library, mostly size-4 or size-3 depending on context\n\n### Breakpoints\n- **Mobile-first approach**\n- `md:` (768px) is the main breakpoint for showing/hiding desktop vs mobile UI\n- Sidebar hidden on mobile (`hidden md:flex`)\n- Mobile nav fixed at bottom\n\n---\n\n## Audit Findings\n\n### CRITICAL Issues\n*Things that look visually broken or significantly unprofessional*\n\n**None identified.** The app does not have critical visual issues. The design is intentional and mostly well-executed.\n\n---\n\n### WARNING Issues\n*Inconsistencies and polish gaps that are noticeable and detract from quality*\n\n#### 1. **Inconsistent Padding in Dialog/Modal Components**\n- **Where it is:** \n  - Sidebar \"New Expert\" dialog: `/src/components/sidebar.tsx`, line 170 \u2014 uses `p-6 space-y-5`\n  - Settings pages: `/src/app/(app)/settings/layout.tsx`, line 36 \u2014 uses `p-5 md:p-6`\n  - Dashboard cards: `/src/app/(app)/dashboard/page.tsx`, line 423 \u2014 uses `px-4 py-3`\n- **What's wrong:** Modal/dialog padding shifts between 20px (p-5), 24px (p-6), and 16px (px-4 py-3). The \"New Expert\" dialog is notably more padded than dashboard cards, which creates a visual hierarchy that may not be intentional.\n- **Why it matters:** Modal dialogs should feel like a cohesive component family. When padding varies without semantic reason (e.g., alert vs. info), users perceive inconsistent craftsmanship.\n- **How to fix it:** Establish a single padding standard for modal-like components. Recommend standardizing at `p-5` (20px), which is a good middle ground. Update the \"New Expert\" dialog in sidebar.tsx to match.\n\n#### 2. **Inconsistent Heading Font Sizes Across Pages**\n- **Where it is:**\n  - Documents page heading: `/src/app/(app)/documents/page.tsx`, line 84 \u2014 uses `text-[0.8125rem]` (13px) with `uppercase`\n  - Settings nav heading: `/src/app/(app)/settings/layout.tsx`, line 15 \u2014 uses `text-[0.625rem]` (10px) with `uppercase`\n  - Chat empty state heading: `/src/components/chat-messages.tsx`, line 59 \u2014 uses `text-2xl` (1.5rem) for \"Crosby\"\n  - Dashboard card titles: `/src/app/(app)/dashboard/page.tsx`, line 428 \u2014 uses `text-[0.6875rem]` (11px)\n- **What's wrong:** Section headings range from 10px to 13px to 24px, with no clear pattern. The empty state heading (24px) is enormous compared to page headers (10-13px). This breaks visual hierarchy consistency.\n- **Why it matters:** A user scanning the app should be able to understand information hierarchy (page title > section header > label) at a glance. Current variation makes some headings feel dominant when they shouldn't be.\n- **How to fix it:** Define three heading levels: (1) Page heading: `text-[0.8125rem]` (13px), medium weight, uppercase; (2) Section heading: `text-[0.6875rem]` (11px), medium weight, uppercase; (3) Subsection/card heading: `text-[0.625rem]` (10px), medium weight, uppercase. Apply consistently across all pages.\n\n#### 3. **Sidebar Navigation Active State Border Alignment**\n- **Where it is:** \n  - Main sidebar nav: `/src/components/sidebar.tsx`, lines 101-106\n  - Settings sidebar nav: `/src/app/(app)/settings/layout.tsx`, lines 22-26\n- **What's wrong:** Both use `border-l-2 border-foreground -ml-px` to show active state, but the `-ml-px` negates left padding, causing slight visual misalignment. The border appears to extend slightly outside the intended clickable area.\n- **Why it matters:** Left borders are a common active-state indicator, but when they visually \"break\" the padding box, they feel unpolished. The negative margin is a hack that should be avoided.\n- **How to fix it:** Remove the `-ml-px` and instead adjust padding or use `border-l` with the border width baked into the padding calculation. For example: use `pl-[11px] border-l` (leaving 11px for 2px border + 9px padding) instead of `pl-3 border-l-2 -ml-px`.\n\n#### 4. **Inconsistent Label Font Sizes in Forms**\n- **Where it is:**\n  - New Expert dialog labels: `/src/components/sidebar.tsx`, lines 179, 189, 198, 214 \u2014 uses `text-[0.625rem]` (10px)\n  - Greeting card header: `/src/components/greeting-card.tsx`, line 84 \u2014 uses `text-[0.5625rem]` (9px)\n  - Mobile settings headings: `/src/app/(app)/settings/page.tsx`, line 22 \u2014 uses `text-[0.625rem]` (10px)\n  - Dashboard card type label: `/src/app/(app)/dashboard/page.tsx`, line 431 \u2014 uses `text-[0.5625rem]` (9px)\n- **What's wrong:** Form labels jump between 9px and 10px without semantic reason. Some labels feel slightly cramped at 9px.\n- **Why it matters:** Form readability suffers when label sizes vary. Users should be able to scan forms quickly without noticing font size changes.\n- **How to fix it:** Standardize form labels to `text-[0.625rem]` (10px) across the entire app. Reserve `text-[0.5625rem]` (9px) only for supplementary text (timestamps, metadata, \"item count\" badges).\n\n#### 5. **Chat Input Border Inconsistency**\n- **Where it is:** `/src/components/chat-input.tsx`, lines 154-227\n- **What's wrong:** The chat input container uses `border border-border input-container`, while most other inputs use `border-input` with `bg-transparent`. The chat input's border appears to be a standard width, but the companion className `input-container` has custom focus styling (line 84-86 in globals.css) that's inconsistent with the Button focus ring system used elsewhere.\n- **Why it matters:** The chat input is one of the most-used elements in the app. Its inconsistent border treatment (compared to standard `Input` component in ui/input.tsx) makes it feel like a one-off rather than part of a cohesive system.\n- **How to fix it:** Align the chat input border styling with the standard `Input` component pattern. Use `border-input` instead of `border-border` and ensure focus state matches the Input component's `focus-visible:border-ring` pattern.\n\n#### 6. **Artifact Panel Header Spacing**\n- **Where it is:** `/src/components/artifact-panel.tsx` (not shown, but referenced in dashboard)\n- **What's wrong:** Without seeing the artifact panel, inferred from dashboard page structure \u2014 artifact panels likely have different padding/spacing than the main chat area, creating visual discontinuity.\n- **Why it matters:** Split-pane layouts (chat + artifact panel) need consistent edge spacing so content feels aligned.\n- **How to fix it:** Audit the artifact panel padding \u2014 ensure it matches the chat area's `px-4` and `pt-6` pattern.\n\n---\n\n### SUGGESTION Issues\n*Nice-to-have improvements that would elevate polish*\n\n#### 1. **Add Hover States to Sidebar Project Items**\n- **Where it is:** `/src/components/sidebar.tsx`, lines 129-145 (project list items)\n- **What's wrong:** Project items (the colored dots with project names) have `hover:text-foreground` but no background change. Compare to the main nav items above (lines 98-111) which also have `hover:text-foreground` \u2014 they're visually similar, which is good, but neither has a subtle background highlight.\n- **Why it matters:** On hover, users want clear visual feedback that an element is clickable. Text color change alone is subtle and may not be immediately obvious to all users.\n- **How to fix it:** Add `hover:bg-muted/20` to both main nav items and project items to provide a background color change on hover. This makes the interactive state more obvious.\n\n#### 2. **Add Loading States to More Action Buttons**\n- **Where it is:** \n  - Documents page upload button: `/src/app/(app)/documents/page.tsx`, line 95 \u2014 shows spinner during upload \u2713 (good!)\n  - Settings save buttons \u2014 appears missing in audit (not fully reviewed)\n  - Mobile nav drawer trigger \u2014 no loading state visible\n- **What's wrong:** Most buttons that trigger async actions show spinners, but some may not. Inconsistent loading feedback creates uncertainty (\"Did I click? Is it working?\").\n- **Why it matters:** Perceived performance and app responsiveness depend on clear feedback during operations.\n- **How to fix it:** Audit all async buttons and ensure they show spinners/disabled state while loading. Document this as a pattern.\n\n#### 3. **Improve Empty State Visuals**\n- **Where it is:** `/src/components/chat-messages.tsx`, lines 52-66 (empty chat state)\n- **What's wrong:** The empty state shows just text (\"What are you working on?\") with minimal visual hierarchy. No icon, no animation, very minimal.\n- **Why it matters:** Empty states are the first thing new users see. A thoughtful empty state with an icon, subtle color variation, or animation makes the app feel more polished and encouraging.\n- **How to fix it:** Consider adding an icon (e.g., a lightbulb or chat bubble) above the empty state text. Increase the spacing/breathing room. Optionally add a subtle background gradient or border to set it apart.\n\n#### 4. **Add Transition Consistency**\n- **Where it is:** Throughout the app \u2014 components use various transitions (0.15s, 0.2s, 0.25s, 0.3s, etc.)\n- **What's wrong:** Transitions are defined ad-hoc in different places without a central system. Some elements transition faster or slower than others, which can feel inconsistent.\n- **Why it matters:** Consistent motion timing across the app makes interactions feel intentional and polished.\n- **How to fix it:** Define standard transition durations in Tailwind config or CSS variables. Example: `transition-fast` (100ms), `transition-standard` (200ms), `transition-slow` (300ms). Apply consistently. The app already uses several good transitions (e.g., `transition-all duration-200` in sidebar collapse), so this would codify that pattern.\n\n#### 5. **Improve Mobile Navigation Label Readability**\n- **Where it is:** `/src/components/mobile-nav.tsx`, lines 55, 66, 78, 125 \u2014 nav labels\n- **What's wrong:** Mobile nav item labels use `text-[0.5625rem]` (9px), which is quite small. On a small screen, this may be hard to read without zooming. The main nav in the sidebar uses `text-sm` (13px+) for better readability.\n- **Why it matters:** Mobile users typically hold devices at arm's length. Small text (9px) in a cramped mobile nav is harder to read.\n- **How to fix it:** Increase mobile nav label size to `text-[0.625rem]` (10px). Test touch target sizes to ensure they're \u226544x44px (they likely are, but worth confirming).\n\n#### 6. **Add Icon Sizing Consistency**\n- **Where it is:** Throughout the app \u2014 icons vary in size (3, 3.5, 4, 5, etc.)\n- **What's wrong:** Navigation icons use `size-4` or `size-5`, form icons use `size-3` or `size-3.5`, and buttons have their own icon sizing rules. While contextually appropriate, there's no documented standard.\n- **Why it matters:** A cohesive icon size system makes the app feel more intentional.\n- **How to fix it:** Document icon size standards by context: (1) Primary nav: `size-5`; (2) Secondary nav/lists: `size-4`; (3) Form inputs/labels: `size-3`; (4) Inline badges: `size-2.5`. This is largely already in place, so mainly a documentation improvement.\n\n#### 7. **Improve Focus Indicators for Keyboard Navigation**\n- **Where it is:** Various interactive elements \u2014 focus states rely on the default ring system\n- **What's wrong:** While the app has focus rings via `focus-visible:ring-3`, they may not be obvious enough on all elements. Some elements (e.g., sidebar link) don't explicitly show focus state.\n- **Why it matters:** Keyboard users rely on visible focus indicators to navigate. The app should make it clear which element has focus at all times.\n- **How to fix it:** Audit all interactive elements (buttons, links, inputs) and ensure they have visible focus indicators. Test with keyboard navigation (Tab key) to verify focus is always visible.\n\n#### 8. **Add Micro-interactions to Loading States**\n- **Where it is:** \n  - Spinner animations: `/src/components/ui/spinner.tsx` (not shown, but referenced)\n  - Skeleton loaders: `/src/app/globals.css`, line 89 \u2014 uses `animate-pulse rounded bg-muted/40`\n- **What's wrong:** Skeletons use simple `animate-pulse`, which can feel generic. Some loading states might benefit from a shimmer effect (already defined in globals.css as `.text-shimmer` for tool status).\n- **Why it matters:** Micro-interactions (shimmer effects, staggered animations) make loading states feel less like the app is frozen and more like things are happening.\n- **How to fix it:** Consider applying the shimmer animation to skeleton loaders for a more premium feel. Ensure all loading spinners have consistent animation (they should already, via Tailwind's `animate-spin`).\n\n#### 9. **Standardize Link Underlines**\n- **Where it is:** `/src/components/ui/button.tsx`, line 21 \u2014 link variant uses `underline-offset-4 hover:underline`\n- **What's wrong:** While button links are correctly underlined, other navigation links (in sidebar, nav) don't show underlines. Users may not realize they're clickable links vs. static text.\n- **Why it matters:** Clear link indicators (underlines, color changes) help users understand navigation options.\n- **How to fix it:** Consider adding subtle color changes or underlines to navigation links. However, this is contextual \u2014 in a sidebar nav, the active border indicator may be sufficient. Test with users to verify clarity.\n\n#### 10. **Verify Contrast Ratios on Muted Text**\n- **Where it is:** Muted text uses `text-muted-foreground` throughout\n- **What's wrong:** Without measurement, but `text-muted-foreground` (hsl(30 8% 68%)) on `bg-background` (hsl(30 6% 12%)) may have marginal contrast for WCAG AA compliance. Secondary text on muted backgrounds (like cards) might be even lower.\n- **Why it matters:** Contrast issues affect readability for all users, especially those with low vision or color blindness.\n- **How to fix it:** Use a contrast checker (e.g., WebAIM Contrast Checker) to verify all text color/background combinations meet WCAG AA (4.5:1 for small text, 3:1 for large). If contrast is below standard, either lighten the text or darken the background slightly.\n\n---\n\n## Mobile Responsiveness Notes\n\nThe app has good mobile responsiveness overall:\n- Sidebar is hidden on mobile (`hidden md:flex`), replaced with bottom nav\n- Main layout uses `flex-col` on mobile, adapts well\n- Chat input scales properly\n- Dashboard cards use responsive grid: `grid grid-cols-1 sm:grid-cols-2`\n\n**Minor suggestions:**\n- Verify touch targets are \u226544x44px on mobile (they appear to be)\n- Test text readability at default zoom levels (18px root font on mobile is reasonable)\n- Confirm no horizontal overflow on small screens\n\n---\n\n## Accessibility Notes\n\nBasic a11y is in place:\n- Semantic HTML structure (nav, main, etc.)\n- Focus rings defined\n- Icons have alt text where appropriate (e.g., FileText icon in documents)\n\n**Areas to review:**\n- Ensure all form labels are properly associated (review Input component for `htmlFor`)\n- Verify color is not the only indicator (e.g., priority badges should have text, not just color)\n- Test keyboard navigation end-to-end (Tab through all pages)\n\n---\n\n## Summary by Priority\n\n### Immediate (fix next)\n1. Standardize heading sizes across pages (current variation is the most visible inconsistency)\n2. Fix sidebar active state border alignment (remove `-ml-px` hack)\n3. Standardize modal/dialog padding\n\n### Short-term (polish pass)\n4. Align chat input border styling with standard Input component\n5. Standardize form label sizes\n6. Add hover background to nav items\n\n### Nice-to-have (future improvements)\n7. Add transition timing constants\n8. Improve empty state design\n9. Verify contrast ratios\n10. Add micro-interactions to loading states\n\n---\n\n## Files to Review/Update\n\n1. `/src/components/sidebar.tsx` \u2014 Dialog padding, nav item hover states, active border\n2. `/src/app/(app)/settings/layout.tsx` \u2014 Heading size consistency, nav styling\n3. `/src/app/(app)/dashboard/page.tsx` \u2014 Card padding, heading sizes\n4. `/src/app/(app)/documents/page.tsx` \u2014 Heading sizes, button states\n5. `/src/components/chat-input.tsx` \u2014 Border styling alignment\n6. `/src/components/chat-messages.tsx` \u2014 Empty state improvement\n7. `/src/app/globals.css` \u2014 Consider adding transition timing variables\n8. `/src/components/mobile-nav.tsx` \u2014 Label font size review\n\n---\n\n## Overall Assessment\n\nThe Crosby app has a **well-considered, minimal dark aesthetic** that feels intentional. The design is clean, readable, and functionally clear. The issues identified are not showstoppers \u2014 they're subtle inconsistencies that prevent the app from feeling as premium and polished as the underlying concept deserves.\n\n**Strengths:**\n- Consistent color palette and dark theme execution\n- Thoughtful use of typography and letter spacing\n- Clear information hierarchy in most contexts\n- Good responsive design foundation\n- Proper use of component system (buttons, cards, etc.)\n\n**Growth areas:**\n- Spacing consistency (especially padding in dialogs and components)\n- Heading hierarchy (too many sizes, not enough consistency)\n- Interactive feedback (hover states, loading states)\n- Edge details (border alignment, transition timing)\n\nWith focused attention to the **WARNING** category items, the app would jump from \"solid\" to \"polished and professional.\" The **SUGGESTIONS** are enhancements that would make it feel even more premium.\n\n"}], "grading": {"eval_id": "eval-1-full-app-audit", "run_type": "with_skill", "expectations": [{"text": "severity-tiers: Report uses severity tiers (critical, warning, suggestion or equivalent prioritization)", "passed": true, "evidence": "Report uses CRITICAL, WARNING, SUGGESTION tiers explicitly in sections 'Audit Findings' with clear section headers"}, {"text": "file-paths: Report includes specific file paths pointing to where issues occur in the codebase", "passed": true, "evidence": "Each finding includes exact file paths and line numbers, e.g., '/src/components/sidebar.tsx, line 170', '/src/app/(app)/settings/layout.tsx, line 36'"}, {"text": "page-routes: Report mentions specific pages or routes where issues render in the app", "passed": true, "evidence": "Report mentions specific pages throughout: 'Documents page', 'Settings pages', 'Dashboard cards', 'Chat empty state', 'mobile nav'"}, {"text": "plain-english-fixes: Fix suggestions are in plain English without code snippets", "passed": true, "evidence": "Fix suggestions are narrative: 'Remove the -ml-px and instead adjust padding or use border-l with the border width baked into the padding calculation' - no code blocks"}, {"text": "design-system-reference: Report references or infers a design system baseline to compare against", "passed": true, "evidence": "Extensive Design System Reference section (lines 14-58) documenting colors, typography, spacing, components, and breakpoints inferred from codebase"}, {"text": "visual-consistency-priority: Visual consistency issues appear before accessibility issues (respecting priority order)", "passed": true, "evidence": "Visual consistency issues (spacing, headings, borders, labels, styling) are covered in WARNING/SUGGESTION sections. Accessibility concerns relegated to separate 'Accessibility Notes' section after all visual findings"}, {"text": "intentional-vs-accidental: Report distinguishes or considers whether differences might be intentional vs accidental", "passed": true, "evidence": "Executive summary states 'The app successfully maintains visual consistency...demonstrates thoughtful use' and notes 'subtle inconsistencies', distinguishing between intentional design and unintended drift"}, {"text": "actionable-specificity: Findings are specific enough to act on (not vague like 'improve consistency' but pointing to exact elements/values)", "passed": true, "evidence": "Issues specify exact padding values (p-5, p-6, px-4 py-3), font sizes (0.8125rem, 0.625rem, 0.6875rem), and class names to change, e.g., 'use pl-[11px] border-l (leaving 11px for 2px border + 9px padding)'"}]}}, {"id": "eval-1-full-app-audit-without_skill", "prompt": "Can you do a full UI audit of my app? I want to know if there are any visual inconsistencies or things that look unprofessional", "eval_id": 1, "outputs": [{"name": "report.md", "type": "text", "content": "# UI/UX Audit Report: Crosby Application\n**Date:** March 18, 2026  \n**Application:** Crosby - Private AI Workspace for DeMayo Restaurant Group  \n**Technology Stack:** Next.js (App Router), TypeScript, Tailwind CSS, Supabase\n\n---\n\n## Executive Summary\n\nThe Crosby application has a **consistently dark, minimal aesthetic** that is executed well overall. The design is modern, accessible, and maintains visual harmony across most pages. However, there are several **visual inconsistencies, professional polish issues, and UX concerns** that should be addressed to elevate the application to enterprise-grade status.\n\n**Key Findings:**\n- Strong foundational design system with appropriate use of color, spacing, and typography\n- Inconsistent button styling and interaction patterns across the app\n- Several professional presentation issues that create a less polished feel\n- Some UX friction points that could be smoothed out\n- Color palette handling could be more refined in certain contexts\n\n---\n\n## Detailed Findings\n\n### 1. **Typography Inconsistencies**\n\n#### Issue 1.1: Misaligned Font Sizing\n- **Severity:** Medium\n- **Location:** Throughout the app (dashboard, documents page, settings)\n- **Problem:** Font sizes are inconsistent between similar elements. For example:\n  - Page titles sometimes use `text-2xl` (login page), sometimes `text-[0.8125rem]` (documents page)\n  - This creates a confusing visual hierarchy\n  - The app uses small text sizes (0.8125rem, 0.75rem) which can feel cramped on larger screens\n- **Example:** Login page title (\"Crosby\") is `text-[1.75rem]` while dashboard title is much smaller\n- **Recommendation:** Establish a clear type scale (h1, h2, h3, body, small, xs) and apply consistently. Consider slightly larger base sizes for readability.\n\n#### Issue 1.2: Font Weight Inconsistency\n- **Severity:** Low\n- **Problem:** Mix of `font-light`, `font-medium`, `font-semibold` without clear hierarchy. Some sections use `font-light` for primary content which can feel weak.\n- **Example:** Chat messages use `font-light` which works for body text but feels insubstantial\n- **Recommendation:** Define clear font-weight rules: Regular (400) for body, Medium (500) for labels, Semibold (600) for headings, Light (300) only for supplementary text\n\n#### Issue 1.3: Letter Spacing Overuse\n- **Severity:** Low-Medium\n- **Problem:** Excessive use of `tracking-wider` (0.15em+) on labels and buttons creates visual disconnection\n- **Location:** Settings labels, button text, small caps labels\n- **Impact:** Reduces readability slightly and feels overly stylized for a professional tool\n- **Recommendation:** Reserve `tracking-wider` for very small text (xs) and branding elements. Use `tracking-normal` for standard text.\n\n---\n\n### 2. **Button Styling & Interaction**\n\n#### Issue 2.1: Inconsistent Button Appearance\n- **Severity:** High\n- **Locations:** Sidebar, chat input, documents page, settings\n- **Problems:**\n  - Some buttons have no visible background until hover (ghost style)\n  - Some have borders with transparent backgrounds\n  - Some are fully filled with foreground color\n  - Mix of styles for primary/secondary actions makes it hard to prioritize\n  - Example: Create Expert button in sidebar has full fill, but Upload button has just a border\n  - Example: Model selector dropdown uses very small text (0.7rem) and feels cramped\n- **Current Code Example:**\n  ```\n  // Sidebar \"Create\" button (full-fill)\n  bg-foreground text-background\n  \n  // Documents \"Upload\" button (border only)\n  border border-border text-muted-foreground hover:text-foreground\n  ```\n- **Recommendation:** \n  - Define clear button variants: Primary (filled), Secondary (border), Tertiary (ghost)\n  - Use consistent padding and minimum heights\n  - All buttons should be at least 32px high for touch targets\n  - Implement proper focus states for keyboard navigation\n\n#### Issue 2.2: Disabled Button States Unclear\n- **Severity:** Medium\n- **Problem:** Disabled buttons use `disabled:opacity-30` which makes them hard to see\n- **Location:** Create Expert button, chat input send button, various form inputs\n- **Recommendation:** Increase opacity to 50-60% and add a visual indicator (cursor-not-allowed should already be there)\n\n#### Issue 2.3: Loading States Not Standardized\n- **Severity:** Medium\n- **Problem:** Loading indicators inconsistent across the app\n- **Examples:**\n  - Some buttons show text change (\"Creating...\" vs \"Create\")\n  - Some show spinner icon inline\n  - Some show just opacity change\n- **Recommendation:** Create a reusable loading button component that standardizes the experience\n\n---\n\n### 3. **Color & Contrast Issues**\n\n#### Issue 3.1: Muted Foreground Legibility\n- **Severity:** Medium\n- **Location:** All helper text, secondary labels, placeholder text\n- **Problem:** `text-muted-foreground` (hsl(30 8% 68%)) provides insufficient contrast on dark background (hsl(30 7% 10%))\n- **WCAG AAA Compliance:** Likely fails AA standard in some contexts\n- **Examples:**\n  - Labels in forms have poor contrast\n  - Placeholder text is hard to read\n  - Secondary navigation text is faint\n- **Recommendation:** \n  - Check contrast ratios against WCAG AA standard (minimum 4.5:1 for normal text)\n  - Consider raising the lightness of `muted-foreground` from 68% to 75%+\n  - For accessibility, reserve `muted-foreground/40` and `/30` only for tertiary elements\n\n#### Issue 3.2: Color Inconsistency in Action Buttons\n- **Severity:** Medium\n- **Location:** Chat messages, action item cards, status indicators\n- **Problem:** \n  - Different actions use different colors (emerald-500 for success, amber-500 for update, blue-500 for project)\n  - But the color choices are inconsistent across similar actions\n  - Some use `/60` opacity, others use `/70`, others are solid\n- **Recommendation:** Define a clear semantic color system (success=green, warning=amber, info=blue, error=red) and apply consistently\n\n#### Issue 3.3: Border Color Subtlety\n- **Severity:** Low-Medium\n- **Problem:** `border-border` color (hsl(30 4% 20%)) is so close to background (hsl(30 7% 10%)) that borders are barely visible\n- **Impact:** Reduces visual structure and makes form inputs less obvious\n- **Recommendation:** Increase border color to 25-30% lightness to provide more contrast\n\n---\n\n### 4. **Spacing & Layout**\n\n#### Issue 4.1: Inconsistent Padding\n- **Severity:** Medium\n- **Location:** Throughout the app (forms, cards, navigation items)\n- **Problems:**\n  - Form fields sometimes use `px-3 py-2`, sometimes `px-2.5 py-1.5`\n  - Navigation items vary: sidebar has `px-3 py-2`, documents page has different spacing\n  - Lack of clear spacing scale (8px, 12px, 16px, etc.)\n- **Recommendation:** Define a clear spacing scale and apply consistently (4px, 8px, 12px, 16px, 24px, 32px)\n\n#### Issue 4.2: Form Field Sizing\n- **Severity:** Medium\n- **Location:** All form inputs and textareas\n- **Problem:** Form fields are quite small (height: 8 units, or ~32px base)\n- **Current:** `h-8` for inputs, textareas with `min-height: 46px`\n- **Recommendation:** Increase minimum heights to 40px for better touch targeting and visual prominence\n\n#### Issue 4.3: Gap Inconsistency\n- **Severity:** Low\n- **Problem:** Different components use different gap values: `gap-1`, `gap-1.5`, `gap-2`, `gap-3`\n- **Impact:** Makes spacing feel random even when properly aligned\n- **Recommendation:** Limit gap values to a consistent scale (gap-2, gap-3, gap-4)\n\n---\n\n### 5. **Visual Polish & Refinement Issues**\n\n#### Issue 5.1: Border Radius Not Zero-Based\n- **Severity:** Low\n- **Location:** Buttons, inputs, cards, modals\n- **Problem:** CSS custom property `--radius: 0` in tailwind.config but individual components override with `rounded-lg`, `rounded-2xl`, etc.\n- **Current:** Mix of:\n  - `rounded-lg` on buttons\n  - `rounded-2xl` on user message bubbles\n  - `rounded-xl` on cards\n  - No rounding on most form inputs (just the reset to `rounded-lg`)\n- **Impact:** Design feels slightly inconsistent in terms of corner treatment\n- **Recommendation:** Either go fully sharp (0) or establish a consistent radius scale (0, 4px, 8px, 12px)\n\n#### Issue 5.2: Inconsistent Focus States\n- **Severity:** High (Accessibility)\n- **Location:** Forms, buttons, links\n- **Problem:** \n  - Some elements have `focus-visible:ring-3 focus-visible:ring-ring/50`\n  - Others have `focus:border-foreground/30`\n  - Some have no visible focus state at all (especially in mobile nav)\n- **Impact:** Keyboard navigation is confusing and non-accessible\n- **Recommendation:** Implement consistent focus states across all interactive elements using ring style\n\n#### Issue 5.3: Hover States Subtle\n- **Severity:** Low-Medium\n- **Location:** Sidebar links, document list items, navigation\n- **Problem:** Hover states are very subtle (just text color change or `hover:bg-muted/30`)\n- **Impact:** Users may not realize elements are clickable\n- **Recommendation:** Make hover states more obvious with background color change to `bg-muted/50` or higher\n\n#### Issue 5.4: Box Shadow Absence\n- **Severity:** Low\n- **Problem:** No box shadows anywhere in the design; some dropdowns/modals use borders only\n- **Impact:** Can make floating elements feel flat and unconnected\n- **Example:** Create Expert modal uses just a border, no shadow\n- **Recommendation:** Consider adding subtle shadows to floating/modal elements for depth (e.g., `shadow-lg` on modals)\n\n---\n\n### 6. **Component-Specific Issues**\n\n#### Issue 6.1: Sidebar Issues\n- **Severity:** Medium\n- **Problems:**\n  - Logo text disappears without warning when sidebar collapses - could be confusing\n  - \"Experts\" section heading is very small (0.625rem) and hard to notice\n  - Add button (+) next to \"Experts\" is extremely small (0.75rem text) and hard to click\n  - No hover state on \"Experts\" add button\n  - Collapsed sidebar icon button has no visible hover state\n- **Recommendations:**\n  - Keep Crosby logo visible even in collapsed state (e.g., just the \"C\")\n  - Increase \"Experts\" header size to at least 0.75rem\n  - Increase add button size and make hover state obvious\n  - Add tooltip on collapsed sidebar icons\n\n#### Issue 6.2: Chat Input Issues\n- **Severity:** Medium\n- **Problems:**\n  - Model picker is hard to find (small text, no icon)\n  - File attachment button is very small (0.75rem text, 4px icon)\n  - Model picker dropdown has inconsistent styling compared to other dropdowns\n  - Send button doesn't provide enough visual feedback\n- **Recommendations:**\n  - Make model picker more discoverable (larger text, clear label, icon)\n  - Increase file attachment button size\n  - Add tooltip to explain what model picker does\n  - Send button should highlight on hover more noticeably\n\n#### Issue 6.3: Mobile Navigation Issues\n- **Severity:** Medium\n- **Location:** Bottom navigation bar on mobile\n- **Problems:**\n  - Text labels are very small (0.5625rem uppercase)\n  - Icons are 5 units (20px) which is reasonable but could be larger\n  - No visual feedback on tap (should be obvious)\n  - Expert items drawer doesn't show number of experts\n- **Recommendations:**\n  - Increase label text to at least 0.625rem or remove labels on mobile (just icons)\n  - Add badge showing number of experts\n  - Make touch targets at least 44px square (currently ~52px which is good)\n\n#### Issue 6.4: Form/Dialog Issues\n- **Severity:** Medium\n- **Location:** Create Expert modal, login form\n- **Problems:**\n  - Input fields are small (h-8)\n  - Labels are very small (0.625rem uppercase)\n  - Button in Create Expert dialog is full width but small height\n  - No clear visual separation between form sections\n  - Form field borders blend into background\n- **Recommendations:**\n  - Increase input height to 40px\n  - Increase label size to 0.75rem\n  - Add clear focus states to form fields\n  - Consider adding subtle background to form sections\n\n#### Issue 6.5: Document List/Grid View\n- **Severity:** Low-Medium\n- **Location:** Documents page\n- **Problems:**\n  - Grid items are small and hard to read\n  - Title text uses 0.8125rem which is okay but could be larger\n  - Metadata (file type, status) uses 0.625rem which is quite small\n  - Hover state is `hover:bg-muted/30` which is very subtle\n- **Recommendations:**\n  - Increase minimum grid item size\n  - Increase title and metadata sizes\n  - Make hover state more obvious (`hover:bg-muted/50`)\n\n---\n\n### 7. **Animation & Microinteraction Issues**\n\n#### Issue 7.1: Inconsistent Animation Classes\n- **Severity:** Low\n- **Problem:** Mix of animation utilities:\n  - `animate-in-up` (custom)\n  - `animate-in-fade` (custom)\n  - `animate-spin` (Tailwind)\n  - Some elements have no animation at all\n- **Impact:** Transitions feel inconsistent\n- **Recommendation:** Create consistent animation system with standardized duration and easing\n\n#### Issue 7.2: Scroll Behavior\n- **Severity:** Low\n- **Problem:** Chat messages have `behavior: 'smooth'` on scroll but other scrollable areas don't\n- **Recommendation:** Ensure all scroll regions behave consistently\n\n---\n\n### 8. **Accessibility Issues**\n\n#### Issue 8.1: Insufficient Color Contrast\n- **Severity:** High (Legal/Compliance)\n- **Locations:** Muted foreground text, disabled states, secondary labels\n- **Problem:** Many text elements likely fail WCAG AA standards\n- **Recommendation:** Run through WCAG contrast checker and adjust color values\n\n#### Issue 8.2: Small Touch Targets\n- **Severity:** High (Mobile UX)\n- **Locations:** Close buttons (X icons), delete buttons, sidebar collapse button\n- **Problems:**\n  - Many icon buttons are just `p-1` (4px padding) which is too small\n  - Close buttons especially are hard to tap\n- **Recommendation:** Ensure all interactive elements are at least 44x44px\n\n#### Issue 8.3: Focus Management\n- **Severity:** High (Keyboard Navigation)\n- **Problem:** Focus states are inconsistent or missing\n- **Recommendation:** Audit entire app for keyboard navigation and ensure visible focus indicators everywhere\n\n#### Issue 8.4: Alt Text & Labels\n- **Severity:** Medium\n- **Problem:** Icon buttons may not have proper aria-labels or title attributes\n- **Examples:**\n  - Close buttons (X icons)\n  - Edit/view toggle in artifact panel\n  - Model picker dropdown\n- **Recommendation:** Add aria-labels to all icon-only buttons\n\n---\n\n### 9. **Professional Polish Issues**\n\n#### Issue 9.1: Placeholder Text Styling\n- **Severity:** Low-Medium\n- **Location:** All form inputs\n- **Problem:** Placeholder text uses `text-muted-foreground/30` which is barely visible\n- **Recommendation:** Increase to `/50` for better visibility\n\n#### Issue 9.2: Skeleton Loading States\n- **Severity:** Low\n- **Problem:** App uses `@apply animate-pulse rounded bg-muted/40` for skeletons\n- **Impact:** Skeletons are subtle and hard to see, making loading state unclear\n- **Recommendation:** Make skeleton states more obvious\n\n#### Issue 9.3: Empty States\n- **Severity:** Low-Medium\n- **Location:** Documents page, projects list\n- **Problem:** Empty states are styled minimally with just text\n- **Recommendation:** Add icons and better visual presentation to empty states\n\n#### Issue 9.4: Error States\n- **Severity:** Medium\n- **Location:** Form validation, API errors\n- **Problem:** Error styling is inconsistent\n- **Examples:**\n  - Login form shows error in small text (0.75rem)\n  - Some cards show errors with red borders\n- **Recommendation:** Create consistent error state styling and messaging\n\n---\n\n### 10. **Navigation & Wayfinding**\n\n#### Issue 10.1: Breadcrumbs Missing\n- **Severity:** Low\n- **Location:** Project pages, document pages\n- **Problem:** No breadcrumbs or navigation context shown\n- **Recommendation:** Add breadcrumb navigation for clarity\n\n#### Issue 10.2: Active Navigation States\n- **Severity:** Medium\n- **Location:** Sidebar, mobile bottom nav\n- **Problem:** \n  - Active state in sidebar uses `border-l-2 border-foreground` but this is subtle\n  - Mobile nav active state is just color change\n- **Recommendation:** Make active states more obvious (highlight, background, icon change)\n\n---\n\n## Summary of Issues by Severity\n\n### **HIGH PRIORITY (affects professional appearance significantly)**\n1. Inconsistent button styling across the app\n2. Accessibility: Insufficient color contrast on many text elements\n3. Inconsistent focus states (keyboard navigation)\n4. Small touch targets on mobile and desktop\n5. Font sizing inconsistencies\n\n### **MEDIUM PRIORITY (affects polish and UX)**\n1. Muted foreground text legibility\n2. Form field sizing too small\n3. Sidebar issues (add button too small, poor affordance)\n4. Chat input poor discoverability (model picker, file button)\n5. Mobile navigation text too small\n6. Border color insufficient contrast\n7. Spacing inconsistencies\n8. Error states not standardized\n\n### **LOW PRIORITY (nice to have improvements)**\n1. Border radius consistency\n2. Box shadow for depth\n3. Placeholder text visibility\n4. Empty state presentation\n5. Breadcrumbs for navigation\n6. Letter spacing overuse\n7. Animation consistency\n\n---\n\n## Recommendations - Quick Wins\n\nThese changes would significantly improve the app's polish with minimal effort:\n\n1. **Increase `muted-foreground` lightness** from 68% to 75%+ for better contrast\n2. **Standardize button heights** to at least 40px and ensure proper padding\n3. **Define clear button variants** (primary, secondary, tertiary) and apply consistently\n4. **Increase form field height** from h-8 to h-10 for better usability\n5. **Make sidebar add button larger** and more discoverable\n6. **Increase border color** lightness to 25-30% for better visibility\n7. **Add consistent focus states** across all interactive elements\n8. **Audit and fix color contrast** against WCAG AA standards\n9. **Standardize form field styling** across all pages\n10. **Increase mobile touch targets** to minimum 44x44px\n\n---\n\n## Recommendations - Long-Term Improvements\n\n1. Create a comprehensive design system document with:\n   - Complete type scale and usage guidelines\n   - Color palette with semantic meanings\n   - Spacing/grid system\n   - Component library documentation\n   - Accessibility guidelines\n\n2. Conduct a full accessibility audit and remediation\n3. Create a consistent design language for all new components\n4. Implement design tokens for colors, spacing, typography\n5. Add Storybook or similar for component documentation\n\n---\n\n## Conclusion\n\nThe Crosby application has a solid foundational design with a consistent dark theme and modern aesthetic. The codebase is well-organized and uses quality libraries (Radix UI, shadcn/ui patterns). However, the application would benefit from **increased visual consistency, better accessibility standards, and refined professional polish** to meet enterprise expectations.\n\nThe issues identified are generally **fixable with systematic refinement** rather than requiring a redesign. Focus on the high-priority items first (buttons, contrast, focus states) as these have the biggest impact on perceived quality and usability.\n\n**Estimated effort to address all issues: 2-4 weeks** depending on team size and complexity of implementation.\n"}], "grading": {"eval_id": "eval-1-full-app-audit", "run_type": "without_skill", "expectations": [{"text": "severity-tiers: Report uses severity tiers (critical, warning, suggestion or equivalent prioritization)", "passed": true, "evidence": "Report uses severity levels throughout findings: 'Severity: High', 'Severity: Medium', 'Severity: Low', 'Severity: Low-Medium'. Also uses priority summary: 'HIGH PRIORITY', 'MEDIUM PRIORITY', 'LOW PRIORITY'"}, {"text": "file-paths: Report includes specific file paths pointing to where issues occur in the codebase", "passed": true, "evidence": "File paths are included for most issues, e.g., 'Sidebar (sidebar.tsx)', 'Documents page (documents/page.tsx)', 'Login form shows error in small text', though some are vaguer than others"}, {"text": "page-routes: Report mentions specific pages or routes where issues render in the app", "passed": true, "evidence": "Specific pages mentioned throughout: 'Dashboard', 'Documents page', 'Settings', 'Chat page', 'Login page', 'Projects list', 'Bottom navigation bar on mobile'"}, {"text": "plain-english-fixes: Fix suggestions are in plain English without code snippets", "passed": false, "evidence": "Report contains code snippets in Issues 2.1 and 6.4 showing actual Tailwind classes like 'bg-foreground text-background' and 'border border-border text-muted-foreground hover:text-foreground'"}, {"text": "design-system-reference: Report references or infers a design system baseline to compare against", "passed": false, "evidence": "No explicit design system reference section. Colors are mentioned inline in issues (e.g., Issue 3.1 mentions 'hsl(30 8% 68%)') but there's no comprehensive design system section like in the with_skill report"}, {"text": "visual-consistency-priority: Visual consistency issues appear before accessibility issues (respecting priority order)", "passed": false, "evidence": "Accessibility issues (8.1-8.4) appear in main findings before being mentioned separately, mixed with visual issues. No clear separation prioritizing visual consistency first"}, {"text": "intentional-vs-accidental: Report distinguishes or considers whether differences might be intentional vs accidental", "passed": false, "evidence": "Report doesn't distinguish between intentional and accidental design choices. States issues matter but doesn't discuss whether differences might be deliberate design decisions"}, {"text": "actionable-specificity: Findings are specific enough to act on (not vague like 'improve consistency' but pointing to exact elements/values)", "passed": true, "evidence": "Issues specify exact values and locations: 'text-2xl (login page), sometimes text-[0.8125rem] (documents page)', 'Increase border color to 25-30% lightness', 'h-8 to h-10'"}]}}, {"id": "eval-2-chat-page-focus-with_skill", "prompt": "Review the chat page UI - does it look polished? Flag anything that feels off", "eval_id": 2, "outputs": [{"name": "report.md", "type": "text", "content": "# UI/UX Design Audit: Chat Page\n\n**Date:** March 18, 2026  \n**Scope:** Chat page interface (`/chat/[id]`) and associated components  \n**Overall Assessment:** The chat interface is functionally solid but has several visual consistency issues and polish gaps that detract from the refined aesthetic the app is aiming for. Typography sizing is inconsistent, spacing logic varies between similar sections, and there are opportunities to improve empty states and loading feedback.\n\n---\n\n## Design System Reference\n\nBased on analysis of the Crosby codebase, here's the inferred design system:\n\n**Colors (Dark theme):**\n- Background: `hsl(30 7% 10%)`\n- Foreground (text): `hsl(40 10% 90%)`\n- Card: `hsl(30 6% 14%)`\n- Muted (secondary): `hsl(30 5% 18%)`\n- Muted Foreground: `hsl(30 8% 68%)`\n- Border: `hsl(30 4% 20%)`\n- Primary: `hsl(40 10% 87%)` (inverted from foreground)\n- Destructive: `hsl(0 62.8% 40%)`\n\n**Typography:**\n- Heading levels: Base `18px` on desktop, `16px` on mobile\n- Primary heading: `2rem` (bold) in empty state\n- Message role labels: `0.625rem` uppercase with `tracking-[0.15em]`\n- Message content: `0.9375rem` with `leading-[1.7]`\n- Secondary text (muted): `0.8125rem` or smaller with reduced opacity\n- Font: Geist (system default)\n- Monospace: Geist Mono (for code blocks)\n\n**Spacing:**\n- Borders: 1px\n- Border radius: None (--radius: 0), sharp corners\n- Page padding: `px-4` to `px-6` (typical)\n- Vertical spacing between messages: `py-5`\n- Chat input padding: `py-3` header, `pb-3` footer\n\n**Components:**\n- Buttons: Minimal, text-based with no background until hover/focus\n- Cards/panels: Bordered, minimal shadow, background slightly lighter than page\n- Inputs: Transparent background, border bottom on focus\n- Icons: Lucide icons, 3px to 4px sizes for UI chrome, contextual colors\n\n---\n\n## Findings\n\n### Critical Issues\n\n#### 1. Inconsistent Typography Sizing in Message Blocks\n\n**What's wrong:**  \nMessage content uses `text-[0.9375rem]` while message role labels use `text-[0.625rem]`. The visual hierarchy between role label (\"You\", \"Crosby\") and message timestamp is unclear. Additionally, headings within formatted content use three different sizes (h1: `1.0625rem`, h2: `0.9375rem`, h3: `0.8125rem`), but there's no visual distinction when rendered\u2014they all appear as bold text with the same size.\n\n**Where it is:**\n- `/src/components/chat-messages.tsx` lines 192\u2013212 (message role/timestamp line)\n- `/src/components/chat-messages.tsx` line 219 (message content size)\n- `/src/components/chat-messages.tsx` lines 493\u2013515 (heading size definitions in FormattedContent)\n\n**Why it matters:**  \nUsers struggle to scan the message thread and understand message structure. The role label should be visually lighter/smaller than content, but currently competes for attention. Heading sizes defined in the formatter don't translate to visually distinct tiers in the UI.\n\n**How to fix it:**  \n1. Standardize message role label size to `text-[0.6875rem]` across all message types\n2. Ensure message timestamps are consistently smaller than role labels (`text-[0.625rem]`)\n3. Check that heading sizes in FormattedContent produce visually distinct results\u2014consider increasing h1/h2 sizes to make hierarchy obvious\n\n---\n\n#### 2. Artifact Panel Header Spacing Inconsistency\n\n**What's wrong:**  \nThe artifact panel header uses `py-2.5` while the chat page header uses `py-3`. Both are top-level headers but with different vertical spacing. This makes the interface feel unbalanced when the artifact panel is open.\n\n**Where it is:**\n- `/src/app/(app)/chat/[id]/page.tsx` line 118 (chat header: `py-3`)\n- `/src/components/artifact-panel.tsx` line 239 (artifact tab bar: `py-2.5`)\n- `/src/components/artifact-panel.tsx` line 267 (artifact toolbar: `py-2`)\n\n**Why it matters:**  \nWhen both panels are visible, the headers don't align visually, creating a jarring asymmetry. The artifact panel looks cramped in comparison.\n\n**How to fix it:**  \nStandardize all top-level headers in the chat interface to use `py-3`. Update artifact-panel.tsx lines 239 and 267 to match the chat header padding.\n\n---\n\n#### 3. Tool Status and Loading Indicator Inconsistency\n\n**What's wrong:**  \nLoading states use two different visual patterns:\n1. When `toolStatus` exists: animated gradient text shimmer with `animation: text-shimmer`\n2. When no `toolStatus`: three pulsing dots with individual delays\n\nThe shimmer animation is visually inconsistent with the dot pattern, and both appear simultaneously at times, creating visual confusion.\n\n**Where it is:**\n- `/src/components/chat-messages.tsx` lines 159\u2013175 (initial loading)\n- `/src/components/chat-messages.tsx` lines 257\u2013277 (streaming message loading)\n\n**Why it matters:**  \nUsers don't have a clear visual pattern for \"something is happening.\" The dual loading styles break the visual language and look unfinished.\n\n**How to fix it:**  \nPick one loading pattern and use consistently:\n- Option A: Use the pulsing dots pattern everywhere (simpler, more predictable)\n- Option B: Use the shimmer text pattern everywhere (more sophisticated, but needs review for accessibility)\n\nRecommend Option A (pulsing dots) as it's less jarring and more accessible.\n\n---\n\n#### 4. Message Bubble Styling for User Messages Not Visually Distinct\n\n**What's wrong:**  \nUser messages use `bg-muted/50 px-4 py-2.5 rounded-2xl rounded-tr-sm` styling. The `rounded-tr-sm` removes the corner radius on the top-right only, but this subtle detail doesn't create enough visual separation from assistant messages, which have no background at all. Users might not immediately recognize the message direction.\n\n**Where it is:**\n- `/src/components/chat-messages.tsx` line 219 (user message styling)\n\n**Why it matters:**  \nIn chat UIs, user vs assistant messages must be immediately visually distinct. The current subtle background color and partial border radius don't achieve this clearly enough, especially at smaller screen sizes.\n\n**How to fix it:**  \nIncrease visual distinction by either:\n1. Using a more saturated background color (e.g., `bg-primary/15` or similar) instead of muted\n2. Adding a left border or left accent line to assistant messages for contrast\n3. Aligning both to a consistent edge of the viewport (user right-aligned with background, assistant left-aligned with no background, as is standard)\n\nCurrent code already right-aligns user messages, but background needs to be more prominent.\n\n---\n\n### Warning Issues\n\n#### 5. Action Item and Event Card Sizing Inconsistency\n\n**What's wrong:**  \nEvent cards (ActionItemCard, AddToProjectCard, GmailSearchCard, etc.) use `text-[0.75rem]` for labels and content, but their padding is `px-3 py-2`, which feels squeezed compared to the main message content at `text-[0.9375rem]`.\n\n**Where it is:**\n- `/src/components/chat-messages.tsx` lines 540\u2013560 (ActionItemCard)\n- `/src/components/chat-messages.tsx` lines 568\u2013600 (AddToProjectCard)\n- `/src/components/chat-messages.tsx` lines 606\u2013615 (GmailSearchCard)\n\n**Why it matters:**  \nThe event cards look cramped and inconsistent with the overall message spacing. They feel like an afterthought rather than part of the main UI.\n\n**How to fix it:**  \nStandardize event card padding to `px-3.5 py-2.5` (matching closer to message padding ratios) and consider increasing text size to `text-[0.8125rem]` for better readability.\n\n---\n\n#### 6. Empty State Typography Hierarchy\n\n**What's wrong:**  \nThe empty state (shown when no messages) uses three typographic levels without clear hierarchy:\n- Date: `text-[0.6875rem] uppercase tracking-[0.2em]`\n- \"Crosby\" heading: `text-2xl font-light tracking-tight`\n- Prompt: `text-[0.8125rem]`\n\nThe jump from `0.6875rem` to `2rem` is extreme, and \"Crosby\" is positioned as the hero text, but the follow-up prompt is much smaller. This creates an awkward visual rhythm.\n\n**Where it is:**\n- `/src/components/chat-messages.tsx` lines 106\u2013116 (empty state)\n\n**Why it matters:**  \nFirst-time users may not understand the purpose of the empty state. The oversized \"Crosby\" heading feels disproportionate to the smaller prompt text below it.\n\n**How to fix it:**  \nReduce \"Crosby\" to `text-xl` or `text-lg`, increase prompt text to `text-[0.9375rem]`, and ensure the overall visual weight feels balanced. Example: date \u2192 small gap \u2192 \"Crosby\" \u2192 gap \u2192 prompt.\n\n---\n\n#### 7. Model Picker Color Inconsistency\n\n**What's wrong:**  \nThe model picker button text uses `text-muted-foreground/50` while the dropdown items use conditional coloring (`text-muted-foreground` when not selected, `text-foreground` when selected). The inactive state is harder to read than the active state, which reverses the typical UI affordance.\n\n**Where it is:**\n- `/src/components/chat-input.tsx` lines 149\u2013163 (model picker)\n\n**Why it matters:**  \nUsers might miss the model picker button because it's too subtle. The selected model should be more visually prominent to indicate the current choice.\n\n**How to fix it:**  \nChange the model picker button to use `text-muted-foreground` (not `/50`), and ensure the dropdown shows the currently selected model with a checkmark or highlight (consider adding a `border-l-2 border-foreground` to the selected option).\n\n---\n\n#### 8. Artifact Panel Tab Bar Text Truncation\n\n**What's wrong:**  \nMultiple artifact tabs in the tab bar use `max-w-[160px]` with `truncate` on tab text. If artifact names are long, they're silently truncated with no tooltip or visual indication that text is hidden. Users can't see full names.\n\n**Where it is:**\n- `/src/components/artifact-panel.tsx` lines 223\u2013242 (artifact tabs)\n\n**Why it matters:**  \nIf a user has multiple artifacts with similar names (e.g., \"Budget Plan v1\", \"Budget Plan v2\"), truncation makes it impossible to distinguish which tab is which.\n\n**How to fix it:**  \nAdd a title attribute or Tooltip component showing the full artifact name on hover. Alternatively, consider a compact UI that shows artifact type icon + first few chars instead of full name.\n\n---\n\n#### 9. Inconsistent Vertical Spacing in Source List\n\n**What's wrong:**  \nSources list items use `py-1.5` padding, while message blocks use `py-5`. The source container doesn't have consistent spacing with other message elements. Additionally, the border uses `border-l-2` which creates asymmetry.\n\n**Where it is:**\n- `/src/components/chat-messages.tsx` lines 810\u2013825 (source list rendering)\n\n**Why it matters:**  \nSources feel disconnected from the message thread visually. They look like an add-on rather than part of the conversation.\n\n**How to fix it:**  \nIncrease source item padding to `py-2.5` for better visual breathing room. Consider using a subtle background (`bg-muted/20`) to group sources together visually.\n\n---\n\n#### 10. Proactive Feedback Input Sizing\n\n**What's wrong:**  \nThe feedback input for proactive messages (briefing/alert) uses `text-[0.75rem]` while the main chat input uses `text-[0.875rem]`. The feedback input also uses `px-2.5 py-1` which feels cramped.\n\n**Where it is:**\n- `/src/components/chat-messages.tsx` lines 76\u201391 (ProactiveFeedback input)\n\n**Why it matters:**  \nThe feedback input is hard to read and feels out of place. Users might overlook it or have difficulty typing.\n\n**How to fix it:**  \nIncrease feedback input text to `text-[0.8125rem]` and padding to `px-3 py-1.5` to match the scale of other inputs in the app.\n\n---\n\n### Suggestion Issues\n\n#### 11. Message Edit/Copy Action Button Opacity\n\n**What's wrong:**  \nEdit and copy buttons on user messages appear with `opacity-0` by default and only show on `group-hover:opacity-100`. On touch devices or when scrolling quickly, users might not discover this feature.\n\n**Where it is:**\n- `/src/components/chat-messages.tsx` lines 286\u2013309 (user message actions)\n\n**Why it matters:**  \nDiscoverability of edit/copy features is low. Users might not know these actions exist.\n\n**How to fix it:**  \nConsider one of these approaches:\n1. Keep buttons visible but use lower opacity (`opacity-40` default, `opacity-100` on hover) to hint at their existence\n2. Show a context menu on right-click instead of hover\n3. Add a subtle visual indicator (e.g., three-dot menu icon) that appears on hover to signal more actions\n\n---\n\n#### 12. Artifact Panel Save to Project Dropdown Width\n\n**What's wrong:**  \nThe \"Save to project\" dropdown is hardcoded to `w-48` (192px), which may not scale well if project names are very long. Long names will truncate, and the dropdown doesn't scroll if there are many projects.\n\n**Where it is:**\n- `/src/components/artifact-panel.tsx` lines 310\u2013330 (project picker dropdown)\n\n**Why it matters:**  \nEdge case, but if a user has many projects or long names, the UI breaks down.\n\n**How to fix it:**  \nAdd `max-h-[300px] overflow-auto` to the dropdown container and consider dynamically sizing width to the longest project name (with a max cap like `max-w-[300px]`).\n\n---\n\n#### 13. ChatInput Files Display Wrapping on Mobile\n\n**What's wrong:**  \nUploaded files display in a flex row with `flex-wrap gap-2`. On narrow mobile screens, file pills will wrap awkwardly and potentially stack on top of the textarea, creating layout shift.\n\n**Where it is:**\n- `/src/components/chat-input.tsx` lines 77\u201398 (file display)\n\n**Why it matters:**  \nMobile users uploading multiple files will see a visually cluttered input area. The message composition feels chaotic.\n\n**How to fix it:**  \nConsider showing uploaded files in a horizontal scroll area on mobile, or collapse file display into a count badge (e.g., \"\ud83d\udcce 3 files\") that expands on click.\n\n---\n\n#### 14. Artifact Type Color Coding Not Universally Applied\n\n**What's wrong:**  \nArtifact types use `TYPE_COLORS` for colored labels in the artifact panel toolbar, but in the ArtifactCard shown inline (in the chat message), artifact type is shown in grayscale `text-muted-foreground/50`. The coloring is inconsistent between the two views of the same artifact.\n\n**Where it is:**\n- `/src/components/artifact-panel.tsx` lines 295\u2013298 (colored type label)\n- `/src/components/chat-messages.tsx` lines 643\u2013651 (gray type label in card)\n\n**Why it matters:**  \nIf a user creates multiple artifacts of different types, the inline view doesn't color-code them, making the artifact type less scannable.\n\n**How to fix it:**  \nApply the same `TYPE_COLORS` mapping to ArtifactCard to match the panel view. Update line 648 to use the color mapping instead of `text-muted-foreground/50`.\n\n---\n\n#### 15. Loading Spinner Size Inconsistency\n\n**What's wrong:**  \nDifferent loading spinners use different sizes:\n- Chat loading indicator: `size-4` (Loader2 in initial load)\n- Message streaming: `size-3` (pulsing dots or shimmer)\n- File upload: `size-3 animate-spin`\n- Project save: `size-2.5 animate-spin`\n\nThis creates visual inconsistency across the interface.\n\n**Where it is:**\n- `/src/components/chat-messages.tsx` line 154 (`size-4`)\n- `/src/components/chat-messages.tsx` line 170 (`size-1`)\n- `/src/components/chat-input.tsx` line 82 (`size-3`)\n- `/src/components/artifact-panel.tsx` line 324 (`size-2.5`)\n\n**Why it matters:**  \nUsers can't develop a consistent mental model for loading states. The varying spinner sizes look unintentional.\n\n**How to fix it:**  \nStandardize loading spinners to `size-3` or `size-3.5` throughout the chat interface, and use the same Loader2 icon everywhere (not pulsing dots, unless pulsing dots becomes the new standard per issue #3).\n\n---\n\n#### 16. ChatInput Placeholder Text Color\n\n**What's wrong:**  \nThe placeholder text in the chat input uses `placeholder:text-muted-foreground/40`. On the dark theme, this is very faint (about 27% opacity from muted). Users might not see the placeholder text, especially on dimmer screens.\n\n**Where it is:**\n- `/src/components/chat-input.tsx` line 117 (textarea placeholder)\n\n**Why it matters:**  \nAccessibility issue. Users unsure what to type won't see the \"Message...\" hint.\n\n**How to fix it:**  \nIncrease placeholder opacity to `placeholder:text-muted-foreground/50` or `/60` for better visibility without breaking the aesthetic.\n\n---\n\n#### 17. Chat Header Divider Alignment\n\n**What's wrong:**  \nThe chat page header uses small divider lines (`w-px h-4 bg-border`) between elements (Chat | Title | Project select). These dividers are styled inconsistently\u2014some are visually aligned to the center, some look slightly off.\n\n**Where it is:**\n- `/src/app/(app)/chat/[id]/page.tsx` lines 125\u2013128 (divider spans)\n\n**Why it matters:**  \nMinor visual polish issue. The dividers feel ad-hoc rather than part of a cohesive design.\n\n**How to fix it:**  \nEnsure all dividers use consistent height, opacity, and color. Consider using a shared divider component instead of inline markup.\n\n---\n\n#### 18. Greeting Card Integration\n\n**What's wrong:**  \nThe chat-messages component accepts `greetingData` and renders a GreetingCard, but this is only used in dashboard or other pages, not in the conversation view. The conditional rendering adds complexity to an already dense component.\n\n**Where it is:**\n- `/src/components/chat-messages.tsx` lines 95\u201398 (greeting card render)\n- `/src/components/chat-messages.tsx` line 41 (greetingData prop)\n\n**Why it matters:**  \nCode organization issue, not a visual one, but it indicates the chat-messages component is overloaded with concerns.\n\n**How to fix it:**  \nConsider extracting greeting card logic into a separate component or page section. This will make chat-messages easier to maintain and understand.\n\n---\n\n## Summary by Severity\n\n| Level | Count | Impact |\n|-------|-------|--------|\n| Critical | 4 | Visual consistency and polish |\n| Warning | 10 | Usability and refinement |\n| Suggestion | 4 | Nice-to-have improvements |\n\n**Critical fixes should be addressed first** to ensure the chat interface feels polished and professional. Warning-level issues should be tackled in the next polish cycle. Suggestions can be addressed as time permits.\n\n---\n\n## Recommended Next Steps\n\n1. **This sprint:** Fix the four critical issues (typography consistency, header padding, loading states, user message distinction)\n2. **Next sprint:** Address warning-level spacing and sizing inconsistencies\n3. **Ongoing:** Consider extracting chat components into a shared component library to prevent future drift\n\nAll suggested fixes can be implemented without changing the overall design direction\u2014they're refinements to bring the UI to a higher level of polish.\n"}], "grading": {"eval_id": 2, "run_type": "with_skill", "expectations": [{"text": "severity-tiers", "passed": true, "evidence": "Report uses clear severity tiers: Critical (4 issues), Warning (10 issues), and Suggestion (4 issues). Each issue is explicitly labeled with its tier and includes a summary table showing count and impact per level."}, {"text": "file-paths", "passed": true, "evidence": "Every issue includes specific file paths with line numbers. Examples: '/src/components/chat-messages.tsx lines 192\u2013212', '/src/app/(app)/chat/[id]/page.tsx line 118', '/src/components/artifact-panel.tsx line 239'. No issues lack file location references."}, {"text": "page-routes", "passed": true, "evidence": "Report scope is clearly defined as '/chat/[id]' at the top. Individual issues reference page context where relevant (e.g., 'Chat page header' in issue #2, empty state shown 'when no messages'). Route and page context is provided throughout."}, {"text": "plain-english-fixes", "passed": true, "evidence": "All 'How to fix it' sections use plain English instructions without code snippets. Example: 'Standardize message role label size to text-[0.6875rem] across all message types' uses design tokens as reference but not code. Fix suggestions are conversational and implementable without reading code."}, {"text": "design-system-reference", "passed": true, "evidence": "Report includes a dedicated 'Design System Reference' section that documents inferred baseline: colors (HSL values), typography (sizing in rem/px), spacing (border radius, padding classes), and components. All findings reference this baseline for comparison."}, {"text": "visual-consistency-priority", "passed": true, "evidence": "Visual consistency issues appear as critical (typography, header spacing, loading indicators, message bubbles). Accessibility issues appear later in warnings (placeholder text opacity in issue #16, which is an a11y concern but positioned as warning, not critical). Hierarchy respects visual polish priority."}, {"text": "intentional-vs-accidental", "passed": false, "evidence": "Report does not distinguish between intentional and accidental differences. For example, issue #4 (partial border radius on user messages) doesn't speculate whether the rounded-tr-sm is intentional restraint or an oversight. Issue #8 (text truncation) doesn't consider if truncation was a deliberate choice for space efficiency."}, {"text": "actionable-specificity", "passed": true, "evidence": "Findings point to exact elements and values, not vague guidance. Example: Issue #5 recommends 'px-3.5 py-2.5' and 'text-[0.8125rem]' instead of generic 'improve spacing'. Issue #7 suggests 'change from text-muted-foreground/50 to text-muted-foreground'. Issue #12 recommends 'max-h-[300px] overflow-auto' as a specific implementation."}]}}, {"id": "eval-2-chat-page-focus-without_skill", "prompt": "Review the chat page UI - does it look polished? Flag anything that feels off", "eval_id": 2, "outputs": [{"name": "report.md", "type": "text", "content": "# Chat Page UI/UX Review\n\n## Executive Summary\n\nThe chat page demonstrates a thoughtfully designed interface with excellent use of whitespace and minimalist aesthetics. Overall polish is strong, but there are several specific areas where refinement could improve usability and consistency.\n\n---\n\n## Strengths\n\n### 1. Minimalist Design Philosophy\n- Clean, distraction-free chat experience with generous whitespace\n- Excellent use of subtle typography hierarchy with varying font sizes and weights\n- Dark theme is well-implemented with good contrast ratios for readability\n\n### 2. Responsive Layout\n- Proper use of Flexbox for adaptive layout (sidebar + main + artifact panel)\n- Input container properly sticks to bottom with correct padding calculations\n- Safe area insets properly respected for mobile/notch devices\n\n### 3. Thoughtful Details\n- Messages have smooth entrance animations (`animate-in-up`)\n- Streaming indicators with subtle pulsing dots and shimmer effects\n- Hover states on message actions are well-implemented (opacity-based reveal)\n- Good visual distinction between user messages (rounded pill shape) and assistant messages\n\n### 4. Functional Features\n- File attachment system is seamlessly integrated\n- Model picker dropdown for switching between AI models\n- Artifact panel slides in cleanly as a separate view\n- Draft persistence via localStorage prevents message loss\n\n---\n\n## Issues Identified\n\n### 1. **Header Layout Inconsistency** (Medium Priority)\n**Location:** `/src/app/(app)/chat/[id]/page.tsx` lines 196-230\n\n**Issue:** The header uses a fragmented design with multiple separators and small elements that create visual clutter:\n```tsx\n<div className=\"flex items-center gap-4 border-b border-border px-6 py-3\">\n  <span className=\"text-[0.8125rem] font-medium uppercase tracking-[0.1em]\">Chat</span>\n  {convTitle && (\n    <>\n      <div className=\"w-px h-4 bg-border\" />\n      <span className=\"text-[0.75rem] text-muted-foreground/50 truncate\">{convTitle}</span>\n    </>\n  )}\n  <div className=\"w-px h-4 bg-border\" />\n  <select className=\"bg-transparent text-[0.75rem] text-muted-foreground outline-none\" />\n  <!-- delete button -->\n</div>\n```\n\n**Problem:**\n- The mix of text sizes (0.8125rem vs 0.75rem) creates slight visual misalignment\n- Multiple vertical dividers feel redundant\n- The select dropdown inherits `text-muted-foreground` which may be too subtle\n- No clear visual hierarchy; all elements feel equally important\n- Delete button styling (size-3.5 trash icon) is very small and hard to hit\n\n**Recommendation:**\n- Consider grouping related items (title + project selector) visually\n- Increase spacing between logical sections\n- Make the delete button larger or move it to a context menu\n- Use consistent text sizing across the header\n\n### 2. **Input Container Bottom Alignment** (Low Priority)\n**Location:** `/src/components/chat-input.tsx` lines 183-212\n\n**Issue:** Hardcoded `mb-[9px]` offset on buttons within the input:\n```tsx\n<button className=\"flex-shrink-0 mb-[9px] ml-1.5 p-1.5 ...\">\n  <Paperclip className=\"size-4\" />\n</button>\n<textarea ... style={{ minHeight: '46px', maxHeight: '200px' }} />\n<button className=\"flex-shrink-0 mb-[9px] mr-2.5 p-1.5 ...\">\n```\n\n**Problem:**\n- Magic number `mb-[9px]` is unclear and fragile\n- When textarea grows beyond one line, this offset may not align perfectly\n- Different margin on each button (`ml-1.5` vs `mr-2.5`) adds unnecessary complexity\n\n**Recommendation:**\n- Use `items-end` + `pb-3` or equivalent on the flex container for cleaner alignment\n- Document the 9px offset if it's intentional, or derive it from Tailwind spacing scale\n\n### 3. **Message Timestamp Accessibility** (Low Priority)\n**Location:** `/src/components/chat-messages.tsx` lines 208-209\n\n**Issue:** Timestamps are heavily muted and hard to read:\n```tsx\n{time && (\n  <span className=\"text-[0.625rem] text-muted-foreground/30 tabular-nums\">{time}</span>\n)}\n```\n\n**Problem:**\n- `text-muted-foreground/30` makes text nearly invisible on dark backgrounds\n- Very small font size (0.625rem) compounds readability issues\n- Only appears on hover or when you specifically look for it\n- Inconsistent with how \"Briefing\" and \"Alert\" labels are styled (which use colored text)\n\n**Recommendation:**\n- Increase opacity to at least `/50` or `/60`\n- Consider making timestamps visible by default on larger screens\n- Use a slightly larger font size\n\n### 4. **Model Picker Styling** (Low Priority)\n**Location:** `/src/components/chat-input.tsx` lines 224-246\n\n**Issue:** Model picker dropdown lacks clear visual feedback:\n```tsx\n<div className=\"relative mt-2 flex items-center\">\n  <button className=\"flex items-center gap-1 text-[0.7rem] text-muted-foreground/50 hover:text-muted-foreground transition-colors\">\n    {MODELS.find(m => m.id === model)?.label}\n    <ChevronDown className=\"size-3\" />\n  </button>\n  {modelPickerOpen && (\n    <div className=\"absolute bottom-6 left-0 z-10 border border-border bg-background shadow-md min-w-[160px]\">\n```\n\n**Problem:**\n- Button text color is very light (`text-muted-foreground/50`), making it low-contrast\n- Dropdown appears above the button (bottom-6), which may be cut off on mobile\n- No visual indicator when dropdown is open (button doesn't change appearance)\n- Model options don't have hover background colors consistently styled\n\n**Recommendation:**\n- Increase button text contrast for better visibility\n- Add active state styling to the button when dropdown is open\n- Consider positioning dropdown below instead of above for consistency\n- Ensure all option items have clear hover states\n\n### 5. **Action Item Cards Priority Badge Misalignment** (Low Priority)\n**Location:** `/src/components/chat-messages.tsx` lines 534-542\n\n**Issue:** The \"high\" priority badge positioning:\n```tsx\n<div className=\"flex items-center gap-2 text-[0.75rem] border border-border px-3 py-2\">\n  <Icon className={cn(\"size-3 shrink-0\", config.color)} />\n  <span className=\"text-muted-foreground\">{config.label}:</span>\n  <span className=\"text-foreground/80 truncate\">{item?.title || 'Unknown'}</span>\n  {item?.priority === 'high' && (\n    <span className=\"text-[0.625rem] uppercase tracking-wider text-red-500/70 ml-auto shrink-0\">high</span>\n  )}\n</div>\n```\n\n**Problem:**\n- `ml-auto` on the priority badge is good, but the spacing is inconsistent with other cards\n- Badge color (`text-red-500/70`) has low contrast against dark background\n- Only \"high\" priority is visually surfaced; \"medium\" and \"low\" are invisible\n\n**Recommendation:**\n- Show all priority levels or use background colors/badges instead of text\n- Increase color contrast for the priority badge\n\n### 6. **Code Block Styling** (Low Priority)\n**Location:** `/src/components/chat-messages.tsx` lines 443-450\n\n**Issue:** Code blocks have some styling that could be refined:\n```tsx\n<div key={i} className=\"my-3\">\n  {codeLang && (\n    <div className=\"text-[0.625rem] uppercase tracking-wider text-muted-foreground/40 mb-1\">{codeLang}</div>\n  )}\n  <pre className=\"bg-muted/60 p-3 overflow-x-auto text-[0.75rem] leading-relaxed font-[family-name:var(--font-geist-mono)]\">\n    <code>{codeContent.trim()}</code>\n  </pre>\n</div>\n```\n\n**Problem:**\n- Language label color (`text-muted-foreground/40`) is too subtle\n- No clear visual distinction between code blocks and regular text (only slightly darker background)\n- `overflow-x-auto` with no scroll indicators on small screens may confuse users\n\n**Recommendation:**\n- Increase contrast on language label\n- Add subtle border or darker background for code blocks\n- Consider adding visual scroll hints for horizontal overflow\n\n### 7. **Collapsible Cards Button UX** (Low Priority)\n**Location:** `/src/components/chat-messages.tsx` lines 545-564\n\n**Issue:** The \"Show more/less\" button styling:\n```tsx\n<button\n  onClick={() => setExpanded(e => !e)}\n  className=\"flex items-center gap-1 text-[0.7rem] text-muted-foreground/50 hover:text-muted-foreground transition-colors mt-0.5\"\n>\n  <ChevronDown className={cn(\"size-3 transition-transform duration-200\", expanded && \"rotate-180\")} />\n  {expanded ? 'Show less' : `${count - MAX} more`}\n</button>\n```\n\n**Problem:**\n- `text-muted-foreground/50` with size-3 icon is very small and easy to miss\n- The button has low affordance (doesn't look clearly interactive)\n- No background or border to make it appear as a button\n\n**Recommendation:**\n- Add subtle background or border on hover\n- Increase font size or button padding\n- Consider using a consistent button style library component\n\n### 8. **Loading State in Empty Chat** (Low Priority)\n**Location:** `/src/app/(app)/chat/[id]/page.tsx` lines 161-167\n\n**Issue:** The initial loading state shows a very small spinner:\n```tsx\nif (initialLoading) {\n  return (\n    <div className=\"flex items-center justify-center h-full\">\n      <Loader2 className=\"size-4 animate-spin text-muted-foreground/40\" />\n    </div>\n  )\n}\n```\n\n**Problem:**\n- `size-4` spinner is barely visible\n- `text-muted-foreground/40` is very light, nearly invisible\n- No context message explaining what's loading\n\n**Recommendation:**\n- Increase spinner size to at least `size-8` or `size-12`\n- Increase opacity to `/60` or `/80`\n- Add a subtle loading message like \"Loading conversation...\"\n\n---\n\n## Design System Observations\n\n### Good Practices Used\n- Consistent font-size scale (0.625rem \u2192 1.0625rem)\n- Proper tracking (letter-spacing) for readable small text\n- Good use of opacity for visual hierarchy (`/30`, `/40`, `/50`, `/60`, `/80`, `/95`)\n- Thoughtful color tokens in Tailwind config\n\n### Areas for Standardization\n- Multiple uses of magic numbers (`0.8125rem`, `0.75rem`, etc.) that aren't in the Tailwind scale\n- Inconsistent use of gap values within components\n- Some margin/padding values that don't align to a clear grid (e.g., `mb-[9px]`)\n- No clear spacing scale documentation visible in tailwind.config.ts\n\n---\n\n## Mobile Responsiveness\n\n**Observations:**\n- Chat page doesn't show obvious mobile breakpoint issues\n- Safe area insets are properly handled\n- However, artifact panel's \"absolute\" positioning on dropdown could cause layout shifts on small screens\n- File input button may be too small for touch targets (recommended minimum: 44x44px)\n\n---\n\n## Accessibility Concerns\n\n1. **Color Contrast:** Several elements use low-contrast colors:\n   - Timestamps (`text-muted-foreground/30`)\n   - Code language labels (`text-muted-foreground/40`)\n   - Muted buttons (`text-muted-foreground/50`)\n\n2. **Button Size:** Delete button (size-3.5) is too small for touch or cursor targeting\n\n3. **Focus States:** No obvious focus indicators for keyboard navigation (though not visible in static code review)\n\n---\n\n## Overall Assessment\n\n**Polished: YES (7.5/10)**\n\nThe chat interface is well-designed with strong fundamentals. The issues identified are primarily refinement opportunities rather than fundamental flaws. Most issues fall into the \"low priority\" category and relate to subtle styling or consistency rather than broken functionality.\n\nThe design system is coherent, spacing is intentional, and interactions are smooth. With attention to the medium-priority header issue and the accessibility concerns, this interface could achieve 8.5+/10 polish.\n\n"}], "grading": {"eval_id": "eval-2-chat-page-focus", "run_type": "without_skill", "expectations": [{"text": "severity-tiers: Report uses severity tiers (critical, warning, suggestion or equivalent prioritization)", "passed": true, "evidence": "Report uses priority levels: 'Medium Priority' (Header Layout Inconsistency), 'Low Priority' (Input Container, Message Timestamp, Model Picker, Action Item Cards, Code Block, Collapsible Cards, Loading State)"}, {"text": "file-paths: Report includes specific file paths pointing to where issues occur in the codebase", "passed": true, "evidence": "Each issue includes exact file paths and line numbers: '/src/app/(app)/chat/[id]/page.tsx lines 196-230', '/src/components/chat-input.tsx lines 183-212', '/src/components/chat-messages.tsx lines 208-209'"}, {"text": "page-routes: Report mentions specific pages or routes where issues render in the app", "passed": true, "evidence": "Chat page focus is the entire subject. Specific mentions: 'empty chat state', 'chat interface', 'header', 'input container', 'action item cards', 'code blocks'"}, {"text": "plain-english-fixes: Fix suggestions are in plain English without code snippets", "passed": false, "evidence": "Report contains code snippets in issues 1-7 showing actual tsx/JSX code, e.g., 'className=\"flex items-center gap-4 border-b border-border px-6 py-3\"' and style syntax"}, {"text": "design-system-reference: Report references or infers a design system baseline to compare against", "passed": true, "evidence": "Design System Observations section (lines 237-249) documents font-size scale, tracking values, opacity usage, and color tokens, noting areas for standardization"}, {"text": "visual-consistency-priority: Visual consistency issues appear before accessibility issues (respecting priority order)", "passed": true, "evidence": "Visual issues (header layout, input alignment, styling, colors) covered first in Issues 1-7. Accessibility concerns isolated to separate section at end (lines 262-271)"}, {"text": "intentional-vs-accidental: Report distinguishes or considers whether differences might be intentional vs accidental", "passed": true, "evidence": "Strengths section acknowledges 'thoughtfully designed interface', and discussion notes things like 'Magic number mb-[9px] is unclear and fragile' or 'inconsistent with how labels are styled', implying unintentional drift"}, {"text": "actionable-specificity: Findings are specific enough to act on (not vague like 'improve consistency' but pointing to exact elements/values)", "passed": true, "evidence": "Issues specify exact values: 'mb-[9px] offset', 'text-muted-foreground/30', 'size-4 animate-spin', 'Increase spinner size to at least size-8 or size-12', 'Increase opacity to /60 or /80'"}]}}, {"id": "eval-3-vague-rough-edges-with_skill", "prompt": "I feel like my app looks a little rough around the edges but I can't pinpoint why. Can you take a look?", "eval_id": 3, "outputs": [{"name": "report.md", "type": "text", "content": "# UI/UX Design Audit: Crosby Project\n\n**Date:** March 18, 2026\n**Scope:** Full application (all pages and components)\n**Auditor:** Senior Design Auditor\n\n---\n\n## Executive Summary\n\nCrosby is a well-structured dark-mode app built with Next.js, Tailwind CSS, and shadcn/ui components. The visual foundation is solid\u2014it has a clear color system, intentional typography hierarchy, and consistent use of borders and spacing throughout. However, the app feels rough around the edges due to **several categories of polish issues**:\n\n1. **Inconsistent spacing and padding** across similar components (cards, inputs, form fields)\n2. **Typography scale misalignment**\u2014many different font sizes used (0.625rem, 0.6875rem, 0.75rem, 0.8125rem, 0.875rem) without clear hierarchy\n3. **Incomplete hover and focus states** on interactive elements\u2014many buttons and inputs lack clear feedback\n4. **Layout inconsistencies** in headers, padding, and alignment across pages\n5. **Visual hierarchy issues** in some sections, making it unclear what's most important\n6. **Mobile polish gaps**\u2014some components don't adapt smoothly to smaller screens\n\nThe app doesn't look \"broken,\" but it has the feel of an MVP that needs refinement passes to look like a finished product. Most issues are easy to fix once identified.\n\n---\n\n## Design System Reference\n\nBased on code analysis, here's the inferred design system:\n\n### Colors (HSL-based CSS variables)\n- **Background:** `hsl(30 6% 12%)` - Very dark brown\n- **Foreground:** `hsl(40 10% 90%)` - Off-white\n- **Primary:** Off-white text on dark background (inverted use\u2014used for buttons as background)\n- **Muted:** `hsl(30 5% 18%)` - Slightly lighter than background\n- **Border:** `hsl(30 4% 20%)` - Subtle borders\n- **Destructive:** Red (`0 62.8% 40%`)\n- **Sidebar:** Slightly darker than main background\n\n### Typography\n- **Base font size:** 18px (desktop), 16px (mobile, via globals.css)\n- **Font family:** Geist Sans (variable weight 100\u2013900)\n- **Common sizes in use:** 0.625rem, 0.6875rem, 0.75rem, 0.8125rem, 0.875rem, 1rem\n- **Font weights:** Medium (500), regular (400), light (300)\n\n### Spacing\n- **Padding on cards:** Inconsistent \u2014 `py-4`, `px-4` (cards), but also `p-3`, `p-4`, `p-5`, `p-6` depending on component\n- **Gap values:** Common: `gap-1`, `gap-1.5`, `gap-2`, `gap-3`, `gap-4`\n- **Border radius:** `--radius: 0` (set to 0px, then overridden with `rounded-lg`, `rounded-xl`)\n\n### Components\n- **Buttons:** Multiple variants (default, outline, secondary, ghost, destructive, link)\n- **Cards:** Basic card with optional header, content, footer\n- **Inputs:** 8px height, 2.5px horizontal padding\n- **Forms:** Standard label + input pattern\n\n---\n\n## Findings by Priority\n\n### CRITICAL\n\n#### 1. Border Radius System is Broken\n**What's wrong:** The CSS variable `--radius: 0` is set to 0px in globals.css, but then Tailwind classes like `rounded-lg` and `rounded-xl` are applied throughout the codebase. This creates confusion\u2014some elements have sharp corners while others have rounded corners.\n\n**Where it is:**\n- `/sessions/zealous-relaxed-hopper/mnt/jdrg/src/app/globals.css:26` \u2014 `--radius: 0;` is set to 0\n- Buttons use `rounded-lg` explicitly (line 8 in `/sessions/zealous-relaxed-hopper/mnt/jdrg/src/components/ui/button.tsx`)\n- Cards use `rounded-xl` (line 15 in `/sessions/zealous-relaxed-hopper/mnt/jdrg/src/components/ui/card.tsx`)\n- Many custom divs use inline `rounded-lg` or `rounded-xl`\n\n**Why it matters:** This inconsistency signals carelessness. Either corners should be sharp throughout (modern, bold look) or consistently rounded. The current mixed approach looks like incomplete styling.\n\n**How to fix it:** Decide on a corner style:\n- Option A: Keep sharp corners. Set `--radius: 0` and remove all `rounded-*` classes from buttons and cards.\n- Option B: Set corners consistently rounded. Change `--radius: 8px` (or similar) and rely on the Tailwind config's border-radius scale, removing manual `rounded-lg`/`rounded-xl` classes where possible.\n\n---\n\n#### 2. Font Size Scale is Chaotic (Too Many Sizes)\n**What's wrong:** The codebase uses 7+ different font sizes (in rem): 0.625, 0.6875, 0.75, 0.8125, 0.875, 1.0. This is excessive. Each feels slightly different, making the page feel visually noisy and unprofessional.\n\n**Where it is:**\n- Sidebar labels: `text-[0.625rem]` (line 117, sidebar.tsx)\n- Document title: `text-[0.8125rem]` (line 84, documents/page.tsx)\n- Account heading: `text-[0.8125rem]` (line 50, settings/account/page.tsx)\n- Action item title: `text-[0.875rem]` (line 254, action-items/page.tsx)\n- Standard body text: `text-[0.8125rem]` in various places\n- Links and metadata: `text-[0.75rem]`, `text-[0.6875rem]`\n\nThis is scattered across dozens of files with no clear pattern.\n\n**Why it matters:** Inconsistent font sizes break visual rhythm. Users notice when text sizes jump around unexpectedly. A professional app has a clear, limited type scale (typically 3\u20134 sizes max for main content).\n\n**How to fix it:** Establish a strict type scale:\n- **Display/Headings:** 1rem (18px on desktop, 16px on mobile)\n- **Subheadings:** 0.875rem\n- **Body text:** 0.8125rem\n- **Small/caption text:** 0.75rem\n- **Tiny metadata:** 0.625rem\n\nThen audit all component files and standardize. For example, all page headers should be the same size; all sidebar labels should be the same size.\n\n---\n\n### WARNING\n\n#### 3. Inconsistent Card and Container Padding\n**What's wrong:** Cards, panels, and containers use wildly different padding values with no clear reasoning.\n\n**Where it is:**\n- Dashboard cards (dashboard/page.tsx, line 423): `border px-4 py-3` \u2014 12px vertical, 16px horizontal\n- Form containers (settings/account/page.tsx, line 54\u201360): `border border-border` with `px-5 py-3` in header and `p-5` in body \u2014 15px padding\n- Action item rows (action-items/page.tsx, line 164): `p-4` \u2014 16px all around\n- Documents page filters (documents/page.tsx, line 82): `px-6 py-4` \u2014 16px vertical, 24px horizontal (largest)\n- Chat input files (chat-input.tsx, line 157): `px-3.5 pt-3` \u2014 12px horizontal, 12px top\n\n**Why it matters:** When similar components have different spacing, the UI feels haphazard. Users sense that someone wasn't paying attention to consistency.\n\n**How to fix it:** Define a standard padding scale for cards and containers:\n- **Tight:** 12px (0.75rem / 3 units)\n- **Default:** 16px (1rem / 4 units)\n- **Relaxed:** 20px (1.25rem / 5 units)\n- **Large:** 24px (1.5rem / 6 units)\n\nAudit all cards and input containers and standardize to one of these values. Document the choice.\n\n---\n\n#### 4. Form Field and Input Inconsistency\n**What's wrong:** Form inputs are styled inconsistently. Some use the `Input` component (h-8, px-2.5, py-1), but many forms build raw `<input>` tags with inconsistent styling.\n\n**Where it is:**\n- Input component (ui/input.tsx, line 11): `h-8 px-2.5 py-1`\n- Sidebar create expert form (sidebar.tsx, lines 180\u2013195): `px-3 py-2` \u2014 different padding\n- Settings account form (settings/account/page.tsx, lines 66\u201381): `px-3 py-2` \u2014 different padding\n- Action items edit mode (action-items/page.tsx, line 171): `px-3 py-2` \u2014 different padding again\n- Chat input textarea (chat-input.tsx, line 198): `py-3 pr-2` \u2014 different again\n\n**Why it matters:** Users expect form inputs to have consistent size and feel. Varying padding makes it feel like the app was built by different teams without communication.\n\n**How to fix it:**\n1. Standardize on one padding scheme: `px-2.5 py-1` or `px-3 py-2` (pick one)\n2. Ensure all custom form inputs use the same class as the Input component\n3. Consider wrapping custom form fields in a `FormField` wrapper component to enforce consistency\n\n---\n\n#### 5. Incomplete Hover and Focus States\n**What's wrong:** Many interactive elements lack clear hover or focus states. Some buttons have hover effects; others don't. Text inputs have focus styling, but some custom elements don't.\n\n**Where it is:**\n- Sidebar nav items (sidebar.tsx, line 101\u2013106): Have hover state but no visible focus ring for keyboard users\n- Document grid items (documents/page.tsx, line 189): Have hover background but no focus state\n- Tabs in action items (action-items/page.tsx, line 138): Have color change on hover, good\n- Custom `<input>` fields in forms (sidebar.tsx, line 184): Border changes on focus, good\n- Chat model picker (chat-input.tsx, line 238): No visible focus state when opened by keyboard\n\n**Why it matters:** Without clear focus states, the app is harder to navigate with a keyboard and looks unfinished. Modern apps need clear visual feedback for all interactions.\n\n**How to fix it:**\n1. Add `focus-visible` outlines to nav items, buttons, and links that don't have them\n2. Ensure all interactive elements have at least one of: color change, border change, or background change on hover/focus\n3. Test with keyboard-only navigation to ensure every interactive element is visually obvious when focused\n\n---\n\n#### 6. Header and Page Layout Inconsistency\n**What's wrong:** Different pages have different header structures and spacing, making navigation feel disjointed.\n\n**Where it is:**\n- Dashboard has no header (messages start immediately after digest banner)\n- Documents page (line 82\u2013161): Full header with filters, 4 lines of controls, `px-6 py-4`\n- Action items page (line 110\u2013147): Simpler header with title and bulk actions, `px-6 py-4`\n- Account settings (line 45\u201352): No distinct header, just inline text\n\n**Why it matters:** Consistent headers anchor the user. When headers vary dramatically in size, padding, and style, the app feels ad-hoc.\n\n**How to fix it:**\n1. Create a standard `PageHeader` component with consistent padding, typography, and layout\n2. Use it across dashboard, documents, action items, projects pages\n3. Include title, description, and action buttons in a consistent layout\n\n---\n\n#### 7. Spacing Inside Cards and Lists Feels Off\n**What's wrong:** Internal spacing (gaps between elements inside cards, between list items) is inconsistent and often too tight.\n\n**Where it is:**\n- Dashboard greeting card (dashboard/page.tsx, line 419\u2013440): Rendered as bare divs with `gap-3` on the grid, but card padding is only `px-4 py-3`\n- Card component itself (ui/card.tsx, line 15): `gap-4` between card sections, but padding is `py-4`\n- Action item list rows (action-items/page.tsx, line 162): `space-y-px` between items \u2014 only 1px gap, very tight\n- Projects page sidebar sections: Inconsistent gap values between sections\n\n**Why it matters:** Tight spacing makes content feel cramped. Users don't get a sense of breathing room, and the interface feels dense rather than clean.\n\n**How to fix it:**\n1. Establish a gap scale: 8px (gap-2), 12px (gap-3), 16px (gap-4), 20px (gap-5)\n2. Use `space-y-3` or `space-y-4` between list items by default, not `space-y-px`\n3. Ensure internal card padding matches the gap between card sections (e.g., if `gap-4` between sections, use `px-4` padding)\n\n---\n\n#### 8. Mobile Responsiveness Gaps\n**What's wrong:** Some components don't scale well to mobile. Font sizes are sometimes too small, touch targets are sometimes too tight, and layouts occasionally don't reflow properly.\n\n**Where it is:**\n- Documents page filters (documents/page.tsx, lines 108\u2013160): Text sizes are 0.75rem and 0.8125rem, which may be hard to read on mobile. Select dropdowns are narrow.\n- Settings account page (settings/account/page.tsx, line 66): Password input height is `h-8` (32px), which is close to minimum touch target (44px). On mobile, this is marginal.\n- Sidebar collapse (sidebar.tsx, line 76): Collapses to 56px (14 units), but when collapsed, the icon button inside is `p-1`, which may be too small to tap reliably on mobile.\n- Chat input (chat-input.tsx, line 186): Attachment button uses `mb-[9px]` \u2014 a very specific offset that might not scale well on different screen sizes.\n\n**Why it matters:** Many users access apps on mobile. If touch targets are too small or text is too cramped, the app feels unfinished.\n\n**How to fix it:**\n1. Increase minimum font sizes on mobile: `text-[0.8125rem] md:text-[0.75rem]` (larger on mobile, smaller on desktop)\n2. Ensure all tap targets are at least 40\u201344px on mobile (use `h-10` or `p-2` as minimum for buttons)\n3. Test on actual mobile devices (or use responsive preview) to verify text readability and touch target size\n4. Remove hard-coded pixel offsets like `mb-[9px]` in favor of scaled values like `mb-2` or `mb-3`\n\n---\n\n#### 9. Visual Hierarchy Issues on List Pages\n**What's wrong:** On list pages (documents, action items), the visual hierarchy is unclear. It's hard to quickly scan and understand what's important.\n\n**Where it is:**\n- Action items page (action-items/page.tsx, line 236\u2013262): Title and description are small (0.875rem and 0.75rem), metadata is even smaller (0.625rem). The eye doesn't know where to focus.\n- Documents list view (documents/page.tsx, line 213\u2013230): Title and type are small, and they're not visually distinct from each other. The date is also small and muted, making the row feel uniform.\n- Dashboard cards (dashboard/page.tsx, line 419\u2013440): Title is uppercase but tiny (0.8125rem + uppercase), making it hard to read at a glance.\n\n**Why it matters:** When everything is the same size and color, nothing stands out. Users need visual cues to understand what to focus on.\n\n**How to fix it:**\n1. Make titles/main content 0.875rem or 1rem (larger, bolder)\n2. Make metadata/secondary info 0.75rem (smaller, muted)\n3. Use font weight (medium for titles, regular for body, light for metadata)\n4. Ensure primary info has better contrast than secondary info\n\n---\n\n#### 10. Sidebar Styling Doesn't Match App Aesthetic\n**What's wrong:** The sidebar is styled with slightly different color and spacing rules than the main content area. It feels like it's part of a different design system.\n\n**Where it is:**\n- Sidebar background (sidebar.tsx, line 74): Uses `bg-sidebar` which is darker than the main background\n- Sidebar padding (sidebar.tsx, line 94): `px-2 space-y-0.5` \u2014 very compact 4px side padding\n- Sidebar nav items (sidebar.tsx, line 102): `py-2` padding, but main nav borders use `border-l-2` for active state (line 104)\n- Project items (sidebar.tsx, line 133): `py-1.5` \u2014 different padding than nav items\n\n**Why it matters:** When navigation doesn't match the main content area, the app feels disconnected. The sidebar should feel like part of the same system.\n\n**How to fix it:**\n1. Use the same border system (currently borders are 1px solid) consistently in sidebar\n2. Standardize padding in sidebar nav to match the rest of the app (e.g., `px-3 py-2` like forms)\n3. Ensure sidebar background color is close to main background (or make the contrast intentional and consistent)\n\n---\n\n### SUGGESTION\n\n#### 11. Empty States Could Be More Thoughtful\n**What's wrong:** Empty state messages are minimal and sometimes unclear. They don't guide users on what to do next.\n\n**Where it is:**\n- Documents page (documents/page.tsx, line 180\u2013184): Shows \"No documents yet\" with a divider line, but doesn't hint at uploading or creating\n- Action items (action-items/page.tsx, line 157\u2013160): Shows \"No [tab] items\" but doesn't explain what the tab means\n- Projects sidebar (sidebar.tsx, line 147\u2013149): \"No experts yet\" is clear but doesn't link to create one\n\n**Why it matters:** Empty states are moments of truth\u2014they're opportunities to guide new users and reduce confusion.\n\n**How to fix it:**\n- Add a brief, friendly message below the empty state label explaining what to do next (e.g., \"No documents yet. Upload a file to get started.\")\n- Optionally include a subtle button or link to the primary action (e.g., \"Upload a Document\")\n\n---\n\n#### 12. Typography Hierarchy Could Be Clearer\n**What's wrong:** The distinction between different text levels (heading, body, caption) is subtle because the font sizes are all small and the weights are minimal.\n\n**Where it is:**\n- Card titles (ui/card.tsx, line 36\u201346): `text-base leading-snug font-medium` \u2014 16px, medium weight\n- Card description (ui/card.tsx, line 49\u201356): `text-sm text-muted-foreground` \u2014 14px, muted\n- Page titles (throughout): `text-[0.8125rem] font-medium uppercase tracking-[0.1em]` \u2014 very small, uppercase\n\n**Why it matters:** A clear hierarchy helps users understand page structure at a glance.\n\n**How to fix it:**\n1. Increase page heading size to 1rem\u20131.125rem (18\u201320px)\n2. Use bolder font weight (600\u2013700) for headings\n3. Reserve 0.75rem and 0.625rem for captions and metadata only\n4. Ensure there's at least a 4px size difference between hierarchy levels\n\n---\n\n#### 13. Transitions and Animations Could Be More Polished\n**What's wrong:** Some interactive elements (like buttons, panels) have no transition effects, making interactions feel instant and jarring.\n\n**Where it is:**\n- Sidebar collapse (sidebar.tsx, line 74): Uses `transition-all duration-200` on the container, which is good\n- Button hover states (button.tsx, line 12): Has `transition-all` but no duration specified\n- Documents view toggle (documents/page.tsx, line 143\u2013158): Buttons have `transition-colors` but no visible animation\n- Most hover states use `transition-colors` but are instantaneous\n\n**Why it matters:** Smooth transitions make interactions feel responsive and intentional rather than snappy and harsh.\n\n**How to fix it:**\n1. Add `transition-all duration-150` or `duration-200` to all hover state changes\n2. Ensure button animations are smooth (they currently are, which is good)\n3. Add subtle fade-ins for newly loaded content (use `animate-in-fade` class, which is already defined in globals.css but underused)\n\n---\n\n#### 14. Dashboard Cards Look Disconnected from Rest of App\n**What's wrong:** Dashboard cards are unstyled divs with inline styling and custom padding. They don't use the standard Card component and feel like they were added later without integration.\n\n**Where it is:**\n- Dashboard cards (dashboard/page.tsx, lines 416\u2013441): Rendered as plain divs with inline `border`, `px-4 py-3`, custom text sizes\n\n**Why it matters:** Using the standard Card component would make the dashboard look more cohesive and easier to maintain.\n\n**How to fix it:**\n1. Refactor dashboard cards to use the existing `Card` component structure\n2. Move card styling from inline classes to the Card component subcomponents\n3. Reuse CardHeader, CardContent, CardTitle pattern\n\n---\n\n#### 15. Input Placeholder Text Too Faint\n**What's wrong:** Placeholder text color is `text-muted-foreground/40` or similar, making it hard to read when the input is empty.\n\n**Where it is:**\n- Input component (ui/input.tsx, line 11): `placeholder:text-muted-foreground`\n- Custom form inputs (sidebar.tsx, line 184): `placeholder:text-muted-foreground/30`\n- Documents search (documents/page.tsx, line 115): `placeholder:text-muted-foreground/30`\n- Action items edit (action-items/page.tsx, line 172): No placeholder specified\n- Chat input (chat-input.tsx, line 196): `placeholder:text-muted-foreground/40`\n\n**Why it matters:** If placeholders are too faint, users don't realize an input is empty and available for interaction.\n\n**How to fix it:**\n1. Standardize placeholder color to `placeholder:text-muted-foreground/50` or higher (50\u201360% opacity)\n2. Ensure placeholder text is legible even on first glance\n\n---\n\n#### 16. Tabs and Toggle Styling Could Be More Distinct\n**What's wrong:** Active vs. inactive tabs (like in action items) are distinguished by color and border, but the distinction is subtle.\n\n**Where it is:**\n- Action items tabs (action-items/page.tsx, line 138\u2013146): Active tab uses `text-foreground border-foreground`, inactive uses `text-muted-foreground/50 border-transparent`. The difference is noticeable but could be stronger.\n- Documents view toggle (documents/page.tsx, line 140\u2013159): Uses `bg-foreground text-background` for active, which is strong but inconsistent with other toggles in the app.\n\n**Why it matters:** When tabs are unclear, users might not realize they can switch between them.\n\n**How to fix it:**\n1. Ensure active tabs have clear, contrasting styling (e.g., strong border or solid background)\n2. Standardize the active/inactive pattern across all tabs and toggles in the app\n3. Make sure keyboard focus is also visible on tabs\n\n---\n\n## Summary of Recommended Actions\n\n### Immediate (High Impact)\n1. Fix the border-radius system (decide on sharp or rounded)\n2. Reduce font size scale to 4\u20135 sizes max\n3. Standardize card/container padding to 3\u20134 values\n4. Add missing hover/focus states\n\n### Short-term (Polish)\n5. Standardize form input styling\n6. Create a consistent PageHeader component\n7. Improve list spacing and visual hierarchy\n8. Enhance empty states with helpful guidance\n\n### Nice-to-have (Refinement)\n9. Increase mobile touch target sizes\n10. Add more transitions and animations\n11. Refactor dashboard cards to use Card component\n12. Improve placeholder text contrast\n\n---\n\n## Notes for Development\n\n- The shadcn/ui component library is a good foundation, but many components are bypassed with custom inline styling. Consider using the components more consistently.\n- The dark mode color system is well-designed. The issue isn't the colors but the inconsistent application of spacing and typography.\n- The app is responsive in structure (flexbox, grid) but needs refinement in mobile-specific sizes and touch targets.\n- Consider creating a shared design tokens file (e.g., `lib/design-tokens.ts`) to define spacing, font sizes, and other constants, reducing duplication and making future changes easier.\n\n"}], "grading": {"eval_id": "eval-3-vague-rough-edges", "run_type": "with_skill", "expectations": [{"text": "severity-tiers: Report uses severity tiers (critical, warning, suggestion or equivalent prioritization)", "passed": true, "evidence": "Report uses CRITICAL, WARNING, SUGGESTION sections. Also provides Summary by Priority with 'Immediate (fix next)', 'Short-term (polish pass)', 'Nice-to-have (future improvements)'"}, {"text": "file-paths: Report includes specific file paths pointing to where issues occur in the codebase", "passed": true, "evidence": "Specific file paths throughout: '/src/components/sidebar.tsx', '/src/app/(app)/settings/layout.tsx', '/src/app/(app)/dashboard/page.tsx', '/src/app/(app)/documents/page.tsx', '/src/components/chat-input.tsx'"}, {"text": "page-routes: Report mentions specific pages or routes where issues render in the app", "passed": true, "evidence": "Reports mention 'Documents page', 'Settings page', 'Dashboard', 'Chat', 'sidebar', 'mobile nav', 'Settings account page', 'Action items page', 'Projects list'"}, {"text": "plain-english-fixes: Fix suggestions are in plain English without code snippets", "passed": true, "evidence": "Fix suggestions are in narrative form: 'Establish a strict type scale', 'Define a standard padding scale', 'Add focus-visible outlines', 'Create a standard PageHeader component' - no code blocks shown"}, {"text": "design-system-reference: Report references or infers a design system baseline to compare against", "passed": true, "evidence": "Comprehensive Design System Reference section (lines 25-52) documents colors, typography, spacing, components, and breakpoints with specific HSL values and Tailwind scale mapping"}, {"text": "visual-consistency-priority: Visual consistency issues appear before accessibility issues (respecting priority order)", "passed": true, "evidence": "Visual consistency issues (border-radius, font sizes, padding, spacing, hover states) dominate main findings. Accessibility only briefly mentioned in Mobile Responsiveness notes, not prioritized equally"}, {"text": "intentional-vs-accidental: Report distinguishes or considers whether differences might be intentional vs accidental", "passed": true, "evidence": "Executive summary notes 'inferred design system derived from codebase analysis' and discusses 'intentional minimal aesthetic'. Issue 2 acknowledges '--radius: 0 is set to 0px...but then Tailwind classes like rounded-lg are applied throughout' suggesting unintentional inconsistency"}, {"text": "actionable-specificity: Findings are specific enough to act on (not vague like 'improve consistency' but pointing to exact elements/values)", "passed": true, "evidence": "Specific values throughout: 'Set --radius: 8px', establish type scale 'h1-h6' mapping, standardize padding to 'Tight: 12px, Default: 16px, Relaxed: 20px, Large: 24px', 'gap-2, gap-3, gap-4' scale"}]}}, {"id": "eval-3-vague-rough-edges-without_skill", "prompt": "I feel like my app looks a little rough around the edges but I can't pinpoint why. Can you take a look?", "eval_id": 3, "outputs": [{"name": "report.md", "type": "text", "content": "# UI/UX Audit Report: Crosby App\n## \"Rough Around the Edges\" Analysis\n\n---\n\n## Executive Summary\n\nAfter reviewing the Next.js/React/Tailwind codebase, I've identified several systemic UI/UX issues that collectively contribute to a \"rough around the edges\" feel. The primary problems fall into four categories: **inconsistent form inputs**, **border and spacing irregularities**, **typographic hierarchy confusion**, and **button styling inconsistencies**.\n\n---\n\n## 1. Form Input Styling Inconsistency (HIGH IMPACT)\n\n### Problem\nThe application uses **three different custom input styles** across the codebase, which creates visual confusion:\n\n**Style A: Raw HTML inputs** (most common)\n```jsx\n// chat-input.tsx, documents/page.tsx, settings/account/page.tsx\n<input\n  className=\"w-full bg-transparent border border-border px-3 py-2 text-[0.8125rem] \n    outline-none placeholder:text-muted-foreground/30 focus:border-foreground/30 \n    transition-colors\"\n/>\n```\n\n**Style B: Slightly different variations** (sidebar.tsx)\n```jsx\nclassName=\"w-full bg-transparent border border-border px-3 py-2 text-[0.8125rem] \n  outline-none placeholder:text-muted-foreground/30 focus:border-foreground/30 \n  transition-colors\"\n```\n\n**Style C: Official UI Input component** (exists but rarely used)\n```jsx\n// ui/input.tsx - exists but appears underutilized\n<input\n  className=\"h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1...\"\n/>\n```\n\n### Impact\n- Users see visually distinct input fields on different pages\n- No consistent focus states across the app\n- Height and padding vary unexpectedly\n- Border color references differ (border vs. input)\n\n### Recommendation\nStandardize all inputs to use a single consistent style. Either use the existing Input component everywhere or create a dedicated custom input component that matches your design system.\n\n---\n\n## 2. Border and Boundary Treatment Inconsistency (HIGH IMPACT)\n\n### Problem\nThe app applies borders with **inconsistent visual weight and opacity**:\n\n```jsx\n// Strong, opaque borders\nborder border-border  // 30 4% 20% brightness\n\n// Translucent borders scattered throughout\nborder border-border/40   // greeting-card.tsx\nborder border-border/50   // chat-input.tsx\nborder border-border/60   // greeting-card.tsx\n\n// Also mixes sidebar-specific borders\nborder border-sidebar-border  // sidebar.tsx\n```\n\n### Impact\n- Borders appear to have different \"depths\" without clear purpose\n- No visual hierarchy\u2014can't tell which sections are more important\n- The app feels unfinished because container edges are unclear\n- Cards, panels, and inputs don't have consistent visual \"weight\"\n\n### Recommendation\nCreate a documented border opacity system:\n- **Primary boundaries** (containers, panels): `border border-border` (100% opacity)\n- **Secondary divisions** (sections, groups): `border border-border/50` (50% opacity)\n- **Subtle separators** (visual guides only): `border border-border/20` (20% opacity)\n\n---\n\n## 3. Button Styling Lacks Cohesion (MEDIUM-HIGH IMPACT)\n\n### Problem\nButtons are styled ad-hoc across components with inconsistent appearance:\n\n```jsx\n// Style A: Full background button\n<button className=\"inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.75rem] \n  bg-foreground text-background transition-opacity hover:opacity-80\">\n\n// Style B: Border-only button\n<button className=\"inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.75rem] \n  border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 \n  transition-colors\">\n\n// Style C: Ghost button (icon-only)\n<button className=\"p-1 text-muted-foreground/40 hover:text-muted-foreground \n  transition-colors\">\n\n// Style D: The official Button component exists but is underused\n// ui/button.tsx has good variants but rarely used in main app\n```\n\n### Impact\n- No clear visual hierarchy for actions\n- Users can't easily distinguish primary vs. secondary actions\n- Inconsistent hover states reduce visual feedback\n- Some buttons feel \"lighter\" or \"heavier\" than others\n\n### Recommendation\nMandate use of the existing Button component or define clear button variants:\n- **Primary**: Bold background (calls to action)\n- **Secondary**: Border only (alternative actions)\n- **Tertiary**: Ghost/text only (low-priority actions)\n\n---\n\n## 4. Typography Sizing Hierarchy Confusion (MEDIUM IMPACT)\n\n### Problem\nFont sizes are fragmented and unpredictable:\n\n```jsx\n// Arbitrary sizes throughout\ntext-[0.5625rem]  // smallest (greeting-card.tsx)\ntext-[0.625rem]   // common for labels (sidebar.tsx)\ntext-[0.6875rem]  // some labels (chat-messages.tsx)\ntext-[0.75rem]    // very common, unclear purpose\ntext-[0.8125rem]  // input and form text (sidebar.tsx)\ntext-[0.875rem]   // body text (greeting-card.tsx)\ntext-[0.9375rem]  // larger content (chat-messages.tsx)\n\n// Landing sizes \u2014 huge jump in scale\ntext-2xl    // empty state \u2014 jumps from 0.9375rem!\n```\n\n### Impact\n- No clear visual hierarchy or readability pattern\n- Some text feels randomly sized\n- Hard to maintain consistent design language\n- Scaling doesn't follow established type system\n\n### Recommendation\nDefine a proper type scale (e.g., using Tailwind's standard sizing):\n```\nxs:  0.75rem  (labels, meta)\nsm:  0.875rem (small body, captions)\nbase: 1rem    (primary body text)\nlg:  1.125rem (section headings)\nxl:  1.5rem   (major headings)\n```\n\nReplace arbitrary `text-[0.8125rem]` with semantic values.\n\n---\n\n## 5. Spacing and Padding Inconsistency (MEDIUM IMPACT)\n\n### Problem\nPadding and margins vary significantly across similar components:\n\n```jsx\n// Card/container padding varies\npx-4 py-4    // app layout\npx-5 py-3    // greeting-card header\npx-3.5 pt-3  // chat input files section\npx-5 pt-4 pb-3  // greeting-card header (different again!)\npx-6 py-4    // documents header\n```\n\n### Impact\n- Whitespace feels uneven and unplanned\n- Containers don't align visually\n- Difficult to scan the layout\n- Looks unpolished despite quality content\n\n### Recommendation\nDefine and enforce spacing constants:\n- **Container padding**: `p-4` (1rem) for standard, `p-6` (1.5rem) for large\n- **Internal spacing**: `gap-3` (0.75rem) for standard, `gap-4` (1rem) for large\n- **Vertical rhythm**: `py-3` or `py-4` consistently for sections\n\n---\n\n## 6. State Indication Inconsistency (MEDIUM IMPACT)\n\n### Problem\nDifferent states (active, hover, disabled, loading) are indicated inconsistently:\n\n```jsx\n// Active state variations\nborder-l-2 border-foreground -ml-px              // sidebar nav\ntext-foreground font-medium                      // sidebar nav (no border)\nbg-foreground text-background                    // button active\naria-expanded:bg-muted aria-expanded:text-foreground  // component library\n\n// Disabled state has multiple approaches\ndisabled:opacity-20                              // some buttons\ndisabled:opacity-30                              // other buttons\ndisabled:pointer-events-none disabled:opacity-50 // Input component\n```\n\n### Impact\n- Users can't easily tell which elements are interactive or disabled\n- Inconsistent feedback makes the interface feel untrustworthy\n- Hover states are subtle or missing in some places\n\n### Recommendation\nCreate explicit state styles for all interactive elements:\n- **Active**: Use consistent visual indicator (background, border, or color)\n- **Hover**: Use subtle opacity/background shift\n- **Disabled**: Apply 50% opacity uniformly\n- **Loading**: Use consistent spinner styling\n\n---\n\n## 7. Color Usage Lacks Strategy (MEDIUM IMPACT)\n\n### Problem\nColor palettes are sparse and inconsistently applied:\n\n```jsx\n// Limited color application\nbg-foreground text-background    // button (only primary color)\ntext-muted-foreground/40         // icon tint (opacity-based)\ntext-red-500/70                  // high priority (arbitrary)\ntext-amber-500/50                // medium priority (arbitrary opacity)\ntext-emerald-500                 // success (introduced without pattern)\n\n// Inconsistent semantic use\nborder border-border\nborder border-sidebar-border\nborder border-input              // exists but rarely used\n```\n\n### Impact\n- The app feels monochromatic despite having a dark theme\n- No established semantic color meanings\n- Limited visual interest and hierarchy\n\n### Recommendation\nDefine a semantic color system:\n- **Primary actions**: Consistent primary color\n- **Destructive**: Red for deletions\n- **Success**: Green for completions\n- **Warning**: Amber for cautions\n- **Informational**: Blue for neutral info\n\n---\n\n## 8. Inconsistent Rounded Corners (MINOR IMPACT)\n\n### Problem\nBorder radius varies without clear purpose:\n\n```jsx\nrounded-lg        // buttons, inputs, cards\nrounded-xl        // Card component only\nrounded-2xl       // user messages (chat-messages.tsx)\nrounded-md        // select component\nrounded-[min(var(--radius-md),10px)]  // responsive radius (some buttons)\n--radius: 0       // set to 0 in globals.css but then overridden!\n```\n\n### Impact\n- Reduces visual cohesion\n- Some elements feel \"sharper\" or \"softer\" inconsistently\n\n### Recommendation\nStandardize to 1-2 border radius values:\n- **Standard**: `rounded-lg` (0.5rem)\n- **Large**: `rounded-xl` (0.75rem)\n\n---\n\n## 9. Component Library Underutilized (MINOR IMPACT)\n\n### Problem\nThe UI library has well-designed components (`Select`, `Dialog`, `Checkbox`, `Radio`, `Switch`), but custom HTML selects and dialogs are used instead:\n\n```jsx\n// Instead of using Select component\n<select className=\"bg-transparent border border-border px-2.5 py-1.5...\">\n\n// Instead of using Dialog component\n{showCreate && (\n  <div className=\"fixed inset-0 z-50 flex items-center justify-center\">\n    // custom dialog implementation\n  </div>\n)}\n```\n\n### Impact\n- Inconsistent form appearance\n- Missing accessibility features that proper components provide\n- Harder to maintain and update styles globally\n\n---\n\n## Summary of Fixes (Priority Order)\n\n### \ud83d\udd34 Must Fix (High Impact)\n1. **Standardize input components** \u2014 use single style everywhere\n2. **Define border opacity system** \u2014 apply consistently for visual hierarchy\n3. **Unify button styling** \u2014 enforce consistent button variants\n4. **Create type scale** \u2014 replace arbitrary text sizes with system values\n\n### \ud83d\udfe0 Should Fix (Medium Impact)\n5. **Standardize spacing** \u2014 define padding/margin constants and enforce\n6. **Create state indication rules** \u2014 consistent active, hover, disabled, loading styles\n7. **Implement semantic color system** \u2014 define color meanings and apply globally\n\n### \ud83d\udfe1 Nice to Have (Minor Impact)\n8. **Standardize border radius** \u2014 limit to 1-2 values\n9. **Use UI library components** \u2014 replace custom selects/dialogs\n10. **Document design system** \u2014 create living style guide\n\n---\n\n## Technical Recommendations\n\n### Immediate Actions\n- Create `@/styles/form-inputs.css` defining input styling once\n- Add `@/styles/buttons.css` for button variants\n- Update `globals.css` to define typography scale\n- Create `@/styles/spacing.ts` with padding/margin constants\n\n### Medium-term\n- Audit every page and replace custom styles with component library\n- Define design tokens file (colors, sizing, spacing, typography)\n- Create Storybook or style guide documenting patterns\n\n---\n\n## Conclusion\n\nThe \"rough around the edges\" feeling stems from **fragmented styling decisions** rather than any single flaw. The codebase has a solid component library but doesn't use it consistently. By standardizing inputs, buttons, typography, and spacing, the app will immediately feel more polished and professional.\n\n**The tools are already in place.** The CSS utility library is sophisticated, and the component library is comprehensive. The work is primarily about enforcing consistency rather than building new infrastructure.\n\n**Key files to review:**\n- `/src/components/ui/button.tsx` \u2014 use this more\n- `/src/components/ui/input.tsx` \u2014 standardize on this\n- `/src/app/globals.css` \u2014 document design system here\n- `/src/components/sidebar.tsx` \u2014 example of inconsistent input/button usage\n- `/src/components/chat-messages.tsx` \u2014 example of arbitrary sizing\n\n**Affected components (in order of visual impact):**\n- chat-input.tsx\n- chat-messages.tsx\n- sidebar.tsx\n- documents/page.tsx\n- settings/account/page.tsx\n- projects/[id]/page.tsx\n- greeting-card.tsx\n"}], "grading": {"eval_id": "eval-3-vague-rough-edges", "run_type": "without_skill", "expectations": [{"text": "severity-tiers: Report uses severity tiers (critical, warning, suggestion or equivalent prioritization)", "passed": true, "evidence": "Report uses severity tiers explicitly: 'HIGH IMPACT' (issues 1-4), 'MEDIUM-HIGH IMPACT' (issue 3), 'MEDIUM IMPACT' (issues 5-7), 'MINOR IMPACT' (issues 8-9), with color-coded summary (\ud83d\udd34 Must Fix, \ud83d\udfe0 Should Fix, \ud83d\udfe1 Nice to Have)"}, {"text": "file-paths: Report includes specific file paths pointing to where issues occur in the codebase", "passed": true, "evidence": "File paths included with specific examples, e.g., 'chat-input.tsx', 'documents/page.tsx', 'settings/account/page.tsx', 'sidebar.tsx', 'ui/input.tsx', 'chat-messages.tsx', 'greeting-card.tsx'"}, {"text": "page-routes: Report mentions specific pages or routes where issues render in the app", "passed": true, "evidence": "Specific pages/routes mentioned: Documents page, Settings page, Chat page, Dashboard, Sidebar, Form pages, Mobile navigation, Action items, Projects"}, {"text": "plain-english-fixes: Fix suggestions are in plain English without code snippets", "passed": false, "evidence": "Report contains multiple code blocks with className strings throughout, showing exact Tailwind classes and CSS in issues 1-9. Examples: 'bg-transparent border border-border px-3 py-2', '--radius: 0'"}, {"text": "design-system-reference: Report references or infers a design system baseline to compare against", "passed": false, "evidence": "No dedicated Design System Reference section. Design system mentioned scattered throughout findings but not comprehensively documented in one section like the with_skill report"}, {"text": "visual-consistency-priority: Visual consistency issues appear before accessibility issues (respecting priority order)", "passed": true, "evidence": "All 9 main issues address visual consistency and styling. Accessibility is not discussed separately as a major section, keeping visual issues front-and-center"}, {"text": "intentional-vs-accidental: Report distinguishes or considers whether differences might be intentional vs accidental", "passed": true, "evidence": "Discusses intentional vs accidental throughout: 'no clear purpose' for border opacity, 'fragile' magic numbers, 'ad-hoc' styling decisions suggest accidents. Conclusion states 'fragmented styling decisions rather than any single flaw'"}, {"text": "actionable-specificity: Findings are specific enough to act on (not vague like 'improve consistency' but pointing to exact elements/values)", "passed": true, "evidence": "Specific recommendations: 'Standardize placeholder color to placeholder:text-muted-foreground/50', 'Increase from 68% to 75%+ for better contrast', 'Define button variants: Primary, Secondary, Tertiary', exact pixel/rem values provided throughout"}]}}], "previous_feedback": {}, "previous_outputs": {}, "benchmark": {"metadata": {"skill_name": "ui-audit", "timestamp": "2026-03-18T18:21:07Z", "runs_per_configuration": 3}, "configurations": {"with_skill": {"pass_rate": {"mean": 0.9583333333333334}, "time_seconds": {"mean": 129.2}, "tokens": {"mean": 95825.0}}, "without_skill": {"pass_rate": {"mean": 0.7083333333333334}, "time_seconds": {"mean": 155.63333333333335}, "tokens": {"mean": 92473.0}}}, "per_eval": [{"eval_name": "eval-1-full-app-audit", "results": {"with_skill": {"pass_rate": 1.0, "passed": 8, "total": 8, "expectations": [{"text": "severity-tiers: Report uses severity tiers (critical, warning, suggestion or equivalent prioritization)", "passed": true, "evidence": "Report uses CRITICAL, WARNING, SUGGESTION tiers explicitly in sections 'Audit Findings' with clear section headers"}, {"text": "file-paths: Report includes specific file paths pointing to where issues occur in the codebase", "passed": true, "evidence": "Each finding includes exact file paths and line numbers, e.g., '/src/components/sidebar.tsx, line 170', '/src/app/(app)/settings/layout.tsx, line 36'"}, {"text": "page-routes: Report mentions specific pages or routes where issues render in the app", "passed": true, "evidence": "Report mentions specific pages throughout: 'Documents page', 'Settings pages', 'Dashboard cards', 'Chat empty state', 'mobile nav'"}, {"text": "plain-english-fixes: Fix suggestions are in plain English without code snippets", "passed": true, "evidence": "Fix suggestions are narrative: 'Remove the -ml-px and instead adjust padding or use border-l with the border width baked into the padding calculation' - no code blocks"}, {"text": "design-system-reference: Report references or infers a design system baseline to compare against", "passed": true, "evidence": "Extensive Design System Reference section (lines 14-58) documenting colors, typography, spacing, components, and breakpoints inferred from codebase"}, {"text": "visual-consistency-priority: Visual consistency issues appear before accessibility issues (respecting priority order)", "passed": true, "evidence": "Visual consistency issues (spacing, headings, borders, labels, styling) are covered in WARNING/SUGGESTION sections. Accessibility concerns relegated to separate 'Accessibility Notes' section after all visual findings"}, {"text": "intentional-vs-accidental: Report distinguishes or considers whether differences might be intentional vs accidental", "passed": true, "evidence": "Executive summary states 'The app successfully maintains visual consistency...demonstrates thoughtful use' and notes 'subtle inconsistencies', distinguishing between intentional design and unintended drift"}, {"text": "actionable-specificity: Findings are specific enough to act on (not vague like 'improve consistency' but pointing to exact elements/values)", "passed": true, "evidence": "Issues specify exact padding values (p-5, p-6, px-4 py-3), font sizes (0.8125rem, 0.625rem, 0.6875rem), and class names to change, e.g., 'use pl-[11px] border-l (leaving 11px for 2px border + 9px padding)'"}], "time_seconds": 170.0, "tokens": 97827}, "without_skill": {"pass_rate": 0.5, "passed": 4, "total": 8, "expectations": [{"text": "severity-tiers: Report uses severity tiers (critical, warning, suggestion or equivalent prioritization)", "passed": true, "evidence": "Report uses severity levels throughout findings: 'Severity: High', 'Severity: Medium', 'Severity: Low', 'Severity: Low-Medium'. Also uses priority summary: 'HIGH PRIORITY', 'MEDIUM PRIORITY', 'LOW PRIORITY'"}, {"text": "file-paths: Report includes specific file paths pointing to where issues occur in the codebase", "passed": true, "evidence": "File paths are included for most issues, e.g., 'Sidebar (sidebar.tsx)', 'Documents page (documents/page.tsx)', 'Login form shows error in small text', though some are vaguer than others"}, {"text": "page-routes: Report mentions specific pages or routes where issues render in the app", "passed": true, "evidence": "Specific pages mentioned throughout: 'Dashboard', 'Documents page', 'Settings', 'Chat page', 'Login page', 'Projects list', 'Bottom navigation bar on mobile'"}, {"text": "plain-english-fixes: Fix suggestions are in plain English without code snippets", "passed": false, "evidence": "Report contains code snippets in Issues 2.1 and 6.4 showing actual Tailwind classes like 'bg-foreground text-background' and 'border border-border text-muted-foreground hover:text-foreground'"}, {"text": "design-system-reference: Report references or infers a design system baseline to compare against", "passed": false, "evidence": "No explicit design system reference section. Colors are mentioned inline in issues (e.g., Issue 3.1 mentions 'hsl(30 8% 68%)') but there's no comprehensive design system section like in the with_skill report"}, {"text": "visual-consistency-priority: Visual consistency issues appear before accessibility issues (respecting priority order)", "passed": false, "evidence": "Accessibility issues (8.1-8.4) appear in main findings before being mentioned separately, mixed with visual issues. No clear separation prioritizing visual consistency first"}, {"text": "intentional-vs-accidental: Report distinguishes or considers whether differences might be intentional vs accidental", "passed": false, "evidence": "Report doesn't distinguish between intentional and accidental design choices. States issues matter but doesn't discuss whether differences might be deliberate design decisions"}, {"text": "actionable-specificity: Findings are specific enough to act on (not vague like 'improve consistency' but pointing to exact elements/values)", "passed": true, "evidence": "Issues specify exact values and locations: 'text-2xl (login page), sometimes text-[0.8125rem] (documents page)', 'Increase border color to 25-30% lightness', 'h-8 to h-10'"}], "time_seconds": 200.9, "tokens": 102810}}}, {"eval_name": "eval-2-chat-page-focus", "results": {"with_skill": {"pass_rate": 0.875, "passed": 7, "total": 8, "expectations": [{"text": "severity-tiers", "passed": true, "evidence": "Report uses clear severity tiers: Critical (4 issues), Warning (10 issues), and Suggestion (4 issues). Each issue is explicitly labeled with its tier and includes a summary table showing count and impact per level."}, {"text": "file-paths", "passed": true, "evidence": "Every issue includes specific file paths with line numbers. Examples: '/src/components/chat-messages.tsx lines 192\u2013212', '/src/app/(app)/chat/[id]/page.tsx line 118', '/src/components/artifact-panel.tsx line 239'. No issues lack file location references."}, {"text": "page-routes", "passed": true, "evidence": "Report scope is clearly defined as '/chat/[id]' at the top. Individual issues reference page context where relevant (e.g., 'Chat page header' in issue #2, empty state shown 'when no messages'). Route and page context is provided throughout."}, {"text": "plain-english-fixes", "passed": true, "evidence": "All 'How to fix it' sections use plain English instructions without code snippets. Example: 'Standardize message role label size to text-[0.6875rem] across all message types' uses design tokens as reference but not code. Fix suggestions are conversational and implementable without reading code."}, {"text": "design-system-reference", "passed": true, "evidence": "Report includes a dedicated 'Design System Reference' section that documents inferred baseline: colors (HSL values), typography (sizing in rem/px), spacing (border radius, padding classes), and components. All findings reference this baseline for comparison."}, {"text": "visual-consistency-priority", "passed": true, "evidence": "Visual consistency issues appear as critical (typography, header spacing, loading indicators, message bubbles). Accessibility issues appear later in warnings (placeholder text opacity in issue #16, which is an a11y concern but positioned as warning, not critical). Hierarchy respects visual polish priority."}, {"text": "intentional-vs-accidental", "passed": false, "evidence": "Report does not distinguish between intentional and accidental differences. For example, issue #4 (partial border radius on user messages) doesn't speculate whether the rounded-tr-sm is intentional restraint or an oversight. Issue #8 (text truncation) doesn't consider if truncation was a deliberate choice for space efficiency."}, {"text": "actionable-specificity", "passed": true, "evidence": "Findings point to exact elements and values, not vague guidance. Example: Issue #5 recommends 'px-3.5 py-2.5' and 'text-[0.8125rem]' instead of generic 'improve spacing'. Issue #7 suggests 'change from text-muted-foreground/50 to text-muted-foreground'. Issue #12 recommends 'max-h-[300px] overflow-auto' as a specific implementation."}], "time_seconds": 105.9, "tokens": 92514}, "without_skill": {"pass_rate": 0.875, "passed": 7, "total": 8, "expectations": [{"text": "severity-tiers: Report uses severity tiers (critical, warning, suggestion or equivalent prioritization)", "passed": true, "evidence": "Report uses priority levels: 'Medium Priority' (Header Layout Inconsistency), 'Low Priority' (Input Container, Message Timestamp, Model Picker, Action Item Cards, Code Block, Collapsible Cards, Loading State)"}, {"text": "file-paths: Report includes specific file paths pointing to where issues occur in the codebase", "passed": true, "evidence": "Each issue includes exact file paths and line numbers: '/src/app/(app)/chat/[id]/page.tsx lines 196-230', '/src/components/chat-input.tsx lines 183-212', '/src/components/chat-messages.tsx lines 208-209'"}, {"text": "page-routes: Report mentions specific pages or routes where issues render in the app", "passed": true, "evidence": "Chat page focus is the entire subject. Specific mentions: 'empty chat state', 'chat interface', 'header', 'input container', 'action item cards', 'code blocks'"}, {"text": "plain-english-fixes: Fix suggestions are in plain English without code snippets", "passed": false, "evidence": "Report contains code snippets in issues 1-7 showing actual tsx/JSX code, e.g., 'className=\"flex items-center gap-4 border-b border-border px-6 py-3\"' and style syntax"}, {"text": "design-system-reference: Report references or infers a design system baseline to compare against", "passed": true, "evidence": "Design System Observations section (lines 237-249) documents font-size scale, tracking values, opacity usage, and color tokens, noting areas for standardization"}, {"text": "visual-consistency-priority: Visual consistency issues appear before accessibility issues (respecting priority order)", "passed": true, "evidence": "Visual issues (header layout, input alignment, styling, colors) covered first in Issues 1-7. Accessibility concerns isolated to separate section at end (lines 262-271)"}, {"text": "intentional-vs-accidental: Report distinguishes or considers whether differences might be intentional vs accidental", "passed": true, "evidence": "Strengths section acknowledges 'thoughtfully designed interface', and discussion notes things like 'Magic number mb-[9px] is unclear and fragile' or 'inconsistent with how labels are styled', implying unintentional drift"}, {"text": "actionable-specificity: Findings are specific enough to act on (not vague like 'improve consistency' but pointing to exact elements/values)", "passed": true, "evidence": "Issues specify exact values: 'mb-[9px] offset', 'text-muted-foreground/30', 'size-4 animate-spin', 'Increase spinner size to at least size-8 or size-12', 'Increase opacity to /60 or /80'"}], "time_seconds": 84.7, "tokens": 74581}}}, {"eval_name": "eval-3-vague-rough-edges", "results": {"with_skill": {"pass_rate": 1.0, "passed": 8, "total": 8, "expectations": [{"text": "severity-tiers: Report uses severity tiers (critical, warning, suggestion or equivalent prioritization)", "passed": true, "evidence": "Report uses CRITICAL, WARNING, SUGGESTION sections. Also provides Summary by Priority with 'Immediate (fix next)', 'Short-term (polish pass)', 'Nice-to-have (future improvements)'"}, {"text": "file-paths: Report includes specific file paths pointing to where issues occur in the codebase", "passed": true, "evidence": "Specific file paths throughout: '/src/components/sidebar.tsx', '/src/app/(app)/settings/layout.tsx', '/src/app/(app)/dashboard/page.tsx', '/src/app/(app)/documents/page.tsx', '/src/components/chat-input.tsx'"}, {"text": "page-routes: Report mentions specific pages or routes where issues render in the app", "passed": true, "evidence": "Reports mention 'Documents page', 'Settings page', 'Dashboard', 'Chat', 'sidebar', 'mobile nav', 'Settings account page', 'Action items page', 'Projects list'"}, {"text": "plain-english-fixes: Fix suggestions are in plain English without code snippets", "passed": true, "evidence": "Fix suggestions are in narrative form: 'Establish a strict type scale', 'Define a standard padding scale', 'Add focus-visible outlines', 'Create a standard PageHeader component' - no code blocks shown"}, {"text": "design-system-reference: Report references or infers a design system baseline to compare against", "passed": true, "evidence": "Comprehensive Design System Reference section (lines 25-52) documents colors, typography, spacing, components, and breakpoints with specific HSL values and Tailwind scale mapping"}, {"text": "visual-consistency-priority: Visual consistency issues appear before accessibility issues (respecting priority order)", "passed": true, "evidence": "Visual consistency issues (border-radius, font sizes, padding, spacing, hover states) dominate main findings. Accessibility only briefly mentioned in Mobile Responsiveness notes, not prioritized equally"}, {"text": "intentional-vs-accidental: Report distinguishes or considers whether differences might be intentional vs accidental", "passed": true, "evidence": "Executive summary notes 'inferred design system derived from codebase analysis' and discusses 'intentional minimal aesthetic'. Issue 2 acknowledges '--radius: 0 is set to 0px...but then Tailwind classes like rounded-lg are applied throughout' suggesting unintentional inconsistency"}, {"text": "actionable-specificity: Findings are specific enough to act on (not vague like 'improve consistency' but pointing to exact elements/values)", "passed": true, "evidence": "Specific values throughout: 'Set --radius: 8px', establish type scale 'h1-h6' mapping, standardize padding to 'Tight: 12px, Default: 16px, Relaxed: 20px, Large: 24px', 'gap-2, gap-3, gap-4' scale"}], "time_seconds": 111.7, "tokens": 97134}, "without_skill": {"pass_rate": 0.75, "passed": 6, "total": 8, "expectations": [{"text": "severity-tiers: Report uses severity tiers (critical, warning, suggestion or equivalent prioritization)", "passed": true, "evidence": "Report uses severity tiers explicitly: 'HIGH IMPACT' (issues 1-4), 'MEDIUM-HIGH IMPACT' (issue 3), 'MEDIUM IMPACT' (issues 5-7), 'MINOR IMPACT' (issues 8-9), with color-coded summary (\ud83d\udd34 Must Fix, \ud83d\udfe0 Should Fix, \ud83d\udfe1 Nice to Have)"}, {"text": "file-paths: Report includes specific file paths pointing to where issues occur in the codebase", "passed": true, "evidence": "File paths included with specific examples, e.g., 'chat-input.tsx', 'documents/page.tsx', 'settings/account/page.tsx', 'sidebar.tsx', 'ui/input.tsx', 'chat-messages.tsx', 'greeting-card.tsx'"}, {"text": "page-routes: Report mentions specific pages or routes where issues render in the app", "passed": true, "evidence": "Specific pages/routes mentioned: Documents page, Settings page, Chat page, Dashboard, Sidebar, Form pages, Mobile navigation, Action items, Projects"}, {"text": "plain-english-fixes: Fix suggestions are in plain English without code snippets", "passed": false, "evidence": "Report contains multiple code blocks with className strings throughout, showing exact Tailwind classes and CSS in issues 1-9. Examples: 'bg-transparent border border-border px-3 py-2', '--radius: 0'"}, {"text": "design-system-reference: Report references or infers a design system baseline to compare against", "passed": false, "evidence": "No dedicated Design System Reference section. Design system mentioned scattered throughout findings but not comprehensively documented in one section like the with_skill report"}, {"text": "visual-consistency-priority: Visual consistency issues appear before accessibility issues (respecting priority order)", "passed": true, "evidence": "All 9 main issues address visual consistency and styling. Accessibility is not discussed separately as a major section, keeping visual issues front-and-center"}, {"text": "intentional-vs-accidental: Report distinguishes or considers whether differences might be intentional vs accidental", "passed": true, "evidence": "Discusses intentional vs accidental throughout: 'no clear purpose' for border opacity, 'fragile' magic numbers, 'ad-hoc' styling decisions suggest accidents. Conclusion states 'fragmented styling decisions rather than any single flaw'"}, {"text": "actionable-specificity: Findings are specific enough to act on (not vague like 'improve consistency' but pointing to exact elements/values)", "passed": true, "evidence": "Specific recommendations: 'Standardize placeholder color to placeholder:text-muted-foreground/50', 'Increase from 68% to 75%+ for better contrast', 'Define button variants: Primary, Secondary, Tertiary', exact pixel/rem values provided throughout"}], "time_seconds": 181.3, "tokens": 100028}}}], "run_summary": {"delta": {"pass_rate": "+25.00%", "time_seconds": "-26.4", "tokens": "3352"}}}};
+
+    // ---- State ----
+    let feedbackMap = {};  // run_id -> feedback text
+    let currentIndex = 0;
+    let visitedRuns = new Set();
+
+    // ---- Init ----
+    async function init() {
+      // Load saved feedback from server — but only if this isn't a fresh
+      // iteration (indicated by previous_feedback being present). When
+      // previous feedback exists, the feedback.json on disk is stale from
+      // the prior iteration and should not pre-fill the textareas.
+      const hasPrevious = Object.keys(EMBEDDED_DATA.previous_feedback || {}).length > 0
+        || Object.keys(EMBEDDED_DATA.previous_outputs || {}).length > 0;
+      if (!hasPrevious) {
+        try {
+          const resp = await fetch("/api/feedback");
+          const data = await resp.json();
+          if (data.reviews) {
+            for (const r of data.reviews) feedbackMap[r.run_id] = r.feedback;
+          }
+        } catch { /* first run, no feedback yet */ }
+      }
+
+      document.getElementById("skill-name").textContent = EMBEDDED_DATA.skill_name;
+      showRun(0);
+
+      // Wire up feedback auto-save
+      const textarea = document.getElementById("feedback");
+      let saveTimeout = null;
+      textarea.addEventListener("input", () => {
+        clearTimeout(saveTimeout);
+        document.getElementById("feedback-status").textContent = "";
+        saveTimeout = setTimeout(() => saveCurrentFeedback(), 800);
+      });
+    }
+
+    // ---- Navigation ----
+    function navigate(delta) {
+      const newIndex = currentIndex + delta;
+      if (newIndex >= 0 && newIndex < EMBEDDED_DATA.runs.length) {
+        saveCurrentFeedback();
+        showRun(newIndex);
+      }
+    }
+
+    function updateNavButtons() {
+      document.getElementById("prev-btn").disabled = currentIndex === 0;
+      document.getElementById("next-btn").disabled =
+        currentIndex === EMBEDDED_DATA.runs.length - 1;
+    }
+
+    // ---- Show a run ----
+    function showRun(index) {
+      currentIndex = index;
+      const run = EMBEDDED_DATA.runs[index];
+
+      // Progress
+      document.getElementById("progress").textContent =
+        `${index + 1} of ${EMBEDDED_DATA.runs.length}`;
+
+      // Prompt
+      document.getElementById("prompt-text").textContent = run.prompt;
+
+      // Config badge
+      const badge = document.getElementById("config-badge");
+      const configMatch = run.id.match(/(with_skill|without_skill|new_skill|old_skill)/);
+      if (configMatch) {
+        const config = configMatch[1];
+        const isBaseline = config === "without_skill" || config === "old_skill";
+        badge.textContent = config.replace(/_/g, " ");
+        badge.className = "config-badge " + (isBaseline ? "config-baseline" : "config-primary");
+        badge.style.display = "inline-block";
+      } else {
+        badge.style.display = "none";
+      }
+
+      // Outputs
+      renderOutputs(run);
+
+      // Previous outputs
+      renderPrevOutputs(run);
+
+      // Grades
+      renderGrades(run);
+
+      // Previous feedback
+      const prevFb = (EMBEDDED_DATA.previous_feedback || {})[run.id];
+      const prevEl = document.getElementById("prev-feedback");
+      if (prevFb) {
+        document.getElementById("prev-feedback-text").textContent = prevFb;
+        prevEl.style.display = "block";
+      } else {
+        prevEl.style.display = "none";
+      }
+
+      // Feedback
+      document.getElementById("feedback").value = feedbackMap[run.id] || "";
+      document.getElementById("feedback-status").textContent = "";
+
+      updateNavButtons();
+
+      // Track visited runs and promote done button when all visited
+      visitedRuns.add(index);
+      const doneBtn = document.getElementById("done-btn");
+      if (visitedRuns.size >= EMBEDDED_DATA.runs.length) {
+        doneBtn.classList.add("ready");
+      }
+
+      // Scroll main content to top
+      document.querySelector(".main").scrollTop = 0;
+    }
+
+    // ---- Render outputs ----
+    function renderOutputs(run) {
+      const container = document.getElementById("outputs-body");
+      container.innerHTML = "";
+
+      const outputs = run.outputs || [];
+      if (outputs.length === 0) {
+        container.innerHTML = '<div class="empty-state">No output files</div>';
+        return;
+      }
+
+      for (const file of outputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        // Always show file header with download link
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const content = document.createElement("div");
+        content.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          content.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          content.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          content.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(content, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          content.appendChild(a);
+        } else if (file.type === "error") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          pre.style.color = "var(--red)";
+          content.appendChild(pre);
+        }
+
+        fileDiv.appendChild(content);
+        container.appendChild(fileDiv);
+      }
+    }
+
+    // ---- XLSX rendering via SheetJS ----
+    function renderXlsx(container, b64Data) {
+      try {
+        const raw = Uint8Array.from(atob(b64Data), c => c.charCodeAt(0));
+        const wb = XLSX.read(raw, { type: "array" });
+
+        for (let i = 0; i < wb.SheetNames.length; i++) {
+          const sheetName = wb.SheetNames[i];
+          const ws = wb.Sheets[sheetName];
+
+          if (wb.SheetNames.length > 1) {
+            const sheetLabel = document.createElement("div");
+            sheetLabel.style.cssText =
+              "font-weight:600; font-size:0.8rem; color:#b0aea5; margin-top:0.5rem; margin-bottom:0.25rem;";
+            sheetLabel.textContent = "Sheet: " + sheetName;
+            container.appendChild(sheetLabel);
+          }
+
+          const htmlStr = XLSX.utils.sheet_to_html(ws, { editable: false });
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = htmlStr;
+          container.appendChild(wrapper);
+        }
+      } catch (err) {
+        container.textContent = "Error rendering spreadsheet: " + err.message;
+      }
+    }
+
+    // ---- Grades ----
+    function renderGrades(run) {
+      const section = document.getElementById("grades-section");
+      const content = document.getElementById("grades-content");
+
+      if (!run.grading) {
+        section.style.display = "none";
+        return;
+      }
+
+      const grading = run.grading;
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("grades-arrow").classList.remove("open");
+
+      const summary = grading.summary || {};
+      const expectations = grading.expectations || [];
+
+      let html = '<div style="padding: 1rem;">';
+
+      // Summary line
+      const passRate = summary.pass_rate != null
+        ? Math.round(summary.pass_rate * 100) + "%"
+        : "?";
+      const badgeClass = summary.pass_rate >= 0.8 ? "grade-pass" : summary.pass_rate >= 0.5 ? "" : "grade-fail";
+      html += '<div class="grades-summary">';
+      html += '<span class="grade-badge ' + badgeClass + '">' + passRate + '</span>';
+      html += '<span>' + (summary.passed || 0) + ' passed, ' + (summary.failed || 0) + ' failed of ' + (summary.total || 0) + '</span>';
+      html += '</div>';
+
+      // Assertions list
+      html += '<ul class="assertion-list">';
+      for (const exp of expectations) {
+        const statusClass = exp.passed ? "pass" : "fail";
+        const statusIcon = exp.passed ? "\u2713" : "\u2717";
+        html += '<li class="assertion-item">';
+        html += '<span class="assertion-status ' + statusClass + '">' + statusIcon + '</span>';
+        html += '<span>' + escapeHtml(exp.text) + '</span>';
+        if (exp.evidence) {
+          html += '<div class="assertion-evidence">' + escapeHtml(exp.evidence) + '</div>';
+        }
+        html += '</li>';
+      }
+      html += '</ul>';
+
+      html += '</div>';
+      content.innerHTML = html;
+    }
+
+    function toggleGrades() {
+      const content = document.getElementById("grades-content");
+      const arrow = document.getElementById("grades-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Previous outputs (collapsible) ----
+    function renderPrevOutputs(run) {
+      const section = document.getElementById("prev-outputs-section");
+      const content = document.getElementById("prev-outputs-content");
+      const prevOutputs = (EMBEDDED_DATA.previous_outputs || {})[run.id];
+
+      if (!prevOutputs || prevOutputs.length === 0) {
+        section.style.display = "none";
+        return;
+      }
+
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("prev-outputs-arrow").classList.remove("open");
+
+      // Render the files into the content area
+      content.innerHTML = "";
+      const wrapper = document.createElement("div");
+      wrapper.style.padding = "1rem";
+
+      for (const file of prevOutputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const fc = document.createElement("div");
+        fc.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          fc.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          fc.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          fc.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(fc, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          fc.appendChild(a);
+        }
+
+        fileDiv.appendChild(fc);
+        wrapper.appendChild(fileDiv);
+      }
+
+      content.appendChild(wrapper);
+    }
+
+    function togglePrevOutputs() {
+      const content = document.getElementById("prev-outputs-content");
+      const arrow = document.getElementById("prev-outputs-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Feedback (saved to server -> feedback.json) ----
+    function saveCurrentFeedback() {
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // Build reviews array from map
+      const reviews = [];
+      for (const [run_id, feedback] of Object.entries(feedbackMap)) {
+        if (feedback.trim()) {
+          reviews.push({ run_id, feedback, timestamp: new Date().toISOString() });
+        }
+      }
+
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviews, status: "in_progress" }),
+      }).then(() => {
+        document.getElementById("feedback-status").textContent = "Saved";
+      }).catch(() => {
+        // Static mode or server unavailable — no-op on auto-save,
+        // feedback will be downloaded on final submit
+        document.getElementById("feedback-status").textContent = "Will download on submit";
+      });
+    }
+
+    // ---- Done ----
+    function showDoneDialog() {
+      // Save current textarea to feedbackMap (but don't POST yet)
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // POST once with status: complete — include ALL runs so the model
+      // can distinguish "no feedback" (looks good) from "not reviewed"
+      const reviews = [];
+      const ts = new Date().toISOString();
+      for (const r of EMBEDDED_DATA.runs) {
+        reviews.push({ run_id: r.id, feedback: feedbackMap[r.id] || "", timestamp: ts });
+      }
+      const payload = JSON.stringify({ reviews, status: "complete" }, null, 2);
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      }).then(() => {
+        document.getElementById("done-overlay").classList.add("visible");
+      }).catch(() => {
+        // Server not available (static mode) — download as file
+        const blob = new Blob([payload], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "feedback.json";
+        a.click();
+        URL.revokeObjectURL(url);
+        document.getElementById("done-overlay").classList.add("visible");
+      });
+    }
+
+    function closeDoneDialog() {
+      // Reset status back to in_progress
+      saveCurrentFeedback();
+      document.getElementById("done-overlay").classList.remove("visible");
+    }
+
+    // ---- Toast ----
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("visible");
+      setTimeout(() => toast.classList.remove("visible"), 2000);
+    }
+
+    // ---- Keyboard nav ----
+    document.addEventListener("keydown", (e) => {
+      // Don't capture when typing in textarea
+      if (e.target.tagName === "TEXTAREA") return;
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        navigate(-1);
+      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        navigate(1);
+      }
+    });
+
+    // ---- Util ----
+    function getDownloadUri(file) {
+      if (file.data_uri) return file.data_uri;
+      if (file.data_b64) return "data:application/octet-stream;base64," + file.data_b64;
+      if (file.type === "text") return "data:text/plain;charset=utf-8," + encodeURIComponent(file.content);
+      return "#";
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ---- View switching ----
+    function switchView(view) {
+      document.querySelectorAll(".view-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".view-panel").forEach(p => p.classList.remove("active"));
+      document.querySelector(`[onclick="switchView('${view}')"]`).classList.add("active");
+      document.getElementById("panel-" + view).classList.add("active");
+    }
+
+    // ---- Benchmark rendering ----
+    function renderBenchmark() {
+      const data = EMBEDDED_DATA.benchmark;
+      if (!data) return;
+
+      // Show the tabs
+      document.getElementById("view-tabs").style.display = "flex";
+
+      const container = document.getElementById("benchmark-content");
+      const summary = data.run_summary || {};
+      const metadata = data.metadata || {};
+      const notes = data.notes || [];
+
+      let html = "";
+
+      // Header
+      html += "<h2 style='font-family: Poppins, sans-serif; margin-bottom: 0.5rem;'>Benchmark Results</h2>";
+      html += "<p style='color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;'>";
+      if (metadata.skill_name) html += "<strong>" + escapeHtml(metadata.skill_name) + "</strong> &mdash; ";
+      if (metadata.timestamp) html += metadata.timestamp + " &mdash; ";
+      if (metadata.evals_run) html += "Evals: " + metadata.evals_run.join(", ") + " &mdash; ";
+      html += (metadata.runs_per_configuration || "?") + " runs per configuration";
+      html += "</p>";
+
+      // Summary table
+      html += '<table class="benchmark-table">';
+
+      function fmtStat(stat, pct) {
+        if (!stat) return "—";
+        const suffix = pct ? "%" : "";
+        const m = pct ? (stat.mean * 100).toFixed(0) : stat.mean.toFixed(1);
+        const s = pct ? (stat.stddev * 100).toFixed(0) : stat.stddev.toFixed(1);
+        return m + suffix + " ± " + s + suffix;
+      }
+
+      function deltaClass(val) {
+        if (!val) return "";
+        const n = parseFloat(val);
+        if (n > 0) return "benchmark-delta-positive";
+        if (n < 0) return "benchmark-delta-negative";
+        return "";
+      }
+
+      // Discover config names dynamically (everything except "delta")
+      const configs = Object.keys(summary).filter(k => k !== "delta");
+      const configA = configs[0] || "config_a";
+      const configB = configs[1] || "config_b";
+      const labelA = configA.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const labelB = configB.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const a = summary[configA] || {};
+      const b = summary[configB] || {};
+      const delta = summary.delta || {};
+
+      html += "<thead><tr><th>Metric</th><th>" + escapeHtml(labelA) + "</th><th>" + escapeHtml(labelB) + "</th><th>Delta</th></tr></thead>";
+      html += "<tbody>";
+
+      html += "<tr><td><strong>Pass Rate</strong></td>";
+      html += "<td>" + fmtStat(a.pass_rate, true) + "</td>";
+      html += "<td>" + fmtStat(b.pass_rate, true) + "</td>";
+      html += '<td class="' + deltaClass(delta.pass_rate) + '">' + (delta.pass_rate || "—") + "</td></tr>";
+
+      // Time (only show row if data exists)
+      if (a.time_seconds || b.time_seconds) {
+        html += "<tr><td><strong>Time (s)</strong></td>";
+        html += "<td>" + fmtStat(a.time_seconds, false) + "</td>";
+        html += "<td>" + fmtStat(b.time_seconds, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.time_seconds) + '">' + (delta.time_seconds ? delta.time_seconds + "s" : "—") + "</td></tr>";
+      }
+
+      // Tokens (only show row if data exists)
+      if (a.tokens || b.tokens) {
+        html += "<tr><td><strong>Tokens</strong></td>";
+        html += "<td>" + fmtStat(a.tokens, false) + "</td>";
+        html += "<td>" + fmtStat(b.tokens, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.tokens) + '">' + (delta.tokens || "—") + "</td></tr>";
+      }
+
+      html += "</tbody></table>";
+
+      // Per-eval breakdown (if runs data available)
+      const runs = data.runs || [];
+      if (runs.length > 0) {
+        const evalIds = [...new Set(runs.map(r => r.eval_id))].sort((a, b) => a - b);
+
+        html += "<h3 style='font-family: Poppins, sans-serif; margin-bottom: 0.75rem;'>Per-Eval Breakdown</h3>";
+
+        const hasTime = runs.some(r => r.result && r.result.time_seconds != null);
+        const hasErrors = runs.some(r => r.result && r.result.errors > 0);
+
+        for (const evalId of evalIds) {
+          const evalRuns = runs.filter(r => r.eval_id === evalId);
+          const evalName = evalRuns[0] && evalRuns[0].eval_name ? evalRuns[0].eval_name : "Eval " + evalId;
+
+          html += "<h4 style='font-family: Poppins, sans-serif; margin: 1rem 0 0.5rem; color: var(--text);'>" + escapeHtml(evalName) + "</h4>";
+          html += '<table class="benchmark-table">';
+          html += "<thead><tr><th>Config</th><th>Run</th><th>Pass Rate</th>";
+          if (hasTime) html += "<th>Time (s)</th>";
+          if (hasErrors) html += "<th>Crashes During Execution</th>";
+          html += "</tr></thead>";
+          html += "<tbody>";
+
+          // Group by config and render with average rows
+          const configGroups = [...new Set(evalRuns.map(r => r.configuration))];
+          for (let ci = 0; ci < configGroups.length; ci++) {
+            const config = configGroups[ci];
+            const configRuns = evalRuns.filter(r => r.configuration === config);
+            if (configRuns.length === 0) continue;
+
+            const rowClass = ci === 0 ? "benchmark-row-with" : "benchmark-row-without";
+            const configLabel = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+            for (const run of configRuns) {
+              const r = run.result || {};
+              const prClass = r.pass_rate >= 0.8 ? "benchmark-delta-positive" : r.pass_rate < 0.5 ? "benchmark-delta-negative" : "";
+              html += '<tr class="' + rowClass + '">';
+              html += "<td>" + configLabel + "</td>";
+              html += "<td>" + run.run_number + "</td>";
+              html += '<td class="' + prClass + '">' + ((r.pass_rate || 0) * 100).toFixed(0) + "% (" + (r.passed || 0) + "/" + (r.total || 0) + ")</td>";
+              if (hasTime) html += "<td>" + (r.time_seconds != null ? r.time_seconds.toFixed(1) : "—") + "</td>";
+              if (hasErrors) html += "<td>" + (r.errors || 0) + "</td>";
+              html += "</tr>";
+            }
+
+            // Average row
+            const rates = configRuns.map(r => (r.result || {}).pass_rate || 0);
+            const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
+            const avgPrClass = avgRate >= 0.8 ? "benchmark-delta-positive" : avgRate < 0.5 ? "benchmark-delta-negative" : "";
+            html += '<tr class="benchmark-row-avg ' + rowClass + '">';
+            html += "<td>" + configLabel + "</td>";
+            html += "<td>Avg</td>";
+            html += '<td class="' + avgPrClass + '">' + (avgRate * 100).toFixed(0) + "%</td>";
+            if (hasTime) {
+              const times = configRuns.map(r => (r.result || {}).time_seconds).filter(t => t != null);
+              html += "<td>" + (times.length ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : "—") + "</td>";
+            }
+            if (hasErrors) html += "<td></td>";
+            html += "</tr>";
+          }
+          html += "</tbody></table>";
+
+          // Per-assertion detail for this eval
+          const runsWithExpectations = {};
+          for (const config of configGroups) {
+            runsWithExpectations[config] = evalRuns.filter(r => r.configuration === config && r.expectations && r.expectations.length > 0);
+          }
+          const hasAnyExpectations = Object.values(runsWithExpectations).some(runs => runs.length > 0);
+          if (hasAnyExpectations) {
+            // Collect all unique assertion texts across all configs
+            const allAssertions = [];
+            const seen = new Set();
+            for (const config of configGroups) {
+              for (const run of runsWithExpectations[config]) {
+                for (const exp of (run.expectations || [])) {
+                  if (!seen.has(exp.text)) {
+                    seen.add(exp.text);
+                    allAssertions.push(exp.text);
+                  }
+                }
+              }
+            }
+
+            html += '<table class="benchmark-table" style="margin-top: 0.5rem;">';
+            html += "<thead><tr><th>Assertion</th>";
+            for (const config of configGroups) {
+              const label = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+              html += "<th>" + escapeHtml(label) + "</th>";
+            }
+            html += "</tr></thead><tbody>";
+
+            for (const assertionText of allAssertions) {
+              html += "<tr><td>" + escapeHtml(assertionText) + "</td>";
+
+              for (const config of configGroups) {
+                html += "<td>";
+                for (const run of runsWithExpectations[config]) {
+                  const exp = (run.expectations || []).find(e => e.text === assertionText);
+                  if (exp) {
+                    const cls = exp.passed ? "benchmark-delta-positive" : "benchmark-delta-negative";
+                    const icon = exp.passed ? "\u2713" : "\u2717";
+                    html += '<span class="' + cls + '" title="Run ' + run.run_number + ': ' + escapeHtml(exp.evidence || "") + '">' + icon + "</span> ";
+                  } else {
+                    html += "— ";
+                  }
+                }
+                html += "</td>";
+              }
+              html += "</tr>";
+            }
+            html += "</tbody></table>";
+          }
+        }
+      }
+
+      // Notes
+      if (notes.length > 0) {
+        html += '<div class="benchmark-notes">';
+        html += "<h3>Analysis Notes</h3>";
+        html += "<ul>";
+        for (const note of notes) {
+          html += "<li>" + escapeHtml(note) + "</li>";
+        }
+        html += "</ul></div>";
+      }
+
+      container.innerHTML = html;
+    }
+
+    // ---- Start ----
+    init();
+    renderBenchmark();
+  </script>
+</body>
+</html>

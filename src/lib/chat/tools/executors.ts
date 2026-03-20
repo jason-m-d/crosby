@@ -1247,3 +1247,38 @@ export async function executeCancelWatch(input: { watch_id: string }): Promise<{
 
 // Re-export for backward compatibility within this module
 export { executeWebSearch }
+
+export async function executeSearchConversationHistory(
+  input: { query: string },
+  conversationId: string,
+): Promise<{ status: string; results?: { content: string; role: string; similarity: number }[]; message?: string }> {
+  if (!input.query) return { status: 'error', message: 'query is required' }
+
+  try {
+    const { generateQueryEmbedding } = await import('@/lib/embeddings')
+    const embedding = await generateQueryEmbedding(input.query)
+
+    const { data, error } = await supabaseAdmin.rpc('search_message_embeddings', {
+      query_embedding: embedding,
+      conversation_id_filter: conversationId,
+      match_threshold: 0.5,
+      match_count: 8,
+    })
+
+    if (error) {
+      console.error('[search_conversation_history] RPC error:', error)
+      return { status: 'error', message: error.message }
+    }
+
+    const results = (data || []).map((row: any) => ({
+      content: row.content,
+      role: row.role || 'unknown',
+      similarity: row.similarity,
+    }))
+
+    return { status: 'ok', results }
+  } catch (err: any) {
+    console.error('[search_conversation_history] failed:', err)
+    return { status: 'error', message: err.message }
+  }
+}

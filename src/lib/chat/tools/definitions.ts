@@ -727,6 +727,21 @@ export const REQUEST_ADDITIONAL_CONTEXT_TOOL: Anthropic.Messages.Tool = {
   },
 }
 
+export const SEARCH_CONVERSATION_HISTORY_TOOL: Anthropic.Messages.Tool = {
+  name: 'search_conversation_history',
+  description: 'Search through past conversation messages to find what was discussed about a topic. Use when the user references a past conversation, asks about something discussed before, or when you need context from a previous discussion that is not in your current context window.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      query: {
+        type: 'string',
+        description: 'What to search for in past conversations',
+      },
+    },
+    required: ['query'],
+  },
+}
+
 export const ALL_TOOLS_MAP: Record<string, Anthropic.Messages.Tool> = {
   manage_action_items: ACTION_ITEM_TOOL,
   manage_artifact: ARTIFACT_TOOL,
@@ -756,4 +771,5 @@ export const ALL_TOOLS_MAP: Record<string, Anthropic.Messages.Tool> = {
   manage_group_whitelist: MANAGE_GROUP_WHITELIST_TOOL,
   manage_bookmarks: MANAGE_BOOKMARKS_TOOL,
   request_additional_context: REQUEST_ADDITIONAL_CONTEXT_TOOL,
+  search_conversation_history: SEARCH_CONVERSATION_HISTORY_TOOL,
 }

@@ -501,7 +501,7 @@ export function buildSpecialistPrompt(
   ]
 
   if (ctx.previousSessionSummary) {
-    parts.push(`\n\n--- Previous Session Summary ---\n${ctx.previousSessionSummary}`)
+    parts.push(`\n\n<conversation_context>\nSummary of earlier conversation:\n${ctx.previousSessionSummary}\n</conversation_context>`)
   }
 
   // Render each active specialist's prompt section with its loaded data

@@ -23,4 +23,6 @@ export const toolStatusLabels: Record<string, string> = {
   search_texts: 'Searching texts',
   manage_text_contacts: 'Updating text contacts',
   manage_group_whitelist: 'Managing group whitelist',
+  search_conversation_history: 'Searching past conversations',
+  request_additional_context: 'Loading additional context',
 }

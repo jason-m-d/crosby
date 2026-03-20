@@ -35,6 +35,7 @@ export default function ProjectPage() {
   const [toolStatus, setToolStatus] = useState<string | null>(null)
   const [messagesLoading, setMessagesLoading] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   // Panel state
   const [panel, setPanel] = useState<Panel | null>('conversations')
@@ -1024,7 +1025,7 @@ export default function ProjectPage() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-auto flex flex-col">
+        <div ref={scrollContainerRef} className="flex-1 overflow-auto flex flex-col">
           {messagesLoading ? (
             <div className="flex items-center justify-center flex-1">
               <Loader2 className="size-4 animate-spin text-muted-foreground/40" />
@@ -1035,6 +1036,7 @@ export default function ProjectPage() {
               streamingContent={streamingContent}
               loading={chatLoading}
               toolStatus={toolStatus}
+              scrollContainerRef={scrollContainerRef}
               onArtifactClick={handleArtifactClick}
             />
           )}

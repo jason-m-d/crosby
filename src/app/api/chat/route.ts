@@ -31,9 +31,10 @@ import {
   executeListWatches,
   executeCancelWatch,
   executeWebSearch,
+  executeSearchConversationHistory,
 } from '@/lib/chat/tools/executors'
-import { getOrCreateSession } from '@/lib/chat/session'
 import { extractMemories } from '@/lib/chat/memory-extraction'
+import { extractFromRecentMessages } from '@/lib/chat/extraction'
 import { resolveSpecialists, specialistRegistry } from '@/lib/specialists/registry'
 import { loadDataBlocks } from '@/lib/chat/context-loader'
 import { buildSpecialistPrompt } from '@/lib/specialists/prompt-builder'
@@ -69,32 +70,35 @@ export async function POST(req: NextRequest) {
           convId = conv.id
         }
 
-        // Get or create session
-        const { sessionId, previousSummary } = await getOrCreateSession(convId)
-
         // Save user message
         await supabaseAdmin.from('messages').insert({
           conversation_id: convId,
           role: 'user',
           content: message,
-          ...(sessionId ? { session_id: sessionId } : {}),
         })
 
-        // Load conversation history — scoped to session if we have one.
-        // If no session (timeout fallback), apply a 4-hour recency bound so old messages
-        // from previous sessions don't bleed into context.
+        // Load the latest rolling summary for this conversation
+        const { data: latestSummary } = await supabaseAdmin
+          .from('conversation_summaries')
+          .select('summary_text, summarized_through_at')
+          .eq('conversation_id', convId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        // Load all messages after the summary pointer (or all messages if no summary exists)
         console.log('[Chat] step 4: load history')
         const historyQuery = supabaseAdmin
           .from('messages')
           .select('role, content, context_domains')
           .eq('conversation_id', convId)
           .order('created_at', { ascending: true })
-          .limit(20)
-        const { data: history } = await (
-          sessionId
-            ? historyQuery.eq('session_id', sessionId)
-            : historyQuery.gte('created_at', new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString())
-        )
+
+        if (latestSummary) {
+          historyQuery.gt('created_at', latestSummary.summarized_through_at)
+        }
+
+        const { data: history } = await historyQuery
 
         // Always load all projects first — router needs them for project matching, cheap query
         const allProjectsResult = await supabaseAdmin.from('projects').select('id, name, description').order('name')
@@ -220,7 +224,7 @@ export async function POST(req: NextRequest) {
 
         console.log('[Chat] building system prompt')
         const systemPrompt = buildSpecialistPrompt(activeSpecialists, loadedData, {
-          previousSessionSummary: previousSummary,
+          previousSessionSummary: latestSummary?.summary_text || null,
           currentTime: pacificTime,
           relevantProjects: routerResult.relevant_projects.length > 0 ? routerResult.relevant_projects : undefined,
           projectSystemPrompt: projectResult.data?.system_prompt || null,
@@ -228,16 +232,8 @@ export async function POST(req: NextRequest) {
           trainingContext: loadedData.training,
         })
 
-        // Build messages array, capped by character budget
-        const HISTORY_CHAR_BUDGET = 40000
-        let historyCharCount = 0
-        const trimmedHistory = (history || []).reduceRight((acc: any[], m: any) => {
-          const len = (m.content || '').length
-          if (historyCharCount + len > HISTORY_CHAR_BUDGET) return acc
-          historyCharCount += len
-          acc.unshift(m)
-          return acc
-        }, [])
+        // Use all unsummarized history — the summarization cron keeps this window manageable
+        const trimmedHistory = history || []
 
         // Collapse consecutive same-role messages
         const deduped = trimmedHistory.reduce((acc: any[], m: any) => {
@@ -543,6 +539,8 @@ export async function POST(req: NextRequest) {
                     toolResult = await executeManageTextContacts(toolInput)
                   } else if (currentToolUse.name === 'manage_group_whitelist') {
                     toolResult = await executeManageGroupWhitelist(toolInput)
+                  } else if (currentToolUse.name === 'search_conversation_history') {
+                    toolResult = await executeSearchConversationHistory(toolInput, convId)
                   } else if (currentToolUse.name === 'request_additional_context') {
                     const requestedBlocks: string[] = toolInput.data_blocks || []
                     console.log(`[Chat] request_additional_context: [${requestedBlocks.join(', ')}] — reason: ${toolInput.reason || '(none)'}`)
@@ -664,27 +662,17 @@ export async function POST(req: NextRequest) {
           role: 'assistant',
           content: fullResponse,
           sources,
-          ...(sessionId ? { session_id: sessionId } : {}),
           context_domains: activeSpecialists.map(s => s.id),
         })
-
-        if (sessionId) void supabaseAdmin.rpc('increment_session_message_count', { session_id_param: sessionId, increment_by: 2 })
 
         await supabaseAdmin
           .from('conversations')
           .update({ updated_at: new Date().toISOString() })
           .eq('id', convId)
 
-        const { data: recentMemory } = await supabaseAdmin
-          .from('memories')
-          .select('id')
-          .gte('created_at', new Date(Date.now() - 5000).toISOString())
-          .limit(1)
-        if (!recentMemory || recentMemory.length === 0) {
-          await extractMemories(convId, message, fullResponse)
-        } else {
-          console.log('[Chat] skipping memory extraction — recent extraction within 5s')
-        }
+        // Fire-and-forget: memory extraction + full extraction pipeline (notepad, commitments, decisions, watches, processes)
+        void extractMemories(convId, message, fullResponse)
+        void extractFromRecentMessages(convId)
 
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, conversation_id: convId, sources })}\n\n`))
         controller.close()

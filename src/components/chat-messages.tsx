@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { Bell, Check, ChevronDown, Clock, Copy, FileText, FolderOpen, FolderPen, FolderPlus, FolderX, GraduationCap, LayoutDashboard, Link2, Loader2, Mail, MailPlus, NotebookPen, Palette, Pencil, PencilLine, Plus, RefreshCw, Send, ThumbsDown, ThumbsUp, Trash2, X } from 'lucide-react'
 import Link from 'next/link'
@@ -32,6 +32,7 @@ interface ChatMessagesProps {
   greetingData?: GreetingData | null
   onGreetingItemHandled?: (itemId: string) => void
   onSendMessage?: (text: string) => void
+  scrollContainerRef?: React.RefObject<HTMLDivElement | null>
 }
 
 function formatDate() {
@@ -45,11 +46,40 @@ function formatTime(dateStr?: string) {
   return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 }
 
-export function ChatMessages({ messages, streamingContent, loading, toolStatus, onArtifactClick, onCopyMessage, onEditMessage, greetingData, onGreetingItemHandled, onSendMessage }: ChatMessagesProps) {
+export function ChatMessages({ messages, streamingContent, loading, toolStatus, onArtifactClick, onCopyMessage, onEditMessage, greetingData, onGreetingItemHandled, onSendMessage, scrollContainerRef }: ChatMessagesProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
+  const userScrolledRef = useRef(false)
+  const prevLoadingRef = useRef(loading)
+
+  // When a new response starts (loading flips to true), re-enable auto-scroll
+  useEffect(() => {
+    if (loading && !prevLoadingRef.current) {
+      userScrolledRef.current = false
+    }
+    prevLoadingRef.current = loading
+  }, [loading])
+
+  // Detect manual scroll: if user scrolls up while streaming, disable auto-scroll
+  useEffect(() => {
+    const container = scrollContainerRef?.current
+    if (!container) return
+
+    function handleScroll() {
+      if (!container) return
+      const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight
+      if (distanceFromBottom > 80) {
+        userScrolledRef.current = true
+      }
+    }
+
+    container.addEventListener('scroll', handleScroll, { passive: true })
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [scrollContainerRef])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (!userScrolledRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
   }, [messages, streamingContent, greetingData])
 
   if (messages.length === 0 && !loading) {
