@@ -4,7 +4,7 @@ export const documentsSpecialist: SpecialistDefinition = {
   id: 'documents',
   name: 'Documents',
   description: 'Handles artifacts, projects, project context, and RAG retrieval',
-  tools: ['manage_artifact', 'manage_project', 'manage_project_context', 'manage_bookmarks'],
+  tools: ['manage_artifact', 'open_artifact', 'manage_project', 'manage_project_context', 'manage_bookmarks'],
   dataNeeded: ['projects', 'artifacts', 'documents_rag', 'context_chunks'],
   triggerRules: {
     trigger_tools: ['manage_artifact', 'manage_project', 'manage_project_context', 'manage_bookmarks'],

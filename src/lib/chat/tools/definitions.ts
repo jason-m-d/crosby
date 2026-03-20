@@ -769,9 +769,25 @@ export const GET_ACTIVITY_LOG_TOOL: Anthropic.Messages.Tool = {
   },
 }
 
+export const OPEN_ARTIFACT_TOOL: Anthropic.Messages.Tool = {
+  name: 'open_artifact',
+  description: 'Open an existing artifact in the side panel. Use when Jason asks to see, open, or show a specific artifact by name.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      artifact_id: {
+        type: 'string',
+        description: 'The ID of the artifact to open',
+      },
+    },
+    required: ['artifact_id'],
+  },
+}
+
 export const ALL_TOOLS_MAP: Record<string, Anthropic.Messages.Tool> = {
   manage_action_items: ACTION_ITEM_TOOL,
   manage_artifact: ARTIFACT_TOOL,
+  open_artifact: OPEN_ARTIFACT_TOOL,
   manage_project: MANAGE_PROJECT_TOOL,
   manage_project_context: MANAGE_PROJECT_CONTEXT_TOOL,
   manage_notepad: MANAGE_NOTEPAD_TOOL,

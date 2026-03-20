@@ -310,6 +310,15 @@ export default function HomePage() {
                 setActiveArtifactId(art.id)
                 setShowArtifactPanel(true)
               }
+              if (data.open_artifact) {
+                const art = data.open_artifact.artifact as Artifact
+                if (art?.id) {
+                  setArtifacts(prev => prev.find(a => a.id === art.id) ? prev : [art, ...prev])
+                  setOpenArtifactIds(prev => prev.includes(art.id) ? prev : [...prev, art.id])
+                  setActiveArtifactId(art.id)
+                  setShowArtifactPanel(true)
+                }
+              }
               if (data.email_draft) {
                 emailDraftEvents.push(data.email_draft)
               }

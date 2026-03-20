@@ -439,6 +439,20 @@ export async function POST(req: NextRequest) {
                         artifact: { operation: toolInput.operation, artifact: toolResult.artifact },
                       })}\n\n`))
                     }
+                  } else if (currentToolUse.name === 'open_artifact') {
+                    const { data: art } = await supabaseAdmin
+                      .from('artifacts')
+                      .select('*')
+                      .eq('id', toolInput.artifact_id)
+                      .single()
+                    if (art) {
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                        open_artifact: { artifact: art },
+                      })}\n\n`))
+                      toolResult = { status: 'opened', artifact_id: art.id, name: art.name }
+                    } else {
+                      toolResult = { status: 'error', message: 'Artifact not found' }
+                    }
                   } else if (currentToolUse.name === 'manage_project_context') {
                     toolResult = await executeManageProjectContext(toolInput)
                     controller.enqueue(encoder.encode(`data: ${JSON.stringify({ project_context: toolResult })}\n\n`))
