@@ -577,9 +577,10 @@ export function buildBriefingPrompt(data: {
 
   parts.push(`Write a concise morning briefing for Jason DeMayo, CEO of DeMayo Restaurant Group (8 Wingstop locations) and Hungry Hospitality Group (2 Mr. Pickle's locations).
 
-Format: markdown, scannable, no fluff. Use bullet points. Keep it under 400 words.
+Format: markdown, scannable, no fluff. Use bullet points. Keep it under 250 words. Skip any section that has nothing noteworthy - don't say 'No new emails', just omit the section.
 Start with the most important items. Group by topic (sales, action items, email activity).
-Use hyphens, not em dashes. This is a one-way notification - do NOT include questions or anything that requires a response. State facts and what needs attention, don't ask.`)
+Use hyphens, not em dashes. This is a one-way notification - do NOT include questions or anything that requires a response. State facts and what needs attention, don't ask.
+Group related items together. If multiple action items relate to the same vendor, store, or topic, combine them into one bullet with a count (e.g., "TLC Power Washing - 5 overdue invoices across 5 stores" instead of listing each separately). Same for emails from the same person or thread, calendar events in sequence, etc.`)
 
   if (preferences.length > 0) {
     parts.push(`\n\nUser preferences (MUST respect these - skip topics the user doesn't want, emphasize what they do):

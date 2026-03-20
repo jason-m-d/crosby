@@ -275,14 +275,14 @@ export function buildWatchMessage(match: WatchMatch): string {
   const sender = match.email.from.replace(/<[^>]+>/, '').trim()
   const subject = match.email.subject
   const context = match.watch.context
-  const preview = match.email.body.slice(0, 200).replace(/\n+/g, ' ').trim()
+  const preview = match.email.body.slice(0, 80).replace(/\n+/g, ' ').trim()
 
   if (match.confidence === 'high') {
-    return `Heads up - ${sender} just emailed about "${subject}". ${preview}${preview.length >= 200 ? '...' : ''}\n\nThis is what you were waiting for from your ${context}.`
+    return `Heads up - ${sender} just emailed about "${subject}". ${preview}${preview.length >= 80 ? '...' : ''}\n\nRe: ${context}.`
   } else if (match.confidence === 'medium') {
-    return `Possible match - ${sender} emailed about "${subject}". ${preview}${preview.length >= 200 ? '...' : ''}\n\nCould be related to your ${context}.`
+    return `Possible match - ${sender} emailed about "${subject}". ${preview}${preview.length >= 80 ? '...' : ''}\n\nMay relate to: ${context}.`
   } else {
-    return `Possible match - ${match.explanation || `${sender} emailed about "${subject}"`}. ${preview}${preview.length >= 200 ? '...' : ''}\n\nMay be related to your ${context}.`
+    return `Possible match - ${match.explanation || `${sender} emailed about "${subject}"`}. ${preview}${preview.length >= 80 ? '...' : ''}\n\nMay relate to: ${context}.`
   }
 }
 
