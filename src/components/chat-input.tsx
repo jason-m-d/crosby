@@ -7,6 +7,29 @@ import {
   Globe, Brain, Users, StickyNote, LayoutDashboard,
 } from 'lucide-react'
 
+// ---------------------------------------------------------------------------
+// Local regex classifier — mirrors intent-classifier.ts domain → chip mapping.
+// Runs synchronously on each keystroke to show chips instantly, before the
+// AI prefetch round-trip completes.
+// ---------------------------------------------------------------------------
+function classifyLocal(text: string): string[] {
+  const lower = text.toLowerCase().trim()
+  const chips: string[] = []
+
+  if (/email|draft|send|forward|reply|inbox|gmail/.test(lower)) chips.push('Email')
+  if (/calendar|meeting|schedule|free|busy/.test(lower)) chips.push('Calendar')
+  if (/\bsales\b|revenue|\bstore\b|how did|performance|wingstop|pickle|forecast|budget/.test(lower)) chips.push('Sales')
+  if (/\btask\b|\btasks\b|action item|todo|to-do/.test(lower)) chips.push('Tasks')
+  if (/\btext\b|sms|imessage/.test(lower)) chips.push('Texts')
+  if (/search|look up|google|find out|what is|who is|latest|news/.test(lower)) chips.push('Web Search')
+  if (/document|upload|pdf|file|attachment/.test(lower)) chips.push('Documents')
+  if (/contact|phone number|email address|reach out/.test(lower)) chips.push('Contacts')
+  if (/notepad|\bnote\b|remind me|jot|write down/.test(lower)) chips.push('Notes')
+  if (/dashboard|\bcard\b|\bpin\b/.test(lower)) chips.push('Dashboard')
+
+  return chips
+}
+
 interface UploadedFile {
   id: string
   name: string
@@ -123,6 +146,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       return
     }
 
+    // Show chips instantly from local regex classifier — no network needed
+    const localChips = classifyLocal(value.trim())
+    prevSpecialistsRef.current = specialists
+    setSpecialists(localChips)
+
+    // Then refine with AI prefetch after 250ms debounce
     prefetchTimerRef.current = setTimeout(async () => {
       try {
         const res = await fetch('/api/chat/prefetch', {
@@ -133,7 +162,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         if (!res.ok) return
         const data = await res.json()
 
-        // Update specialists — stable ones stay, new ones animate in
+        // Refine specialists with AI result — stable ones stay, new ones animate in
         prevSpecialistsRef.current = specialists
         setSpecialists(data.specialists || [])
 
@@ -153,7 +182,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       } catch {
         // silently ignore prefetch errors — they're speculative
       }
-    }, 500)
+    }, 250)
   }, [specialists])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -271,6 +300,37 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   return (
     <div>
       <div className="mx-8 pb-3">
+        {/* Specialist chips — outside the input box, above it */}
+        {specialists.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {specialists.map(s => {
+              const meta = SPECIALIST_META[s]
+              if (!meta) return null
+              const Icon = meta.icon
+              const isNew = !prevSet.has(s)
+              return (
+                <div
+                  key={s}
+                  className="group flex items-center gap-1 px-2 py-0.5 text-[0.7rem] text-muted-foreground bg-muted/30 border border-border/50 rounded-full transition-all duration-150 ease-out"
+                  style={{
+                    animation: isNew ? 'chip-enter 150ms ease-out both' : undefined,
+                  }}
+                >
+                  <Icon className="size-3 shrink-0" />
+                  <span>{meta.label}</span>
+                  <button
+                    onClick={() => dismissSpecialist(s)}
+                    className="ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-100"
+                    aria-label={`Remove ${meta.label}`}
+                  >
+                    <X className="size-2.5" />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
         <div className="border border-border input-container">
           {/* Attached files */}
           {files.length > 0 && (
@@ -299,42 +359,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             </div>
           )}
 
-          {/* Specialist chips */}
-          {specialists.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 px-3.5 py-2">
-              {specialists.map(s => {
-                const meta = SPECIALIST_META[s]
-                if (!meta) return null
-                const Icon = meta.icon
-                const isNew = !prevSet.has(s)
-                return (
-                  <div
-                    key={s}
-                    className="group flex items-center gap-1 px-2 py-0.5 text-[0.7rem] text-muted-foreground bg-muted/30 border border-border/50 rounded-full transition-all duration-150 ease-out"
-                    style={{
-                      animation: isNew ? 'chip-enter 150ms ease-out both' : undefined,
-                    }}
-                  >
-                    <Icon className="size-3 shrink-0" />
-                    <span>{meta.label}</span>
-                    <button
-                      onClick={() => dismissSpecialist(s)}
-                      className="ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-100"
-                      aria-label={`Remove ${meta.label}`}
-                    >
-                      <X className="size-2.5" />
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
           {/* Input row with ghost text overlay */}
-          <div className="flex items-end gap-1 relative">
+          <div className="flex items-center gap-1 relative">
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex-shrink-0 mb-[9px] ml-1.5 p-1.5 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+              className="flex-shrink-0 ml-1.5 p-1.5 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
               title="Attach file"
             >
               <Paperclip className="size-4" />
@@ -369,7 +398,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             <button
               onClick={handleSubmit}
               disabled={!canSend}
-              className="flex-shrink-0 mb-[10px] mr-2.5 p-1.5 bg-foreground text-background disabled:opacity-20 transition-opacity"
+              className="flex-shrink-0 mr-2.5 p-1.5 bg-foreground text-background disabled:opacity-20 transition-opacity"
             >
               {loading ? (
                 <Loader2 className="size-3.5 animate-spin" />
