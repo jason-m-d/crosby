@@ -11,6 +11,7 @@ import { StructuredQuestionCard } from '@/components/structured-question-card'
 import { QuickConfirmCard } from '@/components/quick-confirm-card'
 import { CronMessageGroup } from '@/components/cron-message-group'
 import { CronMessageCard, CronMessageType } from '@/components/cron-message-card'
+import { CardTrackGroup } from '@/components/card-track-group'
 
 interface SurfacedItem {
   id: string
@@ -393,6 +394,13 @@ function MessageBlock({ message, isLatest, isStreaming, toolStatus, onArtifactCl
 
       {/* Proactive feedback */}
       {isProactive && messageType && <ProactiveFeedback messageType={messageType} />}
+
+      {/* Card Tracks (action items list, etc.) */}
+      {message.cardTrackEvents && message.cardTrackEvents.length > 0 && onSendMessage && (
+        <div className="mt-4 -mx-1">
+          <CardTrackGroup tracks={message.cardTrackEvents} onSendMessage={onSendMessage} />
+        </div>
+      )}
 
       {/* Action Items */}
       {message.actionItemEvents && message.actionItemEvents.length > 0 && (

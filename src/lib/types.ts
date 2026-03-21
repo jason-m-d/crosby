@@ -56,6 +56,7 @@ export interface Message {
   content: string
   sources: Record<string, unknown>[] | null
   message_type?: 'briefing' | 'nudge' | 'alert' | 'watch_match' | 'email_heads_up' | 'bridge_status' | null
+  metadata?: { card_tracks?: CardTrackEvent[] } | null
   created_at: string
 }
 
@@ -284,6 +285,31 @@ export interface Contact {
   notes: string | null
   created_at: string
   updated_at: string
+}
+
+// Card Track system — interactive card tracks rendered inline in chat
+export interface CardTrackEvent {
+  track_id: string
+  track_type: 'action_items' | 'emails' | 'calendar' | 'contacts'
+  section_label: string
+  section_priority: number
+  items: CardTrackItem[]
+  suggested_actions?: SuggestedAction[]
+}
+
+export interface CardTrackItem {
+  id: string
+  type: 'action_item' | 'email' | 'calendar' | 'contact'
+  data: ActionItem // extend with union types later
+}
+
+export interface SuggestedAction {
+  label: string
+  action_type: 'send_message' | 'api_call'
+  message?: string
+  endpoint?: string
+  method?: string
+  body?: Record<string, unknown>
 }
 
 export interface ArtifactEvent {

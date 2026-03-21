@@ -254,6 +254,7 @@ export default function HomePage() {
       const dashboardCardEvents: any[] = []
       const notificationRuleEvents: any[] = []
       const preferenceEvents: any[] = []
+      const cardTrackEvents: any[] = []
       let buffer = ''
 
       while (reader) {
@@ -350,6 +351,9 @@ export default function HomePage() {
                   document.documentElement.style.setProperty('--ring', data.preference.value)
                 }
               }
+              if (data.card_track) {
+                cardTrackEvents.push(data.card_track)
+              }
               if (data.done) {
                 if (data.conversation_id && !conversationId) {
                   setConversationId(data.conversation_id)
@@ -381,6 +385,7 @@ export default function HomePage() {
         dashboardCardEvents: dashboardCardEvents.length > 0 ? dashboardCardEvents : undefined,
         notificationRuleEvents: notificationRuleEvents.length > 0 ? notificationRuleEvents : undefined,
         preferenceEvents: preferenceEvents.length > 0 ? preferenceEvents : undefined,
+        cardTrackEvents: cardTrackEvents.length > 0 ? cardTrackEvents : undefined,
       }])
       setStreamingContent('')
     } catch (err) {

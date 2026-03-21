@@ -72,8 +72,38 @@ export default function ConversationPage() {
       })
 
     supabase.from('messages').select('*').eq('conversation_id', id).order('created_at')
-      .then(({ data }) => {
-        setMessages(data || [])
+      .then(async ({ data }) => {
+        const msgs = data || []
+        // Hydrate card tracks from metadata
+        const allItemIds: string[] = []
+        const msgsWithTracks = msgs.map((m: any) => {
+          if (m.metadata?.card_tracks) {
+            for (const t of m.metadata.card_tracks) {
+              if (t.item_ids) allItemIds.push(...t.item_ids)
+            }
+          }
+          return m
+        })
+        if (allItemIds.length > 0) {
+          const { data: items } = await supabase
+            .from('action_items')
+            .select('*')
+            .in('id', allItemIds)
+          const itemMap = new Map((items || []).map((i: any) => [i.id, i]))
+          for (const m of msgsWithTracks) {
+            if (m.metadata?.card_tracks) {
+              m.cardTrackEvents = m.metadata.card_tracks
+                .map((t: any) => ({
+                  ...t,
+                  items: (t.item_ids || [])
+                    .filter((id: string) => itemMap.has(id))
+                    .map((id: string) => ({ id, type: 'action_item', data: itemMap.get(id) })),
+                }))
+                .filter((t: any) => t.items.length > 0)
+            }
+          }
+        }
+        setMessages(msgsWithTracks)
         setInitialLoading(false)
       })
 
@@ -119,6 +149,7 @@ export default function ConversationPage() {
       const trainingEvents: any[] = []
       const structuredQuestionEvents: any[] = []
       const quickConfirmEvents: any[] = []
+      const cardTrackEvents: any[] = []
       let buffer = ''
 
       while (reader) {
@@ -161,6 +192,9 @@ export default function ConversationPage() {
               }
               if (data.quick_confirm) {
                 quickConfirmEvents.push(data.quick_confirm)
+              }
+              if (data.card_track) {
+                cardTrackEvents.push(data.card_track)
               }
               if (data.artifact) {
                 artifactEvents.push(data.artifact)
@@ -211,6 +245,7 @@ export default function ConversationPage() {
         trainingEvents: trainingEvents.length > 0 ? trainingEvents : undefined,
         structuredQuestionEvents: structuredQuestionEvents.length > 0 ? structuredQuestionEvents : undefined,
         quickConfirmEvents: quickConfirmEvents.length > 0 ? quickConfirmEvents : undefined,
+        cardTrackEvents: cardTrackEvents.length > 0 ? cardTrackEvents : undefined,
       }])
       setStreamingContent('')
     } catch (err) {

@@ -73,7 +73,7 @@ export function Sidebar() {
   return (
     <div className={cn(
       "flex flex-col border-r border-sidebar-border bg-sidebar transition-all duration-200",
-      collapsed ? "w-14" : "w-48"
+      collapsed ? "w-14" : "w-40 xl:w-44"
     )}>
       {/* Logo */}
       <div className="flex items-center justify-between px-4 py-4">
