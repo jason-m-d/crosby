@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '@/lib/supabase'
+import { groupActionItemsIntoTracks, cardTracksToMetadata } from '@/lib/chat/card-tracks'
 import { classifyIntent, getToolsForDomains } from '@/lib/intent-classifier'
 import { routeMessage } from '@/lib/router'
 import { searchEmails, createDraft } from '@/lib/gmail'
@@ -51,7 +52,7 @@ function buildRuntimeDirectives(toolsNeeded: string[]): string {
   const directives: string[] = []
 
   if (toolsNeeded.includes('search_web')) {
-    directives.push('This message requires current real-world information. You MUST call search_web before answering. Do not answer from memory or training data.')
+    directives.push('This message requires current real-world information. You MUST call web_search before answering. Do not answer from memory or training data.')
   }
   if (toolsNeeded.includes('manage_artifact')) {
     directives.push('This message requires an artifact. You MUST call manage_artifact, not write content as text.')
@@ -81,6 +82,7 @@ export async function POST(req: NextRequest) {
   const encoder = new TextEncoder()
   let fullResponse = ''
   let isErrorResponse = false
+  let cardTrackMetadata: Record<string, unknown> | null = null
   const chatStartTime = Date.now()
 
   const stream = new ReadableStream({
@@ -235,10 +237,25 @@ export async function POST(req: NextRequest) {
 
         // Build tools from the union of all active specialists' tools.
         // request_additional_context is always included.
+        // search_web is replaced by Claude's native web_search server tool.
         const activeToolNames = [...new Set(activeSpecialists.flatMap((s: SpecialistDefinition) => s.tools))]
+          .filter(name => name !== 'search_web') // native web search replaces this
         const activeTools: Anthropic.Messages.Tool[] = [
           ...activeToolNames.map(name => ALL_TOOLS_MAP[name]).filter((t): t is Anthropic.Messages.Tool => !!t),
           REQUEST_ADDITIONAL_CONTEXT_TOOL,
+          // Claude's native web search — executes server-side, no round-trip
+          {
+            type: 'web_search_20250305',
+            name: 'web_search',
+            max_uses: 5,
+            user_location: {
+              type: 'approximate',
+              city: 'San Jose',
+              region: 'California',
+              country: 'US',
+              timezone: 'America/Los_Angeles',
+            },
+          } as any,
         ]
         console.log(`[Chat] tools: [${activeToolNames.join(', ')}] | total: ${activeTools.length}`)
 
@@ -429,6 +446,13 @@ export async function POST(req: NextRequest) {
                     controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: ' ' })}\n\n`))
                   }
                   currentTextBlock = ''
+                } else if ((event.content_block as any).type === 'server_tool_use') {
+                  // Native web search — executed server-side by Anthropic, no action needed
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ tool_status: 'Searching the web' })}\n\n`))
+                  toolsCalledThisMessage.push('web_search')
+                } else if ((event.content_block as any).type === 'web_search_tool_result') {
+                  // Search results arrived — Claude will use them automatically
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ web_search: { native: true } })}\n\n`))
                 } else if (event.content_block.type === 'tool_use') {
                   currentToolUse = {
                     id: event.content_block.id,
@@ -597,6 +621,7 @@ export async function POST(req: NextRequest) {
                     toolResult = await executeContactsTool(toolInput)
                     controller.enqueue(encoder.encode(`data: ${JSON.stringify({ contact: { operation: toolInput.operation, result: toolResult } })}\n\n`))
                   } else if (currentToolUse.name === 'search_web') {
+                    // Fallback: if model calls search_web as a custom tool, use Perplexity
                     try {
                       const result = await executeWebSearch(toolInput.query)
                       toolResult = { status: 'ok', result }
@@ -704,9 +729,19 @@ export async function POST(req: NextRequest) {
                   } else {
                     // Default: manage_action_items
                     toolResult = await executeActionItemTool(toolInput, convId, loadedData.action_items || [])
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                      action_item: { operation: toolInput.operation, result: toolResult },
-                    })}\n\n`))
+
+                    if (toolInput.operation === 'list' && toolResult.items?.length > 0) {
+                      // Emit card_track events for list operation
+                      const tracks = groupActionItemsIntoTracks(toolResult.items)
+                      for (const track of tracks) {
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ card_track: track })}\n\n`))
+                      }
+                      cardTrackMetadata = cardTracksToMetadata(tracks)
+                    } else {
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                        action_item: { operation: toolInput.operation, result: toolResult },
+                      })}\n\n`))
+                    }
                   }
 
                   currentMessages = [
@@ -794,6 +829,7 @@ export async function POST(req: NextRequest) {
           content: fullResponse,
           sources,
           context_domains: activeSpecialists.map(s => s.id),
+          ...(cardTrackMetadata ? { metadata: cardTrackMetadata } : {}),
         })
 
         void logChatMessage({
