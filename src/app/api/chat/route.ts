@@ -47,6 +47,33 @@ export const maxDuration = 60
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, baseURL: process.env.ANTHROPIC_BASE_URL })
 
+function buildRuntimeDirectives(toolsNeeded: string[]): string {
+  const directives: string[] = []
+
+  if (toolsNeeded.includes('search_web')) {
+    directives.push('This message requires current real-world information. You MUST call search_web before answering. Do not answer from memory or training data.')
+  }
+  if (toolsNeeded.includes('manage_artifact')) {
+    directives.push('This message requires an artifact. You MUST call manage_artifact, not write content as text.')
+  }
+  if (toolsNeeded.includes('search_conversation_history')) {
+    directives.push('This message references past conversations. You MUST call search_conversation_history before answering.')
+  }
+  if (toolsNeeded.includes('query_sales')) {
+    directives.push('This message is about sales/performance data. You MUST call query_sales, not search Gmail.')
+  }
+  if (toolsNeeded.includes('check_calendar') || toolsNeeded.includes('find_availability')) {
+    directives.push('This message is about schedule/availability. You MUST call check_calendar or find_availability.')
+  }
+  if (toolsNeeded.includes('search_gmail')) {
+    directives.push('This message requires email lookup. You MUST call search_gmail.')
+  }
+
+  return directives.length > 0
+    ? '\n\nROUTER DIRECTIVES:\n' + directives.map(d => `- ${d}`).join('\n')
+    : ''
+}
+
 export async function POST(req: NextRequest) {
   const { message, conversation_id, project_id, active_artifact_id, model, prefetch_message } = await req.json()
   const selectedModel = model || CHAT_MODELS.primary
@@ -245,10 +272,21 @@ export async function POST(req: NextRequest) {
           trainingContext: loadedData.training,
         })
 
-        // If the router flagged web search as needed, inject a strong directive so
-        // the model calls the tool instead of answering from training data.
-        if (routerResult?.tools_needed?.includes('search_web')) {
-          systemPrompt += '\n\nIMPORTANT: This message requires current real-world information. You MUST call the search_web tool before answering. Do not answer from memory or training data — search first, then respond based on the results.'
+        // Inject runtime directives based on what the router flagged
+        systemPrompt += buildRuntimeDirectives(routerResult?.tools_needed || [])
+
+        // Pre-execute web search if the router flagged it — gives the model results in context
+        if (routerResult?.tools_needed?.includes('search_web') && (routerResult.rag_query || message)) {
+          try {
+            const searchQuery = routerResult.rag_query || message
+            console.log(`[Chat] pre-executing web search: "${searchQuery}"`)
+            const results = await executeWebSearch(searchQuery)
+            if (results) {
+              systemPrompt += `\n\n--- Web Search Results (pre-fetched) ---\nQuery: "${searchQuery}"\n${results}\n---\nUse these results to answer. Only call search_web again if you need a DIFFERENT query.`
+            }
+          } catch (e) {
+            console.error('[Chat] pre-search failed, model will need to call search_web:', e)
+          }
         }
 
         // Use all unsummarized history — the summarization cron keeps this window manageable

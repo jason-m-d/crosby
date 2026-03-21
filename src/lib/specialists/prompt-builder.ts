@@ -569,5 +569,8 @@ export function buildSpecialistPrompt(
     parts.push(`\n\n${ctx.trainingContext}`)
   }
 
+  // Recency reinforcement — reminds the model of Decision Directives at the very end
+  parts.push(`\n\nREMINDER: If this message matches Decision Directives 1-5 above, you MUST call the specified tool before responding. Do not answer from memory or training data.`)
+
   return parts.join('')
 }

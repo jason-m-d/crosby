@@ -56,9 +56,6 @@ export const coreSpecialist: SpecialistDefinition = {
 {{relevant_projects_hint}}
 
 WEB SEARCH:
-- Use search_web whenever you're not certain about something: apps, companies, products, people, places, events, addresses, business hours, current news, prices — anything you might not know or that may have changed.
-- If Jason mentions something you don't recognize (an app, a company, a person, a term), search it before responding. Don't guess or say you can't find it without trying.
-- Don't guess at facts - search instead.
 - Cite the source when sharing searched information.
 
 TRAINING/FEEDBACK:
