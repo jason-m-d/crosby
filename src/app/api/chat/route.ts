@@ -30,11 +30,12 @@ import {
   executeCreateWatch,
   executeListWatches,
   executeCancelWatch,
-  executeWebSearch,
   executeSearchConversationHistory,
   executeGetActivityLog,
 } from '@/lib/chat/tools/executors'
+import { executeWebSearch, executeDeepResearch } from '@/lib/chat/web-search'
 import { extractMemories } from '@/lib/chat/memory-extraction'
+import { acknowledgeOutboxTopics } from '@/lib/proactive'
 import { extractFromRecentMessages } from '@/lib/chat/extraction'
 import { resolveSpecialists, specialistRegistry } from '@/lib/specialists/registry'
 import { loadDataBlocks } from '@/lib/chat/context-loader'
@@ -43,6 +44,7 @@ import type { SpecialistDefinition } from '@/lib/specialists/types'
 import { logChatMessage } from '@/lib/activity-log'
 import { getPrefetchedRouterResult } from '@/app/api/chat/prefetch/route'
 import { CHAT_MODELS, buildMetadata } from '@/lib/openrouter-models'
+import { getLangfuse, flushLangfuse } from '@/lib/langfuse'
 
 export const maxDuration = 60
 
@@ -58,6 +60,14 @@ export async function POST(req: NextRequest) {
   let isErrorResponse = false
   let cardTrackMetadata: Record<string, unknown> | null = null
   const chatStartTime = Date.now()
+
+  // Create Langfuse parent trace for this chat message (no-op in dev)
+  const lf = getLangfuse()
+  const lfTrace = lf.trace({
+    name: 'main_chat',
+    input: message.slice(0, 500),
+    metadata: { conversation_id, project_id },
+  })
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -117,18 +127,22 @@ export async function POST(req: NextRequest) {
         // Always-on blocks don't depend on routing — loading them now saves ~0.7-0.9s.
         const ALWAYS_ON_BLOCKS = new Set(['action_items_critical', 'watches', 'training', 'artifacts', 'projects'])
 
+        const routerSpan = lfTrace.span({ name: 'router' })
         const [routerResult, earlyData, allProjectsResult, projectResult] = await Promise.all([
           // Router call — skip if prefetch already ran for this exact message
           (async () => {
             try {
               const cached = prefetch_message ? getPrefetchedRouterResult(prefetch_message) : null
-              if (cached) return cached
-              return await routeMessage(message, recentMessages, [])
+              if (cached) { routerSpan.end({ output: { from_cache: true } }); return cached }
+              const result = await routeMessage(message, recentMessages, [])
+              routerSpan.end({ output: { intent: result.intent, data_needed: result.data_needed } })
+              return result
             } catch (routerErr: any) {
               console.error('[Chat] routeMessage threw unexpectedly, falling back:', routerErr?.message)
               const lastAssistantMsg = (history || []).slice().reverse().find((m: any) => m.role === 'assistant')
               const recentDomains = lastAssistantMsg?.context_domains as string[] | null
               const fallbackDomains = classifyIntent(message, recentDomains)
+              routerSpan.end({ output: { from_fallback: true } })
               return {
                 intent: message.slice(0, 100),
                 data_needed: Array.from(fallbackDomains),
@@ -350,6 +364,7 @@ export async function POST(req: NextRequest) {
         let toolCallCount = 0
         const toolsCalledThisMessage: string[] = []
         let streamAttempt = 0
+        let accumulatedCitations: import('@/lib/chat/web-search').Citation[] = []
 
         while (continueLoop) {
           continueLoop = false
@@ -378,7 +393,7 @@ export async function POST(req: NextRequest) {
               system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }] as any,
               messages: currentMessages,
               tools: toolCallCount >= 8 ? [] : activeTools,
-              ...({ extra_body: { models: [CHAT_MODELS.primary, ...CHAT_MODELS.fallbacks], provider: CHAT_MODELS.provider, metadata: buildMetadata({ call_type: 'main_chat', conversation_id: convId }) } } as any),
+              ...({ extra_body: { models: [CHAT_MODELS.primary, ...CHAT_MODELS.fallbacks], provider: CHAT_MODELS.provider, metadata: buildMetadata({ call_type: 'main_chat', conversation_id: convId, traceId: lfTrace.id }) } } as any),
             })
           } catch (streamInitErr: any) {
             clearTimeout(timeoutId)
@@ -553,13 +568,31 @@ export async function POST(req: NextRequest) {
                   } else if (currentToolUse.name === 'search_web') {
                     // Fallback: if model calls search_web as a custom tool, use Perplexity
                     try {
-                      const result = await executeWebSearch(toolInput.query)
+                      const { result, citations } = await executeWebSearch(toolInput.query)
+                      if (citations.length > 0) {
+                        accumulatedCitations = [...accumulatedCitations, ...citations]
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ citations })}\n\n`))
+                      }
                       toolResult = { status: 'ok', result }
                     } catch (e: any) {
                       toolResult = { status: 'error', message: e.message }
                     }
                     controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                       web_search: { query: toolInput.query, result: toolResult.result || toolResult.message },
+                    })}\n\n`))
+                  } else if (currentToolUse.name === 'deep_research') {
+                    try {
+                      const { result, citations } = await executeDeepResearch(toolInput.query)
+                      if (citations.length > 0) {
+                        accumulatedCitations = [...accumulatedCitations, ...citations]
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ citations })}\n\n`))
+                      }
+                      toolResult = { status: 'ok', result }
+                    } catch (e: any) {
+                      toolResult = { status: 'error', message: e.message }
+                    }
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                      web_search: { query: toolInput.query, result: toolResult.result || toolResult.message, deep: true },
                     })}\n\n`))
                   } else if (currentToolUse.name === 'spawn_background_job') {
                     try {
@@ -760,6 +793,7 @@ export async function POST(req: NextRequest) {
           sources,
           context_domains: activeSpecialists.map(s => s.id),
           ...(cardTrackMetadata ? { metadata: cardTrackMetadata } : {}),
+          ...(accumulatedCitations.length > 0 ? { citations: accumulatedCitations } : {}),
         })
 
         void logChatMessage({
@@ -780,6 +814,11 @@ export async function POST(req: NextRequest) {
         // Fire-and-forget: memory extraction + full extraction pipeline (notepad, commitments, decisions, watches, processes)
         void extractMemories(convId, message, fullResponse)
         void extractFromRecentMessages(convId)
+        // Mark any outbox entries as acknowledged if the user discussed related topics
+        void acknowledgeOutboxTopics(message, fullResponse)
+
+        lfTrace.update({ output: fullResponse.slice(0, 500), metadata: { latency_ms: Date.now() - chatStartTime, specialists: activeSpecialists.map(s => s.id), tools_called: [...new Set(toolsCalledThisMessage)] } })
+        await flushLangfuse()
 
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, conversation_id: convId, sources })}\n\n`))
         controller.close()

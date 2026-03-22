@@ -77,6 +77,8 @@ function stripCronPrefix(content: string): string {
   text = text.replace(/^[^\w\n]*(?:Morning Briefing|Briefing|Alert|Nudge|Heads up|Heads Up|Possible match|Watch Match|Bridge Status)[^\n]*\n\n?/i, '')
   // Remove AI-generated bold heading if it's the first line (e.g. "⚡ **Alert**")
   text = text.replace(/^[^\w\n]*\*{1,2}(?:Morning Briefing|Briefing|Alert|Nudge|Heads up|Heads Up|Possible match|Watch Match|Bridge Status)\*{1,2}[^\n]*\n\n?/i, '')
+  // Remove old-format inline bold prefix (e.g. "**Heads up** - " or "**Possible match** - ")
+  text = text.replace(/^\*{1,2}(?:Heads up|Possible match)\*{1,2}\s*[-–—]\s*/i, '')
   return text.trim()
 }
 

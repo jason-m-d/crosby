@@ -203,6 +203,72 @@ export async function checkNotificationRules(
 }
 
 /**
+ * Mark outbox entries as acknowledged when the user discusses related topics in chat.
+ * Fire-and-forget — call from the chat route after saving messages.
+ */
+export async function acknowledgeOutboxTopics(userMessage: string, assistantResponse: string): Promise<void> {
+  try {
+    // Check if there are any unacknowledged outbox entries in the last 48h worth checking
+    const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+    const { data: pending } = await supabaseAdmin
+      .from('proactive_outbox')
+      .select('id, related_topics')
+      .eq('status', 'sent')
+      .gte('sent_at', since)
+
+    if (!pending || pending.length === 0) return
+
+    // Gather all unique topics to match against
+    const allTopics = [...new Set(pending.flatMap((e: any) => e.related_topics as string[]))]
+    if (allTopics.length === 0) return
+
+    // Ask Gemini to extract topic slugs from this exchange that match any of the known topics
+    const response = await openrouterClient.chat.completions.create({
+      model: BACKGROUND_LITE_MODELS.primary,
+      max_tokens: 128,
+      messages: [
+        {
+          role: 'system',
+          content: `You extract topic slugs from a conversation exchange. Given a list of known topic slugs and a conversation, return only the slugs that are clearly discussed or referenced in the conversation. Return a JSON array of matching slug strings. If nothing matches, return [].`,
+        },
+        {
+          role: 'user',
+          content: `Known topics: ${JSON.stringify(allTopics)}\n\nConversation:\nUser: ${userMessage.slice(0, 500)}\nAssistant: ${assistantResponse.slice(0, 500)}`,
+        },
+      ],
+      response_format: { type: 'json_object' },
+      ...({ models: [BACKGROUND_LITE_MODELS.primary, ...BACKGROUND_LITE_MODELS.fallbacks], provider: BACKGROUND_LITE_MODELS.provider, metadata: buildMetadata({ call_type: 'background_job' }) } as any),
+    } as any)
+
+    const raw = response.choices[0]?.message?.content?.trim() || '{}'
+    let matchedTopics: string[] = []
+    try {
+      const parsed = JSON.parse(raw)
+      // Handle both {"topics": [...]} and [...] shapes
+      matchedTopics = Array.isArray(parsed) ? parsed : (parsed.topics ?? parsed.matched ?? [])
+    } catch {
+      return
+    }
+
+    if (matchedTopics.length === 0) return
+
+    // Find outbox entry IDs where related_topics overlaps with matched topics
+    const toAcknowledge = pending
+      .filter((e: any) => (e.related_topics as string[]).some((t: string) => matchedTopics.includes(t)))
+      .map((e: any) => e.id)
+
+    if (toAcknowledge.length === 0) return
+
+    await supabaseAdmin
+      .from('proactive_outbox')
+      .update({ status: 'acknowledged', acknowledged_at: new Date().toISOString() })
+      .in('id', toAcknowledge)
+  } catch {
+    // Silently swallow — this is best-effort, never block the chat response
+  }
+}
+
+/**
  * Get all user preferences (memories with category = 'preference').
  */
 export async function getUserPreferences(): Promise<string[]> {
