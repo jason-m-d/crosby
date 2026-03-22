@@ -13,10 +13,6 @@ export interface CalendarEventEntry {
   status: string
 }
 
-interface AttendeeContext {
-  contactName?: string
-  openActionItemCount?: number
-}
 
 function formatCalendarSection(
   events: CalendarEventEntry[],

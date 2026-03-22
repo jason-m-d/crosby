@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { getMainConversation, insertProactiveMessage, wasTopicSurfacedRecently, getRecentOutboxEntries } from '@/lib/proactive'
+import { getMainConversation, insertProactiveMessage, getRecentOutboxEntries } from '@/lib/proactive'
 import { sendPushToAll } from '@/lib/push'
 import { spawnBackgroundJob, isAutoTriggerRateLimited, getDailyAutoTriggerCount, logAutoTrigger } from '@/lib/background-jobs'
 import { openrouterClient } from '@/lib/openrouter'

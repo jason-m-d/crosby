@@ -245,6 +245,8 @@ async function executeJob(job: BackgroundJob): Promise<string> {
 
 You are running as a background agent - no user is present. Your job is to do thorough research and analysis, then write a clear, useful result that will be posted as a message in Jason's chat. Be specific, include relevant numbers/dates/names, and be actionable. Format with markdown headers and bullets where helpful. Keep it focused - no padding.
 
+CRITICAL: Write the research content directly. Do NOT say "I'll run a deep research pass", "I will research this", "Let me look into", or any other planning language. Start immediately with the actual findings, data, and analysis. The user never sees these instructions — they only see your output — so your first word must be substantive content, not a statement about what you're about to do.
+
 ${contextBlock ? `\n\n${contextBlock}` : ''}`
 
   let text: string

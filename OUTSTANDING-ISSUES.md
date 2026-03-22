@@ -20,7 +20,18 @@ Planned features that are ready to build but parked for later.
 
 ## Active Issues
 
-_No active issues._
+### [LOW] Background job AI produces planning language instead of direct content
+- **Found:** 2026-03-22
+- **Severity:** Low — jobs complete, but result text sometimes starts with "I'll run a deep research pass..." instead of actual content
+- **Root cause:** Background job system prompt didn't explicitly forbid narrating intent. The model treated the job like a chat turn.
+- **Fix applied:** Added explicit "CRITICAL: Write the research content directly. Do NOT say 'I'll run...'" instruction to `src/app/api/background-job/route.ts` executeJob() system prompt.
+- **Status:** Fixed — monitor next few research jobs to confirm.
+
+### [LOW] Deep research job may return "No results found" without alerting
+- **Found:** 2026-03-22
+- **Severity:** Low — one occurrence. Perplexity returned a non-text response block; the fallback string "No results found." was stored as the result and a completion message was sent pointing to an empty artifact.
+- **Suggested fix:** In `src/lib/chat/web-search.ts`, treat the fallback "No results found." string as an error (throw or log to crosby_events) so it surfaces in monitoring.
+- **Risk:** Low
 
 ---
 
@@ -82,6 +93,17 @@ _Move items here when fixed. Include date and what was done._
 - **Resolved:** 2026-03-19
 - **What happened:** Sessions only closed when a new message came in and triggered `getOrCreateSession()`. If the user stopped chatting, the session stayed open indefinitely. The session-summary cron only summarized already-closed sessions — nothing proactively closed idle ones.
 - **What was done:** Added idle session detection to `src/app/api/cron/session-summary/route.ts` — it now closes any open session with no activity in the last 2 hours before running summaries. (commit 6b13d6d)
+
+### [LOW] Stale queued background jobs from Mar 19-21
+- **Found:** 2026-03-22
+- **Resolved:** 2026-03-22
+- **What happened:** 7 background jobs from Mar 19-21 were stuck in `queued` status. The run-background-jobs cron has a 2-hour pickup window by design, so jobs older than 2 hours never get dispatched.
+- **What was done:** Ran SQL to mark all expired queued jobs as `failed` with error "Expired: exceeded 2-hour pickup window at time of execution". Queue is clean.
+
+### [LOW] Dead imports: wasTopicSurfacedRecently and AttendeeContext
+- **Found:** 2026-03-22
+- **Resolved:** 2026-03-22
+- **What was done:** Removed unused `wasTopicSurfacedRecently` import from `email-scan/route.ts` and `nudge/route.ts`. Removed unused `AttendeeContext` interface from `system-prompt.ts`. Build/tsc still clean.
 
 ### [LOW] Duplicate action items from email scan re-processing
 - **Found:** 2026-03-19
