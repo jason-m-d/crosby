@@ -38,6 +38,7 @@ interface ActiveResearchJob {
 interface ChatMessagesProps {
   messages: any[]
   streamingContent: string
+  streamingCardTracks?: any[]
   loading: boolean
   toolStatus?: string | null
   onArtifactClick?: (artifactId: string) => void
@@ -62,7 +63,7 @@ function formatTime(dateStr?: string) {
   return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 }
 
-export function ChatMessages({ messages, streamingContent, loading, toolStatus, onArtifactClick, onCopyMessage, onEditMessage, greetingData, onGreetingItemHandled, onSendMessage, scrollContainerRef, activeResearchJobs, onOpenResearchArtifact }: ChatMessagesProps) {
+export function ChatMessages({ messages, streamingContent, streamingCardTracks, loading, toolStatus, onArtifactClick, onCopyMessage, onEditMessage, greetingData, onGreetingItemHandled, onSendMessage, scrollContainerRef, activeResearchJobs, onOpenResearchArtifact }: ChatMessagesProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const userScrolledRef = useRef(false)
   const programmaticScrollRef = useRef(false)
@@ -190,7 +191,17 @@ export function ChatMessages({ messages, streamingContent, loading, toolStatus, 
           return elements
         })()}
         {streamingContent && (
-          <MessageBlock message={{ role: 'assistant', content: streamingContent }} isLatest isStreaming={loading} toolStatus={toolStatus} />
+          <MessageBlock
+            message={{
+              role: 'assistant',
+              content: streamingContent,
+              cardTrackEvents: streamingCardTracks && streamingCardTracks.length > 0 ? streamingCardTracks : undefined,
+            }}
+            isLatest
+            isStreaming={loading}
+            toolStatus={toolStatus}
+            onSendMessage={onSendMessage}
+          />
         )}
         {activeResearchJobs && activeResearchJobs.length > 0 && activeResearchJobs.map(job => (
           <ResearchCard

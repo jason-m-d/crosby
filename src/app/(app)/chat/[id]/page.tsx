@@ -20,6 +20,7 @@ export default function ConversationPage() {
   const [projects, setProjects] = useState<any[]>([])
   const [convTitle, setConvTitle] = useState<string>('')
   const [streamingContent, setStreamingContent] = useState('')
+  const [streamingCardTracks, setStreamingCardTracks] = useState<any[]>([])
   const [toolStatus, setToolStatus] = useState<string | null>(null)
   const [initialLoading, setInitialLoading] = useState(true)
   const [artifacts, setArtifacts] = useState<Artifact[]>([])
@@ -189,6 +190,7 @@ export default function ConversationPage() {
     setMessages(prev => [...prev, { role: 'user', content: userMessage }])
     setLoading(true)
     setStreamingContent('')
+    setStreamingCardTracks([])
     setToolStatus(null)
 
     try {
@@ -266,6 +268,7 @@ export default function ConversationPage() {
               }
               if (data.card_track) {
                 cardTrackEvents.push(data.card_track)
+                setStreamingCardTracks([...cardTrackEvents])
               }
               if (data.artifact) {
                 artifactEvents.push(data.artifact)
@@ -331,6 +334,7 @@ export default function ConversationPage() {
         cardTrackEvents: cardTrackEvents.length > 0 ? cardTrackEvents : undefined,
       }])
       setStreamingContent('')
+      setStreamingCardTracks([])
     } catch (err) {
       console.error(err)
       setMessages(prev => [...prev, { role: 'assistant', content: 'Something went wrong. Please try again.' }])
@@ -454,6 +458,7 @@ export default function ConversationPage() {
             <ChatMessages
               messages={messages}
               streamingContent={streamingContent}
+              streamingCardTracks={streamingCardTracks}
               loading={loading}
               toolStatus={toolStatus}
               scrollContainerRef={scrollContainerRef}
