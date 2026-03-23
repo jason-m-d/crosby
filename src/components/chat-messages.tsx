@@ -190,7 +190,7 @@ export function ChatMessages({ messages, streamingContent, streamingCardTracks, 
 
           return elements
         })()}
-        {streamingContent && (
+        {(streamingContent || (streamingCardTracks && streamingCardTracks.length > 0)) && (
           <MessageBlock
             message={{
               role: 'assistant',
@@ -214,7 +214,7 @@ export function ChatMessages({ messages, streamingContent, streamingCardTracks, 
               : undefined}
           />
         ))}
-        {loading && !streamingContent && (
+        {loading && !streamingContent && !(streamingCardTracks && streamingCardTracks.length > 0) && (
           <div className="py-6 animate-in-up">
             <div className="text-[0.625rem] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium mb-1.5">
               Crosby
