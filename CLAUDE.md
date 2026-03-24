@@ -214,6 +214,29 @@ When you hit a problem and figure out the fix (or Jason tells you the fix), you 
 - **Core platform vs silos:** The chat interface, router, dashboard framework, notification system, and shared data layer (contacts, etc.) are core platform. Everything else is a silo.
 - Don't prematurely refactor existing code into silos - just keep the direction in mind so new work aligns with where we're headed.
 
+## Product Discovery (v2)
+- When discussing any new feature or design decision, **always flag ripple effects** — other features, data model implications, edge cases, or architectural considerations that the decision touches. Don't just answer the question in isolation; think about what it connects to.
+- **Keep `crosby-v2/product/DISCOVERY-STATUS.md` continuously updated** — after every discovery conversation, update the completed areas, current discussion, outstanding items, and key decisions. This is the handoff doc that keeps context across sessions. Never let it go stale.
+
+## Crosby v2 Planning Workspace
+
+A planning workspace for a ground-up rebuild of Crosby lives in `crosby-v2/` in the project root. Claude Code maintains and organizes this folder.
+
+**Folder structure:**
+- `crosby-v2/README.md` — index of all files, current status
+- `crosby-v2/OVERVIEW.md` — vision, principles, core directional thinking
+- `crosby-v2/research/` — external research reports, reference material, competitive analysis
+- `crosby-v2/decisions/` — architectural and product decisions with rationale
+- `crosby-v2/architecture/` — technical design docs (data model, AI pipeline, system design)
+- `crosby-v2/features/` — individual feature specs
+
+**Claude's responsibilities for this folder:**
+- When Jason shares research reports, paste content, or new thinking → file it in the right subfolder immediately
+- Always update the file index table in `README.md` when adding or changing a file
+- Update `OVERVIEW.md` when core direction shifts
+- Never ask where to put something — decide and file it
+- Do not add this folder to git unless explicitly asked (it's planning material, not code)
+
 ## Crosby Eval Skill (QA Co-Pilot)
 - The eval skill lives at `.claude/commands/crosby-eval/SKILL.md`. It's what Jason uses with Claude Code to QA Crosby's responses.
 - The skill is designed to dynamically discover the current app state (tables, tools, prompt rules, crons) at the start of each eval session, so it stays current without manual updates for most changes.
