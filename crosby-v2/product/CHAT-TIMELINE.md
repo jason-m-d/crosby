@@ -26,6 +26,7 @@ This is intentional. Keeping everything in the timeline preserves context — yo
 | Research report | Card — expandable, sections | Yes |
 | Action item list | Card — checkable items | Yes |
 | Commitment reminder | Card — single commitment, action buttons | Yes |
+| Structured question | Card — option chips (single/multi-select), yes/no confirms | Yes |
 
 ---
 

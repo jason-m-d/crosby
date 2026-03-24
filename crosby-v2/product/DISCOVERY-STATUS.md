@@ -26,12 +26,18 @@ The process: structured interview, one feature area at a time, going deep on eac
 | Briefings & nudges | BRIEFINGS-NUDGES.md | Deep pass complete (visual distinction, batching, quiet hours, learning from all actions) |
 | Persistent memory | PERSISTENT-MEMORY.md | Deep pass complete (four-type model, async extraction, hybrid retrieval, retrieval-time Expert boosting, living greeting, contradiction handling) |
 | Contacts & entity resolution | CONTACTS-ENTITY-RESOLUTION.md | Deep pass complete (two-tier model, entity resolution layers, role aliases, queryable graph, chat-native + side panel UI) |
+| Notepad | NOTEPAD.md | Deep pass complete (Crosby's visible working memory, sidebar tab, Expert-tagged, Crosby-set expiry, "noted" indicator in timeline) |
+| Training & learning | TRAINING-LEARNING.md | Deep pass complete (all-signal observation, procedural memory storage, confidence model, weekly quiz sessions, settings visibility) |
+| Dashboard & overnight builder | DASHBOARD-OVERNIGHT-BUILDER.md | Deep pass complete (collapsible canvas above chat, component library widgets, 2-week pattern threshold, max 2 overnight builds, always-approve, soft-delete with spec retention) |
+| Web search & deep research | WEB-SEARCH-DEEP-RESEARCH.md | Deep pass complete (all search via Perplexity, Sonnet never has web search, quick inline + background deep research, reports as artifacts with RAG) |
+| Structured questions & quick confirms | STRUCTURED-QUESTIONS.md | Deep pass complete (two levels: timeline cards for clarification + input area chips for simple confirms, confidence-based asking, learned per-user, chaining supported) |
+| Mobile experience | MOBILE-EXPERIENCE.md | Deep pass complete (React Native + Expo, native iOS app, monorepo with web, bottom nav, split-view sidebar, rich push notifications, deep linking) |
 
 ---
 
 ## Currently Discussing
 
-**Ready for next feature area.** Contacts & entity resolution complete. Pick any from the backlog below to continue.
+**Ready for next feature area.** Mobile experience complete. Pick any from the backlog below to continue.
 
 ---
 
@@ -42,15 +48,17 @@ The process: structured interview, one feature area at a time, going deep on eac
 - [x] ~~Decision tracking~~ → quiet capture, drift detection, pattern recognition ("last time we did X")
 - [x] ~~Persistent memory~~ → four-type model (semantic/episodic/procedural/working), async extraction, hybrid retrieval with RRF, retrieval-time Expert boosting, living mutable greeting, email data stays in own DB
 - [x] ~~Contacts & entity resolution~~ → two-tier model (shadow records + promoted contacts), layered entity resolution (deterministic → probabilistic → contextual), role aliases with contextual disambiguation, queryable graph via tool, chat-native UI with side panel browse
-- [ ] Notepad (ephemeral vs persistent, auto-expire, user visibility)
-- [ ] Deep research (background execution, report format, delivery)
-- [ ] Web search (quick vs deep tiers, inline vs report)
-- [ ] Training & learning (what Crosby learns, how, feedback loops)
+- [x] ~~Notepad~~ → Crosby's visible working memory (= working memory type from memory spec). Sidebar tab alongside Artifacts + Contacts. Crosby-set expiry per note, Expert-tagged, user can read/edit/delete/pin. "Noted" indicator in chat timeline. Classification at capture: durable facts → memory, temporary context → notepad, ambiguous → memory (safer)
+- [x] ~~Web search & deep research~~ → all search via Perplexity (Sonnet never has web search enabled). Quick search = automatic inline via `web_search` tool. Deep research = user-initiated background job via `deep_research` tool, or Crosby suggests it. Reports stored as artifacts with RAG treatment. Delivery varies by user state (chatting → aside, app open → message + sidebar, closed → push notification). Glowing indicator while research runs.
+- [x] ~~Training & learning~~ → all-signal observation (engagement, edits, tone, corrections, behavior), stored as procedural memory with confidence levels. Weekly quiz sessions (structured question cards, uncertainty-driven, deferrable). Quiet changes by default, announces significant ones. Read-only "What Crosby has learned" section in settings. Feeds dashboard/overnight builder (separate spec)
 - [ ] Push notifications (technical: PWA vs native, delivery infrastructure)
 - [ ] Settings page (what's configurable, structure)
 - [ ] Onboarding / cold start (first-time experience, what Crosby needs to get started)
-- [ ] Mobile experience (responsive web, PWA, native?)
+- [x] ~~Mobile experience~~ → React Native + Expo (native iOS app, not PWA). Monorepo with Next.js web app, shared backend. Bottom nav (Chat, Documents, Experts, Settings). Sidebar slides from right as split-view (top half panel, bottom half chat). Push notifications via APNs — rich, contextual, conversational ("messages from a person"). Deep linking: notification tap → specific message. Ignored notifications handled by catch-up/greeting system.
 - [ ] Text/SMS integration (if in scope for v2)
+- [x] ~~Dashboard & overnight builder~~ → collapsible canvas above chat, component library (not freeform), Expert-aware reordering, 3 creation paths (overnight autonomous / conversational offer / on-demand request), 2-week pattern threshold for autonomous builds, max 2 per night, always-approve model, soft-delete with 1-month holding bay + spec retained indefinitely, on-demand builds run as background jobs with contextual notification
+- [ ] Self-aware app manual (RAG-embedded internal docs, living document, feature recommendations)
+- [x] ~~Structured questions & quick confirms~~ → two levels: timeline cards (disambiguation, chaining, quiz sessions) with option chips + "something else", and input area chips (simple confirms above text input). Confidence-based asking, learned per-user via Training & Learning. Cards resolve into Q&A formatted messages. Always-ask for external actions (email send, event creation, deletes).
 
 ---
 
@@ -88,3 +96,28 @@ The process: structured interview, one feature area at a time, going deep on eac
 - Role aliases ("my lawyer", "the bookkeeper") extracted implicitly from conversation, contextually disambiguated, shift over time.
 - Contact graph is queryable — `query_contacts` tool for natural language questions about the user's network.
 - Contacts UI: chat-native by default, side panel for browsing on request. No dedicated page. **Resolved** in CONTACTS-ENTITY-RESOLUTION.md: layered resolution (exact match → probabilistic → contextual confirmation), no merge queue, resolutions stored permanently.
+- Self-aware app manual: Crosby has its own feature documentation embedded in RAG. It can search its own manual to answer "can you do X?" and recommend the right feature for a need. Living document — updated and re-embedded when features change.
+- Structured questions: Crosby presents interactive cards (option chips, multi-select, yes/no confirms) instead of typing out questions. User taps instead of typing. Falls back to plain text if user types instead.
+- Notepad = working memory layer. Crosby's scratch space, visible to user in sidebar. Crosby classifies at capture: durable facts → memory, temporary context → notepad. No staging/promotion workflow.
+- Right sidebar is a three-tab panel: Artifacts, Contacts, Notepad. Triggered by a minimal icon in the top right. Remembers last active tab.
+- "Noted" indicator appears in chat timeline when Crosby creates a notepad entry — subtle, not a full card.
+- Notepad entries are Expert-tagged and surface first when that Expert is active, but all notes are always visible.
+- Training & Learning: Crosby learns from all signals (taps, dismissals, edits, tone, corrections, task follow-through, repeated questions). Stored as procedural memory with confidence levels.
+- Weekly quiz sessions: structured question cards driven by uncertainty. Deferred sessions keep coming but space out. User can explicitly stop them.
+- Learning changes are quiet by default, announced when significant enough that the user would notice.
+- Settings gets a "What Crosby has learned" section — read-only, grouped by category. Changes made by telling Crosby in chat.
+- Dashboard: collapsible area above chat. Starts empty, grows over time. Crosby builds widgets from a component library (predefined blocks, not freeform). Expert-aware reordering (relevant widgets surface first).
+- Overnight builder: 2-week pattern threshold, max 2 builds per night, always presented for approval in morning briefing. User never surprised.
+- Three widget creation paths: overnight autonomous, conversational offer (multi-day topic), on-demand user request (background job).
+- Widget soft-delete: 1-month holding bay, then Crosby retains a spec indefinitely for rebuilding.
+- On-demand builds: if user chatting, Crosby weaves completion in casually. If not chatting, push notification + message.
+- All web search via Perplexity — Sonnet never has web search enabled. One provider, one system to tune.
+- Quick search: automatic, inline, Perplexity Sonar. Deep research: user-initiated or Crosby-suggested, background job, report as artifact.
+- Deep research reports get RAG treatment (tagged `deep_research`) for long-term retrieval.
+- Sidebar content is pulled into Crosby's context — user can chat about open artifacts including research reports.
+- Structured questions: two levels. Timeline cards for clarification (chips + "something else", resolve into Q&A messages, chainable). Input area chips for simple confirms (lightweight, no timeline card).
+- Crosby asks based on confidence level, learned per-user. Some actions always confirm (email send, event creation, deletes).
+- "Something else" always available — user is never forced into options that don't fit. User can also ignore chips and type normally.
+- Mobile: React Native + Expo, native iOS app, monorepo with web. Full same experience, adapted layout. Bottom nav, split-view sidebar.
+- Push notifications: rich, contextual, conversational — "messages from a person." Include surrounding context and what Crosby has done to help.
+- Notification tap → deep link to specific message. Ignored notifications woven into catch-up/greeting naturally.

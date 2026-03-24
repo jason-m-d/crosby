@@ -128,6 +128,21 @@ The core promise: **Crosby knows you. It's always watching. It never drops the b
 - Preference extraction runs in the background
 - Informs: nudge categories, email flagging thresholds, task capture sensitivity, response style
 
+### 18. Self-Aware App Manual (RAG)
+- Crosby has a comprehensive internal manual embedded in its own RAG system — covers every feature, every tool, every background process, and how they all connect
+- When the user asks "can you do X?" or "how does Y work?", Crosby searches its own manual the same way it searches uploaded documents
+- Genuinely self-aware about its own capabilities, limitations, and how features interact with each other
+- Can recommend the right feature for a given need (e.g., "use a notepad entry for that, not project context — here's why")
+- Living document — updated and re-embedded whenever features are built or changed, so Crosby never drifts from what the app actually does
+
+### 19. Structured Questions & Quick Confirms
+- Crosby can present interactive cards in chat instead of typing out questions
+- Clickable option chips for disambiguation ("which store?", "which time period?")
+- Multi-select for cases where more than one option applies
+- Simple yes/no confirmation cards before taking actions (sending an email, creating an event, etc.)
+- Keeps interaction fast — user taps instead of typing out answers
+- Falls back to plain text gracefully if the user responds by typing instead of tapping
+
 ---
 
 ## Open Questions (to resolve in discovery)
