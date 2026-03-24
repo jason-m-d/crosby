@@ -32,18 +32,23 @@ The process: structured interview, one feature area at a time, going deep on eac
 | Web search & deep research | WEB-SEARCH-DEEP-RESEARCH.md | Deep pass complete (all search via Perplexity, Sonnet never has web search, quick inline + background deep research, reports as artifacts with RAG) |
 | Structured questions & quick confirms | STRUCTURED-QUESTIONS.md | Deep pass complete (two levels: timeline cards for clarification + input area chips for simple confirms, confidence-based asking, learned per-user, chaining supported) |
 | Mobile experience | MOBILE-EXPERIENCE.md | Deep pass complete (React Native + Expo, native iOS app, monorepo with web, bottom nav, split-view sidebar, rich push notifications, deep linking) |
+| Self-aware app manual | APP-MANUAL.md | Deep pass complete (RAG-embedded internal docs, one doc per feature, auto-generated on deploy, source of truth for all capability questions, system prompt defers to manual) |
+| Notifications system | NOTIFICATIONS.md | Deep pass complete (no notification center — timeline is inbox, 3 delivery tiers, 3-min batching, quiet hours with breakthrough rules, rich contextual push content) |
+| Text / SMS integration | TEXT-SMS.md | Deep pass complete (optional power-user feature, macOS helper app, guided setup wizard, read-only, graceful degradation, manual fallback for non-Mac users) |
+| Onboarding / cold start | ONBOARDING.md | Deep pass complete (conversational onboard, email-first "wow" moment, invisible completeness score, bottom sheet OAuth, silent graduation, context-driven integration suggestions) |
+| Settings page | SETTINGS.md | Deep pass complete (5 tab groups: Account, Connections, Notifications, Memory & Learning, Preferences. Everything also configurable via chat.) |
 
 ---
 
 ## Currently Discussing
 
-**Ready for next feature area.** Mobile experience complete. Pick any from the backlog below to continue.
+**Ready for next feature area.** Settings page complete. All feature areas from the original backlog are now covered.
 
 ---
 
 ## Feature Areas Still To Cover
 
-- [ ] Notifications system (push, in-app, batching, preferences) — mostly covered in PROACTIVE-MESSAGES.md, may need technical pass
+- [x] ~~Notifications system~~ → no notification center (timeline is inbox). Three delivery tiers: immediate (watches + breakthrough rules), batched 3-min window (everything else), held until morning (quiet hours). Quiet hours default 9PM–7AM, user-configurable, breakthrough rules for exceptions. Held notifications absorbed into morning briefing. Push content is rich/contextual ("messages from a person"). Per-category toggles in Settings. No badge counts.
 - [x] ~~Commitment tracking~~ → same system as tasks with behavioral flag, faster escalation, accountability tone
 - [x] ~~Decision tracking~~ → quiet capture, drift detection, pattern recognition ("last time we did X")
 - [x] ~~Persistent memory~~ → four-type model (semantic/episodic/procedural/working), async extraction, hybrid retrieval with RRF, retrieval-time Expert boosting, living mutable greeting, email data stays in own DB
@@ -51,13 +56,13 @@ The process: structured interview, one feature area at a time, going deep on eac
 - [x] ~~Notepad~~ → Crosby's visible working memory (= working memory type from memory spec). Sidebar tab alongside Artifacts + Contacts. Crosby-set expiry per note, Expert-tagged, user can read/edit/delete/pin. "Noted" indicator in chat timeline. Classification at capture: durable facts → memory, temporary context → notepad, ambiguous → memory (safer)
 - [x] ~~Web search & deep research~~ → all search via Perplexity (Sonnet never has web search enabled). Quick search = automatic inline via `web_search` tool. Deep research = user-initiated background job via `deep_research` tool, or Crosby suggests it. Reports stored as artifacts with RAG treatment. Delivery varies by user state (chatting → aside, app open → message + sidebar, closed → push notification). Glowing indicator while research runs.
 - [x] ~~Training & learning~~ → all-signal observation (engagement, edits, tone, corrections, behavior), stored as procedural memory with confidence levels. Weekly quiz sessions (structured question cards, uncertainty-driven, deferrable). Quiet changes by default, announces significant ones. Read-only "What Crosby has learned" section in settings. Feeds dashboard/overnight builder (separate spec)
-- [ ] Push notifications (technical: PWA vs native, delivery infrastructure)
-- [ ] Settings page (what's configurable, structure)
-- [ ] Onboarding / cold start (first-time experience, what Crosby needs to get started)
+- [x] ~~Push notifications~~ → covered in MOBILE-EXPERIENCE.md (APNs via Expo) and NOTIFICATIONS.md (delivery tiers, batching, quiet hours, content design)
+- [x] ~~Settings page~~ → 5 tab groups: Account (profile, billing), Connections (Gmail, Calendar, iMessage, silos), Notifications (quiet hours, breakthrough rules, per-category toggles), Memory & Learning (memory browser + read-only learned behaviors), Preferences (tone, response length, language, briefing cadence, overnight builder toggle, quiz sessions toggle). Everything also configurable via chat.
+- [x] ~~Onboarding / cold start~~ → conversational onboard (no wizard, no forms). Email is the killer first connection — scans last week, synthesizes "wow" summary. Bottom sheet OAuth (stays in-app). Invisible completeness score tracks coverage not duration. Can complete in one session or over a week. Silent graduation — Crosby just stops asking setup questions. Context-driven integration suggestions (one ask per integration, no nagging).
 - [x] ~~Mobile experience~~ → React Native + Expo (native iOS app, not PWA). Monorepo with Next.js web app, shared backend. Bottom nav (Chat, Documents, Experts, Settings). Sidebar slides from right as split-view (top half panel, bottom half chat). Push notifications via APNs — rich, contextual, conversational ("messages from a person"). Deep linking: notification tap → specific message. Ignored notifications handled by catch-up/greeting system.
-- [ ] Text/SMS integration (if in scope for v2)
+- [x] ~~Text/SMS integration~~ → optional power-user feature, off by default. macOS menu bar helper app monitors iMessage SQLite DB, forwards to Crosby API. Guided setup wizard. Read-only (can't send). Context + commitment extraction + watch creation from texts. Graceful degradation when Mac is off. Manual fallback (tell Crosby about texts) always available for non-Mac users.
 - [x] ~~Dashboard & overnight builder~~ → collapsible canvas above chat, component library (not freeform), Expert-aware reordering, 3 creation paths (overnight autonomous / conversational offer / on-demand request), 2-week pattern threshold for autonomous builds, max 2 per night, always-approve model, soft-delete with 1-month holding bay + spec retained indefinitely, on-demand builds run as background jobs with contextual notification
-- [ ] Self-aware app manual (RAG-embedded internal docs, living document, feature recommendations)
+- [x] ~~Self-aware app manual~~ → RAG-embedded internal docs, one doc per feature area, auto-generated on deploy (no developer maintenance). Source of truth for all capability questions — system prompt defers to manual. Covers features, limitations, interactions, recommendations, tools, background processes. Crosby can confidently answer any question about itself.
 - [x] ~~Structured questions & quick confirms~~ → two levels: timeline cards (disambiguation, chaining, quiz sessions) with option chips + "something else", and input area chips (simple confirms above text input). Confidence-based asking, learned per-user via Training & Learning. Cards resolve into Q&A formatted messages. Always-ask for external actions (email send, event creation, deletes).
 
 ---
@@ -121,3 +126,8 @@ The process: structured interview, one feature area at a time, going deep on eac
 - Mobile: React Native + Expo, native iOS app, monorepo with web. Full same experience, adapted layout. Bottom nav, split-view sidebar.
 - Push notifications: rich, contextual, conversational — "messages from a person." Include surrounding context and what Crosby has done to help.
 - Notification tap → deep link to specific message. Ignored notifications woven into catch-up/greeting naturally.
+- App manual: RAG-embedded, one doc per feature area, auto-generated on deploy. Source of truth for all self-referential questions. System prompt handles behavior; manual handles knowledge.
+- Notifications: no notification center — timeline is inbox. Three tiers: immediate (watches, breakthroughs), 3-min batch (everything else), held (quiet hours → morning briefing).
+- Quiet hours: default 9PM–7AM. Breakthrough rules for exceptions ("always notify me if Roger emails"). Held notifications absorbed into morning briefing, not delivered individually.
+- Batching: 3-minute window. Multiple items bundled into one rich push. Watch alerts bypass batching.
+- No badge counts on app icon.
