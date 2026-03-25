@@ -38,12 +38,13 @@ The process: structured interview, one feature area at a time, going deep on eac
 | Onboarding / cold start | ONBOARDING.md | Deep pass complete (conversational onboard, email-first "wow" moment, invisible completeness score, bottom sheet OAuth, silent graduation, context-driven integration suggestions) |
 | Settings page | SETTINGS.md | Deep pass complete (5 tab groups: Account, Connections, Notifications, Memory & Learning, Preferences. Everything also configurable via chat.) |
 | Silos | SILOS.md | Deep pass complete (three tiers: core/marketplace/custom, agentic builder pipeline, cross-silo tunnels, self-healing, credential management, router integration) |
+| Data deletion & privacy | DATA-DELETION-PRIVACY.md | Deep pass complete (per-entity deletion rules, account deletion with 24h grace, retention policies, procedural memory = prompt removal) |
 
 ---
 
 ## Currently Discussing
 
-**Ready for next feature area.** Settings page complete. All feature areas from the original backlog are now covered.
+**Ready for next feature area.** All feature areas from the original backlog are now covered, including data deletion & privacy (completed 2026-03-25).
 
 ---
 
@@ -132,3 +133,8 @@ The process: structured interview, one feature area at a time, going deep on eac
 - Quiet hours: default 9PM–7AM. Breakthrough rules for exceptions ("always notify me if Roger emails"). Held notifications absorbed into morning briefing, not delivered individually.
 - Batching: 3-minute window. Multiple items bundled into one rich push. Watch alerts bypass batching.
 - No badge counts on app icon.
+- Data deletion by entity type: memories (immediate delete, supersession chain stays broken), notepad (immediate, expired auto-purged by cron), contacts (record deleted, memory tags retained as plain text), Experts (record deleted, tags retained — model infers expert no longer exists), artifacts (soft-delete → 1-month holding bay → hard delete with one-line tombstone), documents (immediate delete + tombstone), messages (not deletable — delete the memory instead), email (disconnect = full purge of email data, memories sourced from email retained), calendar (disconnect = full purge).
+- Account deletion: full nuke, 24h grace period, confirmation string "BYE BYE CROSBY".
+- Procedural memory deletion = removal from prompt context (not a fake confidence abstraction).
+- Retention policies: superseded memories kept indefinitely, expired notepad auto-purged, soft-deleted artifacts 1 month, background job logs 90 days, shadow contacts 6 months no interaction.
+- Not building for v2: data export, granular message deletion, anonymization.
