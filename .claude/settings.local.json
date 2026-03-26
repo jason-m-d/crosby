@@ -27,7 +27,12 @@
       "Bash(find:*)",
       "Bash(grep:*)",
       "Bash(lsof:*)",
-      "Bash(kill:*)"
+      "Bash(kill:*)",
+      "Bash(grep -n \"actionItemEvents\\\\|quickConfirmEvents\\\\|structuredQuestionEvents\\\\|cardTrackEvents\" /Users/jasondemayo/Development/jdrg/src/app/\\\\\\(app\\\\\\)/chat/[id]/page.tsx)",
+      "Bash(turbo --version)",
+      "Bash(tmux -V)",
+      "Bash(eas --version)"
     ]
-  }
+  },
+  "outputStyle": "default"
 }

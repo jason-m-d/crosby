@@ -1,0 +1,3488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crosby v2 — Design Lab</title>
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&family=Plus+Jakarta+Sans:wght@200..800&family=Outfit:wght@100..900&family=Sora:wght@100..800&family=Space+Grotesk:wght@300..700&family=DM+Serif+Display&family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=Playfair+Display:wght@400..900&family=Manrope:wght@200..800&family=JetBrains+Mono:wght@100..800&family=Space+Mono:wght@400;700&family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Fira+Code:wght@300..700&family=Azeret+Mono:wght@100..900&family=Inter:wght@100..900&family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Instrument+Serif:ital@0;1&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+
+<!-- Fontshare fonts via CSS -->
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700,900&f[]=general-sans@300,400,500,600,700&f[]=cabinet-grotesk@400,500,700,800,900&f[]=clash-display@400,500,600,700&f[]=switzer@300,400,500,600,700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    /* Base palette — v1 current */
+    --bg-root: hsl(30, 6%, 12%);
+    --bg-card: hsl(30, 6%, 14%);
+    --bg-elevated: hsl(30, 6%, 17%);
+    --bg-overlay: hsl(30, 6%, 21%);
+    --text-primary: hsl(40, 10%, 90%);
+    --text-secondary: hsla(40, 10%, 90%, 0.55);
+    --text-tertiary: hsla(40, 10%, 90%, 0.30);
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.14);
+
+    /* Accent — default amber */
+    --accent-h: 38;
+    --accent-s: 90%;
+    --accent-l: 55%;
+    --accent: hsl(var(--accent-h), var(--accent-s), var(--accent-l));
+    --accent-muted: hsla(var(--accent-h), var(--accent-s), var(--accent-l), 0.15);
+    --accent-text: hsl(30, 6%, 10%);
+
+    /* Lab UI */
+    --lab-nav: hsl(30, 6%, 8%);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--lab-nav);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ===== LAYOUT ===== */
+  .lab-container {
+    display: flex;
+    min-height: 100vh;
+  }
+
+  .lab-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 220px;
+    height: 100vh;
+    background: var(--lab-nav);
+    border-right: 1px solid var(--border-subtle);
+    padding: 24px 16px;
+    overflow-y: auto;
+    z-index: 100;
+  }
+
+  .lab-nav h1 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--text-tertiary);
+    margin-bottom: 20px;
+  }
+
+  .lab-nav a {
+    display: block;
+    padding: 8px 12px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 13px;
+    border-radius: 6px;
+    margin-bottom: 2px;
+    transition: all 0.15s ease;
+  }
+
+  .lab-nav a:hover {
+    color: var(--text-primary);
+    background: rgba(255,255,255,0.04);
+  }
+
+  .lab-nav a.active {
+    color: var(--accent);
+    background: var(--accent-muted);
+  }
+
+  .lab-nav .nav-section {
+    margin-top: 20px;
+    margin-bottom: 8px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--text-tertiary);
+    padding-left: 12px;
+  }
+
+  .lab-nav .nav-dot {
+    color: var(--accent);
+    margin-right: 4px;
+  }
+
+  .lab-nav .reset-btn {
+    display: block;
+    margin-top: 20px;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s ease;
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .lab-nav .reset-btn:hover {
+    color: hsl(0, 60%, 55%);
+    border-color: hsl(0, 60%, 55%);
+    background: hsla(0, 60%, 55%, 0.1);
+  }
+
+  .lab-content {
+    margin-left: 220px;
+    flex: 1;
+    padding: 40px 48px;
+    background: var(--bg-root);
+    min-height: 100vh;
+  }
+
+  /* ===== SECTIONS ===== */
+  .section {
+    margin-bottom: 80px;
+    scroll-margin-top: 32px;
+    border-left: 3px solid transparent;
+    transition: border-color 0.2s ease;
+  }
+
+  .section.locked {
+    border-left: 3px solid var(--accent);
+  }
+
+  .section-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--text-tertiary);
+    margin-bottom: 32px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .section-title-text {
+    flex: 1;
+  }
+
+  .lock-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .lock-toggle:hover {
+    background: rgba(255,255,255,0.04);
+  }
+
+  .lock-badge {
+    color: var(--accent);
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    display: none;
+  }
+
+  .section.locked .lock-badge {
+    display: inline;
+  }
+
+  .section-subtitle {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+    margin-top: 48px;
+  }
+
+  .section-subtitle:first-of-type { margin-top: 0; }
+
+  /* ===== FONT SPECIMENS ===== */
+  .font-grid {
+    display: grid;
+    gap: 20px;
+  }
+
+  .font-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 28px 32px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+  }
+
+  .font-card:hover {
+    border-color: var(--border-strong);
+  }
+
+  .font-card.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent), 0 0 20px var(--accent-muted);
+  }
+
+  .font-card .font-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-tertiary);
+    margin-bottom: 12px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .font-card .font-source {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .font-card .font-sample-display {
+    font-size: 42px;
+    line-height: 1.15;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+
+  .font-card .font-sample-body {
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    max-width: 600px;
+  }
+
+  .font-card .font-sample-mono {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    letter-spacing: 0.02em;
+  }
+
+  .font-card .font-sample-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-secondary);
+    margin-top: 8px;
+  }
+
+  /* ===== COLOR PALETTES ===== */
+  .palette-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 24px;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .palette-swatch {
+    flex: 1;
+    height: 80px;
+    display: flex;
+    align-items: flex-end;
+    padding: 8px 10px;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.02em;
+  }
+
+  .palette-swatch span {
+    opacity: 0.7;
+  }
+
+  /* Palette options */
+  .palette-option {
+    cursor: pointer;
+    border: 2px solid transparent;
+    border-radius: 16px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    transition: all 0.2s ease;
+  }
+
+  .palette-option:hover {
+    border-color: var(--border-strong);
+  }
+
+  .palette-option.selected {
+    border-color: var(--accent);
+  }
+
+  .palette-option .palette-row {
+    margin-bottom: 0;
+  }
+
+  .palette-option-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .palette-check {
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+  }
+
+  .accent-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .accent-option {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+  }
+
+  .accent-option:hover {
+    border-color: var(--border-strong);
+  }
+
+  .accent-option.selected {
+    border-color: var(--accent);
+  }
+
+  .accent-option .accent-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    margin: 0 auto 12px;
+  }
+
+  .accent-option .accent-name {
+    font-size: 13px;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+
+  .accent-option .accent-value {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Slider controls */
+  .slider-group {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 32px;
+  }
+
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+
+  .slider-row:last-child { margin-bottom: 0; }
+
+  .slider-row label {
+    width: 100px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-tertiary);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .slider-row input[type="range"] {
+    flex: 1;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--bg-elevated);
+    border-radius: 2px;
+    outline: none;
+  }
+
+  .slider-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+
+  .slider-row .slider-value {
+    width: 60px;
+    text-align: right;
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .accent-preview-strip {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--accent);
+    margin-top: 16px;
+  }
+
+  /* ===== SURFACE LAYERS ===== */
+  .surface-demo {
+    background: var(--bg-root);
+    border-radius: 16px;
+    padding: 40px;
+    border: 1px solid var(--border-subtle);
+    position: relative;
+  }
+
+  .surface-layer {
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+
+  .surface-layer .layer-label {
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-tertiary);
+    margin-bottom: 8px;
+  }
+
+  .surface-layer .layer-value {
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-secondary);
+  }
+
+  /* ===== COMPONENT PREVIEWS ===== */
+  .component-preview {
+    background: var(--bg-root);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 24px;
+  }
+
+  .component-label {
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-tertiary);
+    margin-bottom: 20px;
+  }
+
+  /* Chat messages */
+  .chat-demo {
+    max-width: 600px;
+  }
+
+  .chat-msg {
+    padding: 14px 18px;
+    border-radius: 16px;
+    margin-bottom: 12px;
+    max-width: 85%;
+    line-height: 1.55;
+  }
+
+  .chat-msg.user {
+    background: var(--accent);
+    color: var(--accent-text);
+    margin-left: auto;
+    font-size: 15px;
+  }
+
+  .chat-msg.user .msg-time {
+    color: hsla(30, 6%, 10%, 0.5);
+    font-size: 11px;
+    margin-top: 6px;
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .chat-msg.ai {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-subtle);
+    font-size: 15px;
+  }
+
+  .chat-msg.ai .msg-time {
+    color: var(--text-tertiary);
+    font-size: 11px;
+    margin-top: 6px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .chat-msg .msg-sender {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    opacity: 0.7;
+  }
+
+  /* KPI Card */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .kpi-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 20px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .kpi-card.featured {
+    border-color: var(--accent);
+  }
+
+  .kpi-card.featured::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--accent);
+  }
+
+  .kpi-card .kpi-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-tertiary);
+    font-family: var(--mono-font, 'JetBrains Mono', monospace);
+    margin-bottom: 8px;
+  }
+
+  .kpi-card .kpi-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-family: var(--display-font, 'Inter', sans-serif);
+    line-height: 1.1;
+    margin-bottom: 6px;
+  }
+
+  .kpi-card .kpi-trend {
+    font-size: 12px;
+    font-family: var(--mono-font, 'JetBrains Mono', monospace);
+  }
+
+  .kpi-card .kpi-trend.up { color: hsl(145, 60%, 50%); }
+  .kpi-card .kpi-trend.down { color: hsl(0, 60%, 55%); }
+
+  /* Buttons */
+  .button-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s ease;
+    font-family: inherit;
+  }
+
+  .btn:active { transform: translateY(1px); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--accent-text);
+  }
+  .btn-primary:hover { filter: brightness(1.1); }
+
+  .btn-secondary {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border: 1px solid var(--border-subtle);
+  }
+  .btn-secondary:hover { background: var(--bg-overlay); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+  }
+  .btn-outline:hover { background: var(--accent-muted); }
+
+  .kpi-font-toggle.selected {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-muted);
+  }
+
+  /* Nav demo */
+  .nav-demo {
+    background: var(--lab-nav);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 16px;
+    width: 200px;
+  }
+
+  .nav-demo-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin-bottom: 2px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .nav-demo-item:hover { color: var(--text-primary); background: rgba(255,255,255,0.03); }
+
+  .nav-demo-item.active {
+    color: var(--accent);
+    background: var(--accent-muted);
+  }
+
+  .nav-demo-item .nav-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    background: currentColor;
+    opacity: 0.5;
+  }
+
+  .nav-demo-item.active .nav-icon { opacity: 0.8; }
+
+  /* Input */
+  .input-demo {
+    max-width: 500px;
+  }
+
+  .input-bar {
+    display: flex;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 24px;
+    padding: 10px 16px;
+    gap: 12px;
+    transition: border-color 0.2s ease;
+  }
+
+  .input-bar:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-muted);
+  }
+
+  .input-bar input {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-size: 14px;
+    outline: none;
+    font-family: inherit;
+  }
+
+  .input-bar input::placeholder { color: var(--text-tertiary); }
+
+  .input-bar .input-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--text-tertiary);
+    opacity: 0.4;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .input-bar .input-icon:hover { opacity: 0.7; }
+
+  .input-bar .send-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: filter 0.15s;
+  }
+
+  .input-bar .send-btn:hover { filter: brightness(1.1); }
+
+  .input-bar .send-btn::after {
+    content: '\2191';
+    color: var(--accent-text);
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  /* Badges */
+  .badge-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 500;
+    font-family: var(--mono-font, 'JetBrains Mono', monospace);
+    letter-spacing: 0.02em;
+  }
+
+  .badge-default { background: var(--accent-muted); color: var(--accent); }
+  .badge-secondary { background: var(--bg-elevated); color: var(--text-secondary); }
+  .badge-success { background: hsla(145, 60%, 50%, 0.15); color: hsl(145, 60%, 55%); }
+  .badge-warning { background: hsla(38, 90%, 55%, 0.15); color: hsl(38, 90%, 60%); }
+  .badge-error { background: hsla(0, 60%, 50%, 0.15); color: hsl(0, 60%, 55%); }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+  }
+
+  .empty-state .empty-title {
+    font-size: 36px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+    font-family: var(--display-font, 'Inter', sans-serif);
+  }
+
+  .empty-state .empty-desc {
+    font-size: 15px;
+    color: var(--text-secondary);
+    max-width: 400px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  /* Pairing preview */
+  /* Sticky pairing panel */
+  #pairings {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--bg-root);
+    padding-top: 16px;
+    padding-bottom: 16px;
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  #pairings .section-title {
+    margin-bottom: 16px;
+  }
+
+  .pairing-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-bottom: 0;
+  }
+
+  .pairing-card .pair-display {
+    font-size: 36px;
+    line-height: 1.2;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+  }
+
+  .pairing-card .pair-body {
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--text-secondary);
+    max-width: 560px;
+    margin-bottom: 16px;
+  }
+
+  .pairing-card .pair-mono {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-tertiary);
+  }
+
+  .pairing-label {
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-tertiary);
+    margin-bottom: 8px;
+  }
+
+  /* Color scope circles */
+  .color-scope-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+
+  .color-scope-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .color-scope-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .color-scope-label {
+    font-size: 9px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: center;
+    max-width: 50px;
+    line-height: 1.2;
+  }
+
+  /* Accent in context */
+  .accent-context-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 20px;
+    align-items: start;
+  }
+
+  .accent-context-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .accent-context-item .context-label {
+    font-size: 9px;
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+  }
+
+  /* Focus ring preview */
+  .focus-ring-demo-input {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 10px 16px;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: all 0.15s ease;
+    width: 250px;
+  }
+
+  .focus-ring-demo-btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    background: var(--accent);
+    color: var(--accent-text);
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.15s ease;
+  }
+
+  /* Border effects comparison */
+  .border-effects-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+  }
+
+  .border-effect-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 24px;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0, 0, 0.34, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Motion demos */
+  .motion-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .motion-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .motion-btn {
+    padding: 12px 24px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: var(--accent-text);
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.15s cubic-bezier(0, 0, 0.34, 1);
+  }
+
+  .motion-btn:hover { transform: scale(1.03); }
+  .motion-btn:active { transform: scale(0.97); }
+
+  .skeleton-demo-bar {
+    background: linear-gradient(100deg, var(--bg-elevated) 40%, var(--bg-overlay) 50%, var(--bg-elevated) 60%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  .skeleton-demo-bar.pulse-mode {
+    background: var(--bg-elevated) !important;
+    background-size: unset !important;
+    animation: pulse-skeleton 1.5s ease-in-out infinite !important;
+  }
+
+  .skeleton-demo-bar.wave-mode {
+    background: linear-gradient(90deg, var(--bg-elevated) 0%, var(--bg-overlay) 50%, var(--bg-elevated) 100%) !important;
+    background-size: 300% 100% !important;
+    animation: wave-skeleton 1.5s ease-in-out infinite !important;
+  }
+
+  @keyframes pulse-skeleton {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.8; }
+  }
+
+  @keyframes wave-skeleton {
+    0% { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  .skeleton-bar {
+    width: 100%;
+    height: 14px;
+    border-radius: 7px;
+    background: linear-gradient(100deg, var(--bg-elevated) 40%, var(--bg-overlay) 50%, var(--bg-elevated) 60%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  .skeleton-bar.short { width: 60%; }
+
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  .entrance-box {
+    width: 80px;
+    height: 80px;
+    border-radius: 12px;
+    background: var(--accent);
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  .entrance-box.animate {
+    animation: enterUp 0.3s cubic-bezier(0, 0, 0.34, 1) forwards;
+  }
+
+  @keyframes enterUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Motion control rows */
+  .motion-control-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    padding: 6px 0;
+  }
+
+  .motion-control-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  .motion-control-row label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    width: 110px;
+    cursor: pointer;
+  }
+
+  .motion-control-row input[type="range"] {
+    flex: 1;
+    max-width: 200px;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--bg-elevated);
+    border-radius: 2px;
+    outline: none;
+  }
+
+  .motion-control-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+
+  .motion-control-row .motion-val {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    font-family: 'JetBrains Mono', monospace;
+    width: 50px;
+    text-align: right;
+  }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 900px) {
+    .lab-nav { display: none; }
+    .lab-content { margin-left: 0; padding: 24px 20px; }
+    .kpi-grid { grid-template-columns: 1fr; }
+    .motion-grid { grid-template-columns: 1fr; }
+    .border-effects-grid { grid-template-columns: 1fr; }
+  }
+
+  /* Dynamic focus ring style (injected via JS) */
+  #focus-ring-style { }
+
+  /* Selected state for preset buttons */
+  .opacity-preset.selected, .spacing-preset.selected,
+  .motion-press-preset.selected, .motion-hover-preset.selected,
+  .motion-entrance-preset.selected, .skeleton-preset.selected,
+  .radius-preset.selected, .focus-preset.selected {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-muted);
+  }
+</style>
+<style id="focus-ring-style"></style>
+</head>
+<body>
+<div class="lab-container">
+
+  <!-- NAVIGATION -->
+  <nav class="lab-nav" id="lab-nav">
+    <h1>Crosby v2 Design Lab</h1>
+
+    <div class="nav-section">Typography</div>
+    <a href="#display-fonts" data-section="display-fonts">Display Fonts</a>
+    <a href="#body-fonts" data-section="body-fonts">Body Fonts</a>
+    <a href="#mono-fonts" data-section="mono-fonts">Mono Fonts</a>
+    <a href="#pairings" data-section="pairings">Pairings</a>
+
+    <div class="nav-section">Color</div>
+    <a href="#palettes" data-section="palettes">Surface Palettes</a>
+    <a href="#accents" data-section="accents">Accent Colors</a>
+    <a href="#custom-accent" data-section="custom-accent">Custom Accent</a>
+    <a href="#color-overview" data-section="color-overview">Color Overview</a>
+    <a href="#accent-context" data-section="accent-context">Accent In Context</a>
+
+    <div class="nav-section">Surfaces</div>
+    <a href="#layers" data-section="layers">Elevation Layers</a>
+
+    <div class="nav-section">Shape</div>
+    <a href="#radius" data-section="radius">Border Radius</a>
+    <a href="#complementary-radius" data-section="complementary-radius">Complementary Radius</a>
+
+    <div class="nav-section">Details</div>
+    <a href="#borders" data-section="borders">Borders & Dividers</a>
+    <a href="#text-opacity" data-section="text-opacity">Text Opacity</a>
+    <a href="#spacing" data-section="spacing">Spacing</a>
+
+    <div class="nav-section">Components</div>
+    <a href="#chat" data-section="chat">Chat Messages</a>
+    <a href="#kpi" data-section="kpi">KPI Cards</a>
+    <a href="#nav-preview" data-section="nav-preview">Navigation</a>
+    <a href="#inputs" data-section="inputs">Inputs</a>
+    <a href="#buttons" data-section="buttons">Buttons</a>
+    <a href="#focus-ring" data-section="focus-ring">Focus Ring</a>
+    <a href="#badges" data-section="badges">Badges</a>
+    <a href="#empty" data-section="empty">Empty States</a>
+
+    <div class="nav-section">Motion</div>
+    <a href="#motion" data-section="motion">Animations</a>
+
+    <button class="reset-btn" onclick="resetAll()">Reset All</button>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="lab-content">
+
+    <!-- ==================== PAIRING PREVIEW (STICKY) ==================== -->
+    <section class="section" id="pairings" data-lockable="pairings">
+      <div class="section-title">
+        <span class="section-title-text">Font Pairing Preview -- Click any font below to update</span>
+        <button class="lock-toggle" onclick="toggleLock('pairings')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <div id="pairing-preview">
+        <div class="pairing-card">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+            <div class="pairing-label" style="margin-bottom: 0;">Selected Display + Body + Mono</div>
+            <div style="display: flex; gap: 24px; align-items: center;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <label style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace; white-space: nowrap;">Display</label>
+                <input type="range" min="100" max="900" step="10" value="600" id="weight-display" oninput="updateWeights()" style="width: 100px; height: 4px; -webkit-appearance: none; appearance: none; background: var(--bg-elevated); border-radius: 2px; outline: none;">
+                <span id="weight-display-val" style="font-size: 11px; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; width: 30px;">600</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <label style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace; white-space: nowrap;">Body</label>
+                <input type="range" min="100" max="900" step="10" value="400" id="weight-body" oninput="updateWeights()" style="width: 100px; height: 4px; -webkit-appearance: none; appearance: none; background: var(--bg-elevated); border-radius: 2px; outline: none;">
+                <span id="weight-body-val" style="font-size: 11px; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; width: 30px;">400</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <label style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace; white-space: nowrap;">Mono</label>
+                <input type="range" min="100" max="900" step="10" value="400" id="weight-mono" oninput="updateWeights()" style="width: 100px; height: 4px; -webkit-appearance: none; appearance: none; background: var(--bg-elevated); border-radius: 2px; outline: none;">
+                <span id="weight-mono-val" style="font-size: 11px; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; width: 30px;">400</span>
+              </div>
+            </div>
+          </div>
+          <div class="pair-display" id="pair-display" style="font-family: var(--display-font, 'Inter'); font-weight: 600;">Morning. Three meetings today, two things due.</div>
+          <div class="pair-body" id="pair-body" style="font-family: var(--body-font, 'Inter'); font-weight: 400;">The landlord replied last night on the lease -- countered at $4,200. That's probably your first move today. Your 10am with the franchise attorney is confirmed. I pulled the latest P&L for the Wingstop locations -- revenue is up 10.8% this month.</div>
+          <div class="pair-mono" id="pair-mono" style="font-family: var(--mono-font, 'JetBrains Mono'); font-weight: 400;">TOTAL REVENUE &middot; $32,398 &middot; +10.8% &middot; UPDATED 2M AGO</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TYPOGRAPHY ==================== -->
+
+    <!-- DISPLAY FONTS -->
+    <section class="section" id="display-fonts" data-lockable="display-fonts">
+      <div class="section-title">
+        <span class="section-title-text">Display Fonts -- Headlines, Greetings, Big Numbers</span>
+        <button class="lock-toggle" onclick="toggleLock('display-fonts')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <div class="font-grid">
+
+        <div class="font-card" onclick="toggleSelect(this)" data-font-type="display" data-font="'Fraunces', serif">
+          <div class="font-label">Fraunces</div>
+          <div class="font-source">Google &middot; Variable &middot; Serif</div>
+          <div class="font-sample-display" style="font-family: 'Fraunces', serif; font-weight: 600;">Morning. Three meetings today.</div>
+          <div class="font-sample-display" style="font-family: 'Fraunces', serif; font-weight: 700; font-size: 52px; margin-top: 8px;">$32,398</div>
+        </div>
+
+        <div class="font-card" onclick="toggleSelect(this)" data-font-type="display" data-font="'Instrument Serif', serif">
+          <div class="font-label">Instrument Serif</div>
+          <div class="font-source">Google &middot; Serif</div>
+          <div class="font-sample-display" style="font-family: 'Instrument Serif', serif;">Morning. Three meetings today.</div>
+          <div class="font-sample-display" style="font-family: 'Instrument Serif', serif; font-size: 52px; margin-top: 8px;">$32,398</div>
+        </div>
+
+        <div class="font-card" onclick="toggleSelect(this)" data-font-type="display" data-font="'Playfair Display', serif">
+          <div class="font-label">Playfair Display</div>
+          <div class="font-source">Google &middot; Variable &middot; Serif</div>
+          <div class="font-sample-display" style="font-family: 'Playfair Display', serif; font-weight: 600;">Morning. Three meetings today.</div>
+          <div class="font-sample-display" style="font-family: 'Playfair Display', serif; font-weight: 700; font-size: 52px; margin-top: 8px;">$32,398</div>
+        </div>
+
+        <div class="font-card" onclick="toggleSelect(this)" data-font-type="display" data-font="'DM Serif Display', serif">
+          <div class="font-label">DM Serif Display</div>
+          <div class="font-source">Google &middot; Serif</div>
+          <div class="font-sample-display" style="font-family: 'DM Serif Display', serif;">Morning. Three meetings today.</div>
+          <div class="font-sample-display" style="font-family: 'DM Serif Display', serif; font-size: 52px; margin-top: 8px;">$32,398</div>
+        </div>
+
+        <div class="font-card" onclick="toggleSelect(this)" data-font-type="display" data-font="'Newsreader', serif">
+          <div class="font-label">Newsreader</div>
+          <div class="font-source">Google &middot; Variable &middot; Serif</div>
+          <div class="font-sample-display" style="font-family: 'Newsreader', serif; font-weight: 600;">Morning. Three meetings today.</div>
+          <div class="font-sample-display" style="font-family: 'Newsreader', serif; font-weight: 600; font-size: 52px; margin-top: 8px;">$32,398</div>
+        </div>
+
+        <div class="font-card" onclick="toggleSelect(this)" data-font-type="display" data-font="'Clash Display', sans-serif">
+          <div class="font-label">Clash Display</div>
+          <div class="font-source">Fontshare &middot; Sans</div>
+          <div class="font-sample-display" style="font-family: 'Clash Display', sans-serif; font-weight: 600;">Morning. Three meetings today.</div>
+          <div class="font-sample-display" style="font-family: 'Clash Display', sans-serif; font-weight: 700; font-size: 52px; margin-top: 8px;">$32,398</div>
+        </div>
+
+        <div class="font-card" onclick="toggleSelect(this)" data-font-type="display" data-font="'Cabinet Grotesk', sans-serif">
+          <div class="font-label">Cabinet Grotesk</div>
+          <div class="font-source">Fontshare &middot; Sans</div>
+          <div class="font-sample-display" style="font-family: 'Cabinet Grotesk', sans-serif; font-weight: 700;">Morning. Three meetings today.</div>
+          <div class="font-sample-display" style="font-family: 'Cabinet Grotesk', sans-serif; font-weight: 800; font-size: 52px; margin-top: 8px;">$32,398</div>
+        </div>
+
+        <div class="font-card" onclick="toggleSelect(this)" data-font-type="display" data-font="'Bricolage Grotesque', sans-serif">
+          <div class="font-label">Bricolage Grotesque</div>
+          <div class="font-source">Google &middot; Variable &middot; Sans</div>
+          <div class="font-sample-display" style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700;">Morning. Three meetings today.</div>
+          <div class="font-sample-display" style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 52px; margin-top: 8px;">$32,398</div>
+        </div>
+
+        <div class="font-card" onclick="toggleSelect(this)" data-font-type="display" data-font="'Space Grotesk', sans-serif">
+          <div class="font-label">Space Grotesk</div>
+          <div class="font-source">Google &middot; Variable &middot; Sans</div>
+          <div class="font-sample-display" style="font-family: 'Space Grotesk', sans-serif; font-weight: 600;">Morning. Three meetings today.</div>
+          <div class="font-sample-display" style="font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 52px; margin-top: 8px;">$32,398</div>
+        </div>
+
+        <div class="font-card" onclick="toggleSelect(this)" data-font-type="display" data-font="'Sora', sans-serif">
+          <div class="font-label">Sora</div>
+          <div class="font-source">Google &middot; Variable &middot; Sans</div>
+          <div class="font-sample-display" style="font-family: 'Sora', sans-serif; font-weight: 600;">Morning. Three meetings today.</div>
+          <div class="font-sample-display" style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 52px; margin-top: 8px;">$32,398</div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- BODY FONTS -->
+    <section class="section" id="body-fonts" data-lockable="body-fonts">
+      <div class="section-title">
+        <span class="section-title-text">Body Fonts -- Chat Messages, Descriptions, UI Text</span>
+        <button class="lock-toggle" onclick="toggleLock('body-fonts')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <div class="font-grid">
+
+        <div class="font-card" onclick="toggleSelect(this)" data-font-type="body" data-font="'Plus Jakarta Sans', sans-serif">
+          <div class="font-label">Plus Jakarta Sans</div>
+          <div class="font-source">Google &middot; Variable</div>
+          <div class="font-sample-body" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 400;">You've saved $7,323. To reach your $12,000 goal, you need $4,373 more. Saving $635 monthly, especially on food and shopping, can help. Want me to set up a budget?</div>
+        </div>
+
+        <div class="font-card" onclick="toggleSelect(this)" data-font-type="body" data-font="'Outfit', sans-serif">
+          <div class="font-label">Outfit</div>
+          <div class="font-source">Google &middot; Variable</div>
+          <div class="font-sample-body" style="font-family: 'Outfit', sans-serif; font-weight: 400;">You've saved $7,323. To reach your $12,000 goal, you need $4,373 more. Saving $635 monthly, especially on food and shopping, can help. Want me to set up a budget?</div>
+        </div>
+
+        <div class="font-card" onclick="toggleSelect(this)" data-font-type="body" data-font="'Manrope', sans-serif">
+          <div class="font-label">Manrope</div>
+          <div class="font-source">Google &middot; Variable</div>
+          <div class="font-sample-body" style="font-family: 'Manrope', sans-serif; font-weight: 400;">You've saved $7,323. To reach your $12,000 goal, you need $4,373 more. Saving $635 monthly, especially on food and shopping, can help. Want me to set up a budget?</div>
+        </div>
+
+        <div class="font-card" onclick="toggleSelect(this)" data-font-type="body" data-font="'Satoshi', sans-serif">
+          <div class="font-label">Satoshi</div>
+          <div class="font-source">Fontshare</div>
+          <div class="font-sample-body" style="font-family: 'Satoshi', sans-serif; font-weight: 400;">You've saved $7,323. To reach your $12,000 goal, you need $4,373 more. Saving $635 monthly, especially on food and shopping, can help. Want me to set up a budget?</div>
+        </div>
+
+        <div class="font-card" onclick="toggleSelect(this)" data-font-type="body" data-font="'General Sans', sans-serif">
+          <div class="font-label">General Sans</div>
+          <div class="font-source">Fontshare</div>
+          <div class="font-sample-body" style="font-family: 'General Sans', sans-serif; font-weight: 400;">You've saved $7,323. To reach your $12,000 goal, you need $4,373 more. Saving $635 monthly, especially on food and shopping, can help. Want me to set up a budget?</div>
+        </div>
+
+        <div class="font-card" onclick="toggleSelect(this)" data-font-type="body" data-font="'Switzer', sans-serif">
+          <div class="font-label">Switzer</div>
+          <div class="font-source">Fontshare</div>
+          <div class="font-sample-body" style="font-family: 'Switzer', sans-serif; font-weight: 400;">You've saved $7,323. To reach your $12,000 goal, you need $4,373 more. Saving $635 monthly, especially on food and shopping, can help. Want me to set up a budget?</div>
+        </div>
+
+        <div class="font-card" onclick="toggleSelect(this)" data-font-type="body" data-font="'Sora', sans-serif">
+          <div class="font-label">Sora</div>
+          <div class="font-source">Google &middot; Variable</div>
+          <div class="font-sample-body" style="font-family: 'Sora', sans-serif; font-weight: 400;">You've saved $7,323. To reach your $12,000 goal, you need $4,373 more. Saving $635 monthly, especially on food and shopping, can help. Want me to set up a budget?</div>
+        </div>
+
+        <div class="font-card" onclick="toggleSelect(this)" data-font-type="body" data-font="'Inter', sans-serif">
+          <div class="font-label">Inter (Baseline / Generic)</div>
+          <div class="font-source">Google &middot; Variable</div>
+          <div class="font-sample-body" style="font-family: 'Inter', sans-serif; font-weight: 400;">You've saved $7,323. To reach your $12,000 goal, you need $4,373 more. Saving $635 monthly, especially on food and shopping, can help. Want me to set up a budget?</div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- MONO FONTS -->
+    <section class="section" id="mono-fonts" data-lockable="mono-fonts">
+      <div class="section-title">
+        <span class="section-title-text">Mono Fonts -- Data Labels, Timestamps, Metadata, Tool Output</span>
+        <button class="lock-toggle" onclick="toggleLock('mono-fonts')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <div class="font-grid">
+
+        <div class="font-card" onclick="toggleSelect(this)" data-font-type="mono" data-font="'JetBrains Mono', monospace">
+          <div class="font-label">JetBrains Mono</div>
+          <div class="font-source">Google &middot; Variable</div>
+          <div class="font-sample-mono" style="font-family: 'JetBrains Mono', monospace;">TOTAL REVENUE &middot; $32,398 &middot; +10.8%</div>
+          <div class="font-sample-label" style="font-family: 'JetBrains Mono', monospace;">12:41 PM &middot; SENT &middot; 3 ATTACHMENTS</div>
+          <div class="font-sample-mono" style="font-family: 'JetBrains Mono', monospace; margin-top: 12px; color: var(--text-tertiary);">searching_email({ query: "landlord lease", limit: 5 })</div>
+        </div>
+
+        <div class="font-card" onclick="toggleSelect(this)" data-font-type="mono" data-font="'Space Mono', monospace">
+          <div class="font-label">Space Mono</div>
+          <div class="font-source">Google &middot; Quirky</div>
+          <div class="font-sample-mono" style="font-family: 'Space Mono', monospace;">TOTAL REVENUE &middot; $32,398 &middot; +10.8%</div>
+          <div class="font-sample-label" style="font-family: 'Space Mono', monospace;">12:41 PM &middot; SENT &middot; 3 ATTACHMENTS</div>
+          <div class="font-sample-mono" style="font-family: 'Space Mono', monospace; margin-top: 12px; color: var(--text-tertiary);">searching_email({ query: "landlord lease", limit: 5 })</div>
+        </div>
+
+        <div class="font-card" onclick="toggleSelect(this)" data-font-type="mono" data-font="'IBM Plex Mono', monospace">
+          <div class="font-label">IBM Plex Mono</div>
+          <div class="font-source">Google &middot; Clean</div>
+          <div class="font-sample-mono" style="font-family: 'IBM Plex Mono', monospace;">TOTAL REVENUE &middot; $32,398 &middot; +10.8%</div>
+          <div class="font-sample-label" style="font-family: 'IBM Plex Mono', monospace;">12:41 PM &middot; SENT &middot; 3 ATTACHMENTS</div>
+          <div class="font-sample-mono" style="font-family: 'IBM Plex Mono', monospace; margin-top: 12px; color: var(--text-tertiary);">searching_email({ query: "landlord lease", limit: 5 })</div>
+        </div>
+
+        <div class="font-card" onclick="toggleSelect(this)" data-font-type="mono" data-font="'Fira Code', monospace">
+          <div class="font-label">Fira Code</div>
+          <div class="font-source">Google &middot; Ligatures</div>
+          <div class="font-sample-mono" style="font-family: 'Fira Code', monospace;">TOTAL REVENUE &middot; $32,398 &middot; +10.8%</div>
+          <div class="font-sample-label" style="font-family: 'Fira Code', monospace;">12:41 PM &middot; SENT &middot; 3 ATTACHMENTS</div>
+          <div class="font-sample-mono" style="font-family: 'Fira Code', monospace; margin-top: 12px; color: var(--text-tertiary);">searching_email({ query: "landlord lease", limit: 5 })</div>
+        </div>
+
+        <div class="font-card" onclick="toggleSelect(this)" data-font-type="mono" data-font="'Azeret Mono', monospace">
+          <div class="font-label">Azeret Mono</div>
+          <div class="font-source">Google &middot; Geometric</div>
+          <div class="font-sample-mono" style="font-family: 'Azeret Mono', monospace;">TOTAL REVENUE &middot; $32,398 &middot; +10.8%</div>
+          <div class="font-sample-label" style="font-family: 'Azeret Mono', monospace;">12:41 PM &middot; SENT &middot; 3 ATTACHMENTS</div>
+          <div class="font-sample-mono" style="font-family: 'Azeret Mono', monospace; margin-top: 12px; color: var(--text-tertiary);">searching_email({ query: "landlord lease", limit: 5 })</div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==================== COLORS ==================== -->
+
+    <!-- SURFACE PALETTES -->
+    <section class="section" id="palettes" data-lockable="palettes">
+      <div class="section-title">
+        <span class="section-title-text">Surface Palettes -- Background Layers</span>
+        <button class="lock-toggle" onclick="toggleLock('palettes')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <div class="palette-option" onclick="setPalette('v1', this)" data-palette="v1">
+        <div class="palette-option-header">
+          <div class="section-subtitle" style="margin: 0;">v1 Current -- Warm Brown</div>
+          <span class="palette-check"></span>
+        </div>
+        <div class="palette-row">
+          <div class="palette-swatch" style="background: hsl(30, 7%, 10%);"><span>Sidebar</span></div>
+          <div class="palette-swatch" style="background: hsl(30, 6%, 12%);"><span>Root</span></div>
+          <div class="palette-swatch" style="background: hsl(30, 6%, 14%); color: var(--text-secondary);"><span>Card</span></div>
+          <div class="palette-swatch" style="background: hsl(30, 5%, 18%); color: var(--text-secondary);"><span>Elevated</span></div>
+          <div class="palette-swatch" style="background: hsl(30, 4%, 24%); color: var(--text-secondary);"><span>Overlay</span></div>
+        </div>
+      </div>
+
+      <div class="palette-option" onclick="setPalette('a', this)" data-palette="a">
+        <div class="palette-option-header">
+          <div class="section-subtitle" style="margin: 0;">Option A -- Warmer, Deeper</div>
+          <span class="palette-check"></span>
+        </div>
+        <div class="palette-row">
+          <div class="palette-swatch" style="background: hsl(25, 10%, 8%);"><span>Sidebar</span></div>
+          <div class="palette-swatch" style="background: hsl(25, 8%, 11%);"><span>Root</span></div>
+          <div class="palette-swatch" style="background: hsl(25, 7%, 14%); color: var(--text-secondary);"><span>Card</span></div>
+          <div class="palette-swatch" style="background: hsl(25, 6%, 18%); color: var(--text-secondary);"><span>Elevated</span></div>
+          <div class="palette-swatch" style="background: hsl(25, 5%, 23%); color: var(--text-secondary);"><span>Overlay</span></div>
+        </div>
+      </div>
+
+      <div class="palette-option" onclick="setPalette('b', this)" data-palette="b">
+        <div class="palette-option-header">
+          <div class="section-subtitle" style="margin: 0;">Option B -- Neutral Dark (Linear-adjacent)</div>
+          <span class="palette-check"></span>
+        </div>
+        <div class="palette-row">
+          <div class="palette-swatch" style="background: hsl(220, 5%, 8%);"><span>Sidebar</span></div>
+          <div class="palette-swatch" style="background: hsl(220, 4%, 11%);"><span>Root</span></div>
+          <div class="palette-swatch" style="background: hsl(220, 4%, 14%); color: var(--text-secondary);"><span>Card</span></div>
+          <div class="palette-swatch" style="background: hsl(220, 3%, 18%); color: var(--text-secondary);"><span>Elevated</span></div>
+          <div class="palette-swatch" style="background: hsl(220, 3%, 23%); color: var(--text-secondary);"><span>Overlay</span></div>
+        </div>
+      </div>
+
+      <div class="palette-option" onclick="setPalette('c', this)" data-palette="c">
+        <div class="palette-option-header">
+          <div class="section-subtitle" style="margin: 0;">Option C -- Very Warm, Almost Sepia</div>
+          <span class="palette-check"></span>
+        </div>
+        <div class="palette-row">
+          <div class="palette-swatch" style="background: hsl(35, 12%, 8%);"><span>Sidebar</span></div>
+          <div class="palette-swatch" style="background: hsl(35, 10%, 11%);"><span>Root</span></div>
+          <div class="palette-swatch" style="background: hsl(35, 8%, 14%); color: var(--text-secondary);"><span>Card</span></div>
+          <div class="palette-swatch" style="background: hsl(35, 7%, 18%); color: var(--text-secondary);"><span>Elevated</span></div>
+          <div class="palette-swatch" style="background: hsl(35, 6%, 23%); color: var(--text-secondary);"><span>Overlay</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ACCENT COLORS -->
+    <section class="section" id="accents" data-lockable="accents">
+      <div class="section-title">
+        <span class="section-title-text">Accent Colors -- The One Bold Color</span>
+        <button class="lock-toggle" onclick="toggleLock('accents')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <div class="accent-options">
+        <div class="accent-option" onclick="setAccent(38, 90, 55, this)">
+          <div class="accent-circle" style="background: hsl(38, 90%, 55%);"></div>
+          <div class="accent-name">Amber</div>
+          <div class="accent-value">38 90 55</div>
+        </div>
+        <div class="accent-option" onclick="setAccent(30, 85, 52, this)">
+          <div class="accent-circle" style="background: hsl(30, 85%, 52%);"></div>
+          <div class="accent-name">Warm Orange</div>
+          <div class="accent-value">30 85 52</div>
+        </div>
+        <div class="accent-option" onclick="setAccent(45, 85, 50, this)">
+          <div class="accent-circle" style="background: hsl(45, 85%, 50%);"></div>
+          <div class="accent-name">Gold</div>
+          <div class="accent-value">45 85 50</div>
+        </div>
+        <div class="accent-option" onclick="setAccent(22, 75, 50, this)">
+          <div class="accent-circle" style="background: hsl(22, 75%, 50%);"></div>
+          <div class="accent-name">Copper</div>
+          <div class="accent-value">22 75 50</div>
+        </div>
+        <div class="accent-option" onclick="setAccent(16, 80, 55, this)">
+          <div class="accent-circle" style="background: hsl(16, 80%, 55%);"></div>
+          <div class="accent-name">Burnt Sienna</div>
+          <div class="accent-value">16 80 55</div>
+        </div>
+        <div class="accent-option" onclick="setAccent(42, 95, 58, this)">
+          <div class="accent-circle" style="background: hsl(42, 95%, 58%);"></div>
+          <div class="accent-name">Marigold</div>
+          <div class="accent-value">42 95 58</div>
+        </div>
+        <div class="accent-option" onclick="setAccent(24, 90, 48, this)">
+          <div class="accent-circle" style="background: hsl(24, 90%, 48%);"></div>
+          <div class="accent-name">Rust</div>
+          <div class="accent-value">24 90 48</div>
+        </div>
+        <div class="accent-option" onclick="setAccent(50, 80, 52, this)">
+          <div class="accent-circle" style="background: hsl(50, 80%, 52%);"></div>
+          <div class="accent-name">Saffron</div>
+          <div class="accent-value">50 80 52</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CUSTOM ACCENT SLIDER -->
+    <section class="section" id="custom-accent" data-lockable="custom-accent">
+      <div class="section-title">
+        <span class="section-title-text">Custom Accent -- Fine-Tune with Sliders</span>
+        <button class="lock-toggle" onclick="toggleLock('custom-accent')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-row">
+          <label>Hue</label>
+          <input type="range" min="0" max="360" value="38" id="hue-slider" oninput="updateAccentFromSliders()">
+          <span class="slider-value" id="hue-value">38&deg;</span>
+        </div>
+        <div class="slider-row">
+          <label>Saturation</label>
+          <input type="range" min="0" max="100" value="90" id="sat-slider" oninput="updateAccentFromSliders()">
+          <span class="slider-value" id="sat-value">90%</span>
+        </div>
+        <div class="slider-row">
+          <label>Lightness</label>
+          <input type="range" min="20" max="80" value="55" id="lit-slider" oninput="updateAccentFromSliders()">
+          <span class="slider-value" id="lit-value">55%</span>
+        </div>
+        <div class="accent-preview-strip"></div>
+      </div>
+    </section>
+
+    <!-- ==================== COLOR OVERVIEW ==================== -->
+    <section class="section" id="color-overview" data-lockable="color-overview">
+      <div class="section-title">
+        <span class="section-title-text">Color Overview -- All Active Colors at a Glance</span>
+        <button class="lock-toggle" onclick="toggleLock('color-overview')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <div class="color-scope-row" id="color-scope-row">
+        <!-- Populated by JS -->
+      </div>
+    </section>
+
+    <!-- ==================== ACCENT IN CONTEXT ==================== -->
+    <section class="section" id="accent-context" data-lockable="accent-context">
+      <div class="section-title">
+        <span class="section-title-text">Accent In Context -- Accent Color Used Everywhere</span>
+        <button class="lock-toggle" onclick="toggleLock('accent-context')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <div class="accent-context-panel" id="accent-context-panel">
+        <!-- User chat bubble -->
+        <div class="accent-context-item">
+          <div class="context-label">Chat Bubble</div>
+          <div id="ctx-chat-bubble" style="background: var(--accent); color: var(--accent-text); padding: 10px 14px; border-radius: 14px; font-size: 13px; font-family: var(--body-font, 'Plus Jakarta Sans');">How did we do?</div>
+        </div>
+        <!-- Primary button -->
+        <div class="accent-context-item">
+          <div class="context-label">Primary Button</div>
+          <button id="ctx-btn" style="background: var(--accent); color: var(--accent-text); border: none; padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer;">Send</button>
+        </div>
+        <!-- Nav item -->
+        <div class="accent-context-item">
+          <div class="context-label">Active Nav</div>
+          <div style="padding: 8px 14px; font-size: 14px; font-weight: 600; color: var(--accent); font-family: 'Fraunces', serif;">Chat</div>
+        </div>
+        <!-- KPI top border -->
+        <div class="accent-context-item">
+          <div class="context-label">KPI Top Bar</div>
+          <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 12px 14px; position: relative; overflow: hidden;">
+            <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--accent);"></div>
+            <div style="font-size: 10px; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px;">Revenue</div>
+            <div style="font-size: 20px; font-weight: 700; color: var(--text-primary);">$32K</div>
+          </div>
+        </div>
+        <!-- Badge -->
+        <div class="accent-context-item">
+          <div class="context-label">Badge</div>
+          <span style="background: var(--accent-muted); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 11px; font-family: 'JetBrains Mono', monospace;">Active</span>
+        </div>
+        <!-- Progress bar -->
+        <div class="accent-context-item">
+          <div class="context-label">Progress Bar</div>
+          <div style="width: 100%; height: 6px; background: var(--bg-elevated); border-radius: 3px; overflow: hidden;">
+            <div style="width: 65%; height: 100%; background: var(--accent); border-radius: 3px;"></div>
+          </div>
+        </div>
+        <!-- Focus ring -->
+        <div class="accent-context-item">
+          <div class="context-label">Focus Ring</div>
+          <input type="text" value="Focused" readonly style="background: var(--bg-card); border: 1px solid var(--accent); padding: 6px 12px; border-radius: 6px; color: var(--text-primary); font-size: 13px; box-shadow: 0 0 0 3px var(--accent-muted); outline: none; width: 100px;">
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SURFACES ==================== -->
+    <section class="section" id="layers" data-lockable="layers">
+      <div class="section-title">
+        <span class="section-title-text">Surface Elevation Layers</span>
+        <button class="lock-toggle" onclick="toggleLock('layers')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <div class="surface-demo">
+        <div class="surface-layer" style="background: var(--bg-root);">
+          <div class="layer-label">Layer 0 -- Root Canvas</div>
+          <div class="layer-value">The darkest surface. Page background.</div>
+          <div class="surface-layer" style="background: var(--bg-card); border: 1px solid var(--border-subtle); margin-top: 16px;">
+            <div class="layer-label">Layer 1 -- Card / Panel</div>
+            <div class="layer-value">Primary content containers. Chat messages, dashboard cards.</div>
+            <div class="surface-layer" style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); margin-top: 16px;">
+              <div class="layer-label">Layer 2 -- Elevated</div>
+              <div class="layer-value">Dropdowns, popovers, hover states.</div>
+              <div class="surface-layer" style="background: var(--bg-overlay); border: 1px solid var(--border-subtle); margin-top: 16px;">
+                <div class="layer-label">Layer 3 -- Overlay</div>
+                <div class="layer-value">Tooltips, toasts, modal backgrounds.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== BORDER RADIUS ==================== -->
+    <section class="section" id="radius" data-lockable="radius">
+      <div class="section-title">
+        <span class="section-title-text">Border Radius -- Shape Language</span>
+        <button class="lock-toggle" onclick="toggleLock('radius')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
+        <button class="btn btn-secondary radius-preset" onclick="setRadiusPreset('sharp', this)" style="font-size: 12px; padding: 6px 14px;">Sharp (0-2px)</button>
+        <button class="btn btn-secondary radius-preset" onclick="setRadiusPreset('subtle', this)" style="font-size: 12px; padding: 6px 14px;">Subtle (4-8px)</button>
+        <button class="btn btn-secondary radius-preset" onclick="setRadiusPreset('medium', this)" style="font-size: 12px; padding: 6px 14px;">Medium (8-16px)</button>
+        <button class="btn btn-secondary radius-preset" onclick="setRadiusPreset('rounded', this)" style="font-size: 12px; padding: 6px 14px;">Rounded (12-24px)</button>
+        <button class="btn btn-secondary radius-preset" onclick="setRadiusPreset('pill', this)" style="font-size: 12px; padding: 6px 14px;">Pill (999px)</button>
+        <button class="btn btn-secondary radius-preset selected" onclick="setRadiusPreset('mixed', this)" style="font-size: 12px; padding: 6px 14px;">Mixed (contextual)</button>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-row">
+          <label>Cards</label>
+          <input type="range" min="0" max="32" value="16" id="radius-cards" oninput="updateRadii()">
+          <span class="slider-value" id="radius-cards-val">16px</span>
+        </div>
+        <div class="slider-row">
+          <label>Buttons</label>
+          <input type="range" min="0" max="999" value="10" id="radius-buttons" oninput="updateRadii()">
+          <span class="slider-value" id="radius-buttons-val">10px</span>
+        </div>
+        <div class="slider-row">
+          <label>Chat Msgs</label>
+          <input type="range" min="0" max="32" value="20" id="radius-chat" oninput="updateRadii()">
+          <span class="slider-value" id="radius-chat-val">20px</span>
+        </div>
+        <div class="slider-row">
+          <label>Input Bar</label>
+          <input type="range" min="0" max="999" value="999" id="radius-input" oninput="updateRadii()">
+          <span class="slider-value" id="radius-input-val">pill</span>
+        </div>
+        <div class="slider-row">
+          <label>KPI Cards</label>
+          <input type="range" min="0" max="32" value="12" id="radius-kpi" oninput="updateRadii()">
+          <span class="slider-value" id="radius-kpi-val">12px</span>
+        </div>
+        <div class="slider-row">
+          <label>Badges</label>
+          <input type="range" min="0" max="999" value="100" id="radius-badges" oninput="updateRadii()">
+          <span class="slider-value" id="radius-badges-val">pill</span>
+        </div>
+        <div class="slider-row">
+          <label>Nav Items</label>
+          <input type="range" min="0" max="24" value="8" id="radius-nav" oninput="updateRadii()">
+          <span class="slider-value" id="radius-nav-val">8px</span>
+        </div>
+        <div class="slider-row">
+          <label>Previews</label>
+          <input type="range" min="0" max="32" value="16" id="radius-preview" oninput="updateRadii()">
+          <span class="slider-value" id="radius-preview-val">16px</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPLEMENTARY RADIUS DEMO -->
+    <section class="section" id="complementary-radius" data-lockable="complementary-radius">
+      <div class="section-title">
+        <span class="section-title-text">Complementary Radius -- Nested Elements Should Scale Down</span>
+        <button class="lock-toggle" onclick="toggleLock('complementary-radius')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px;">
+        <div>
+          <div class="component-label" style="color: hsl(0, 60%, 55%);">Wrong -- Same radius on parent and child</div>
+          <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 24px; padding: 16px;">
+            <div style="background: var(--accent); color: var(--accent-text); border-radius: 24px; padding: 14px 20px; font-size: 14px; font-family: var(--body-font, 'Inter');">
+              Send message
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="component-label" style="color: hsl(145, 60%, 55%);">Right -- Child radius is proportionally smaller</div>
+          <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 24px; padding: 16px;">
+            <div style="background: var(--accent); color: var(--accent-text); border-radius: 12px; padding: 14px 20px; font-size: 14px; font-family: var(--body-font, 'Inter');">
+              Send message
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px;">
+        <div>
+          <div class="component-label" style="color: hsl(0, 60%, 55%);">Wrong -- Card and inner badges share radius</div>
+          <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 20px; padding: 24px;">
+            <div style="font-family: var(--display-font, 'Inter'); font-size: 28px; font-weight: 600; margin-bottom: 12px; color: var(--text-primary);">$32,398</div>
+            <div style="display: flex; gap: 8px;">
+              <span style="background: var(--accent-muted); color: var(--accent); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-family: 'JetBrains Mono', monospace;">+10.8%</span>
+              <span style="background: var(--bg-elevated); color: var(--text-secondary); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-family: 'JetBrains Mono', monospace;">THIS MONTH</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="component-label" style="color: hsl(145, 60%, 55%);">Right -- Inner elements use smaller complementary radius</div>
+          <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 20px; padding: 24px;">
+            <div style="font-family: var(--display-font, 'Inter'); font-size: 28px; font-weight: 600; margin-bottom: 12px; color: var(--text-primary);">$32,398</div>
+            <div style="display: flex; gap: 8px;">
+              <span style="background: var(--accent-muted); color: var(--accent); padding: 4px 12px; border-radius: 8px; font-size: 12px; font-family: 'JetBrains Mono', monospace;">+10.8%</span>
+              <span style="background: var(--bg-elevated); color: var(--text-secondary); padding: 4px 12px; border-radius: 8px; font-size: 12px; font-family: 'JetBrains Mono', monospace;">THIS MONTH</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slider-group">
+        <div class="component-label" style="margin-bottom: 16px;">Interactive -- adjust outer radius, inner scales automatically</div>
+        <div class="slider-row">
+          <label>Outer</label>
+          <input type="range" min="0" max="40" value="20" id="comp-outer" oninput="updateCompRadius()">
+          <span class="slider-value" id="comp-outer-val">20px</span>
+        </div>
+        <div class="slider-row">
+          <label>Padding</label>
+          <input type="range" min="4" max="32" value="16" id="comp-padding" oninput="updateCompRadius()">
+          <span class="slider-value" id="comp-padding-val">16px</span>
+        </div>
+        <div class="slider-row">
+          <label>Inner (auto)</label>
+          <input type="range" min="0" max="40" value="8" id="comp-inner" disabled style="opacity: 0.5;">
+          <span class="slider-value" id="comp-inner-val">8px</span>
+        </div>
+        <div style="font-size: 11px; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace; margin-top: 12px;">
+          FORMULA: inner = max(0, outer - padding + 4)
+        </div>
+        <div style="margin-top: 20px; display: flex; gap: 24px;">
+          <div id="comp-demo" style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 20px; padding: 16px; flex: 1;">
+            <div id="comp-demo-inner" style="background: var(--accent); color: var(--accent-text); border-radius: 8px; padding: 16px 24px; font-size: 15px; font-family: var(--body-font, 'Inter'); text-align: center;">
+              How did Wingstop do this month?
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== COMPONENTS ==================== -->
+
+    <!-- CHAT -->
+    <section class="section" id="chat" data-lockable="chat">
+      <div class="section-title">
+        <span class="section-title-text">Chat Messages</span>
+        <button class="lock-toggle" onclick="toggleLock('chat')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <div class="component-preview">
+        <div class="component-label">User + Crosby conversation</div>
+        <div class="chat-demo">
+          <div class="chat-msg user" style="font-family: var(--body-font, 'Inter');">
+            How did the Wingstop locations do this month?
+            <div class="msg-time">12:41 PM</div>
+          </div>
+          <div class="chat-msg ai" style="font-family: var(--body-font, 'Inter');">
+            Revenue is up 10.8% across all 10 locations -- $32,398 total this month vs $29,159 last month. The Westheimer store is your top performer again. The Katy location is still underperforming but trending up since the new manager started.
+            <div class="msg-time">12:41 PM</div>
+          </div>
+          <div class="chat-msg user" style="font-family: var(--body-font, 'Inter');">
+            What about the lease negotiation?
+            <div class="msg-time">12:42 PM</div>
+          </div>
+          <div class="chat-msg ai" style="font-family: var(--body-font, 'Inter');">
+            The landlord countered at $4,200 last night. That's $300 above your target. You've got leverage -- the comparable space on Richmond is listed at $3,800. Want me to draft a counter?
+            <div class="msg-time">12:42 PM</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- KPI -->
+    <section class="section" id="kpi" data-lockable="kpi">
+      <div class="section-title">
+        <span class="section-title-text">KPI Cards -- Dashboard Data</span>
+        <button class="lock-toggle" onclick="toggleLock('kpi')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+        <button class="btn btn-secondary kpi-font-toggle" onclick="setKpiFont('display', this)" style="font-size: 12px; padding: 6px 14px;">Fraunces (Display)</button>
+        <button class="btn btn-secondary kpi-font-toggle selected" onclick="setKpiFont('body-bold', this)" style="font-size: 12px; padding: 6px 14px;">Plus Jakarta Sans 700</button>
+        <button class="btn btn-secondary kpi-font-toggle" onclick="setKpiFont('mono-bold', this)" style="font-size: 12px; padding: 6px 14px;">JetBrains Mono 700</button>
+        <button class="btn btn-secondary kpi-font-toggle" onclick="setKpiFont('outfit', this)" style="font-size: 12px; padding: 6px 14px;">Outfit 700</button>
+        <button class="btn btn-secondary kpi-font-toggle" onclick="setKpiFont('space', this)" style="font-size: 12px; padding: 6px 14px;">Space Grotesk 600</button>
+        <button class="btn btn-secondary kpi-font-toggle" onclick="setKpiFont('sora', this)" style="font-size: 12px; padding: 6px 14px;">Sora 700</button>
+      </div>
+
+      <div class="component-preview">
+        <div class="component-label">Summary metrics</div>
+        <div class="kpi-grid">
+          <div class="kpi-card featured">
+            <div class="kpi-label">Total Revenue</div>
+            <div class="kpi-value kpi-num">$32,398</div>
+            <div class="kpi-trend up">&uarr; +10.8% vs last month</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Open Tasks</div>
+            <div class="kpi-value kpi-num">12</div>
+            <div class="kpi-trend down">3 overdue</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Emails Awaiting</div>
+            <div class="kpi-value kpi-num">7</div>
+            <div class="kpi-trend" style="color: var(--text-tertiary);">2 flagged urgent</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="component-preview" style="margin-top: 16px;">
+        <div class="component-label">Larger numbers for comparison</div>
+        <div class="kpi-grid">
+          <div class="kpi-card featured">
+            <div class="kpi-label">Annual Revenue</div>
+            <div class="kpi-value kpi-num" style="font-size: 44px;">$412,847</div>
+            <div class="kpi-trend up">&uarr; +14.2% YoY</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Avg Ticket</div>
+            <div class="kpi-value kpi-num" style="font-size: 44px;">$18.42</div>
+            <div class="kpi-trend up">&uarr; +$1.20</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Transactions</div>
+            <div class="kpi-value kpi-num" style="font-size: 44px;">22,419</div>
+            <div class="kpi-trend" style="color: var(--text-tertiary);">This month</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- NAV -->
+    <section class="section" id="nav-preview" data-lockable="nav-preview">
+      <div class="section-title">
+        <span class="section-title-text">Navigation</span>
+        <button class="lock-toggle" onclick="toggleLock('nav-preview')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <div class="component-preview" style="display: flex; gap: 48px; align-items: flex-start;">
+        <div>
+          <div class="component-label">Sidebar -- large Fraunces, accent when active</div>
+          <div style="background: var(--lab-nav); border-radius: 12px; padding: 32px 24px; width: 200px;">
+            <div style="font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; color: var(--accent); cursor: pointer; padding: 6px 0; margin-bottom: 4px;">Chat</div>
+            <div style="font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; color: var(--text-tertiary); cursor: pointer; padding: 6px 0; margin-bottom: 4px; transition: color 0.15s;" onmouseenter="this.style.color='var(--text-primary)'" onmouseleave="this.style.color='var(--text-tertiary)'">Documents</div>
+            <div style="font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; color: var(--text-tertiary); cursor: pointer; padding: 6px 0; transition: color 0.15s;" onmouseenter="this.style.color='var(--text-primary)'" onmouseleave="this.style.color='var(--text-tertiary)'">Settings</div>
+          </div>
+        </div>
+        <div>
+          <div class="component-label">Sidebar -- larger, bolder</div>
+          <div style="background: var(--lab-nav); border-radius: 12px; padding: 32px 24px; width: 220px;">
+            <div style="font-family: 'Fraunces', serif; font-size: 28px; font-weight: 700; color: var(--accent); cursor: pointer; padding: 4px 0; margin-bottom: 2px;">Chat</div>
+            <div style="font-family: 'Fraunces', serif; font-size: 28px; font-weight: 700; color: var(--text-tertiary); cursor: pointer; padding: 4px 0; margin-bottom: 2px; transition: color 0.15s;" onmouseenter="this.style.color='var(--text-primary)'" onmouseleave="this.style.color='var(--text-tertiary)'">Documents</div>
+            <div style="font-family: 'Fraunces', serif; font-size: 28px; font-weight: 700; color: var(--text-tertiary); cursor: pointer; padding: 4px 0; transition: color 0.15s;" onmouseenter="this.style.color='var(--text-primary)'" onmouseleave="this.style.color='var(--text-tertiary)'">Settings</div>
+          </div>
+        </div>
+        <div>
+          <div class="component-label">Sidebar -- with italic active</div>
+          <div style="background: var(--lab-nav); border-radius: 12px; padding: 32px 24px; width: 200px;">
+            <div style="font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; font-style: italic; color: var(--accent); cursor: pointer; padding: 6px 0; margin-bottom: 4px;">Chat</div>
+            <div style="font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; color: var(--text-tertiary); cursor: pointer; padding: 6px 0; margin-bottom: 4px; transition: color 0.15s;" onmouseenter="this.style.color='var(--text-primary)'" onmouseleave="this.style.color='var(--text-tertiary)'">Documents</div>
+            <div style="font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; color: var(--text-tertiary); cursor: pointer; padding: 6px 0; transition: color 0.15s;" onmouseenter="this.style.color='var(--text-primary)'" onmouseleave="this.style.color='var(--text-tertiary)'">Settings</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="component-preview" style="margin-top: 16px;">
+        <div class="component-label">Tabs / secondary nav -- filled active state (for non-sidebar contexts)</div>
+        <div style="display: flex; gap: 4px; background: var(--bg-elevated); border-radius: 10px; padding: 4px; width: fit-content;">
+          <div style="padding: 8px 16px; border-radius: 8px; background: var(--accent); color: var(--accent-text); font-size: 13px; font-weight: 500; font-family: var(--body-font, 'Plus Jakarta Sans'); cursor: pointer;">Primary</div>
+          <div style="padding: 8px 16px; border-radius: 8px; color: var(--text-secondary); font-size: 13px; font-family: var(--body-font, 'Plus Jakarta Sans'); cursor: pointer;">Groups</div>
+          <div style="padding: 8px 16px; border-radius: 8px; color: var(--text-secondary); font-size: 13px; font-family: var(--body-font, 'Plus Jakarta Sans'); cursor: pointer;">Archive</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- INPUTS -->
+    <section class="section" id="inputs" data-lockable="inputs">
+      <div class="section-title">
+        <span class="section-title-text">Input Bar</span>
+        <button class="lock-toggle" onclick="toggleLock('inputs')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <div class="component-preview">
+        <div class="component-label">Chat input -- pill shape with focus glow</div>
+        <div class="input-demo">
+          <div class="input-bar">
+            <div class="input-icon"></div>
+            <input type="text" placeholder="Ask Crosby anything..." style="font-family: var(--body-font, 'Inter');">
+            <div class="input-icon"></div>
+            <div class="send-btn"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BUTTONS -->
+    <section class="section" id="buttons" data-lockable="buttons">
+      <div class="section-title">
+        <span class="section-title-text">Buttons</span>
+        <button class="lock-toggle" onclick="toggleLock('buttons')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <div class="component-preview">
+        <div class="component-label">Button variants</div>
+        <div class="button-row">
+          <button class="btn btn-primary" style="font-family: var(--body-font, 'Inter');">Primary Action</button>
+          <button class="btn btn-secondary" style="font-family: var(--body-font, 'Inter');">Secondary</button>
+          <button class="btn btn-ghost" style="font-family: var(--body-font, 'Inter');">Ghost</button>
+          <button class="btn btn-outline" style="font-family: var(--body-font, 'Inter');">Outline</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOCUS RING PREVIEW -->
+    <section class="section" id="focus-ring" data-lockable="focus-ring">
+      <div class="section-title">
+        <span class="section-title-text">Focus Ring -- Keyboard Navigation Visibility</span>
+        <button class="lock-toggle" onclick="toggleLock('focus-ring')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <div class="component-preview">
+        <div class="component-label">TAB to these elements to see focus rings</div>
+        <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 24px;">
+          <input type="text" class="focus-ring-demo-input" placeholder="Tab to focus me..." id="focus-input-demo">
+          <button class="focus-ring-demo-btn" id="focus-btn-demo">Focusable Button</button>
+        </div>
+
+        <div class="slider-group" style="margin-bottom: 16px;">
+          <div class="slider-row">
+            <label>Ring Width</label>
+            <input type="range" min="1" max="4" step="0.5" value="2" id="focus-ring-width" oninput="updateFocusRing()">
+            <span class="slider-value" id="focus-ring-width-val">2px</span>
+          </div>
+          <div class="slider-row">
+            <label>Ring Offset</label>
+            <input type="range" min="0" max="4" step="1" value="2" id="focus-ring-offset" oninput="updateFocusRing()">
+            <span class="slider-value" id="focus-ring-offset-val">2px</span>
+          </div>
+          <div class="slider-row">
+            <label>Ring Opacity</label>
+            <input type="range" min="0.2" max="1.0" step="0.05" value="0.6" id="focus-ring-opacity" oninput="updateFocusRing()">
+            <span class="slider-value" id="focus-ring-opacity-val">0.6</span>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+          <div class="component-label" style="margin-bottom: 0; line-height: 30px;">Ring Color:</div>
+          <button class="btn btn-secondary focus-preset selected" onclick="setFocusColor('accent', this)" style="font-size: 12px; padding: 6px 14px;">Accent</button>
+          <button class="btn btn-secondary focus-preset" onclick="setFocusColor('white', this)" style="font-size: 12px; padding: 6px 14px;">White</button>
+          <button class="btn btn-secondary focus-preset" onclick="setFocusColor('muted', this)" style="font-size: 12px; padding: 6px 14px;">Subtle</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- BADGES -->
+    <section class="section" id="badges" data-lockable="badges">
+      <div class="section-title">
+        <span class="section-title-text">Badges</span>
+        <button class="lock-toggle" onclick="toggleLock('badges')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <div class="component-preview">
+        <div class="component-label">Status and category badges</div>
+        <div class="badge-row">
+          <span class="badge badge-default">Active</span>
+          <span class="badge badge-secondary">Draft</span>
+          <span class="badge badge-success">Completed</span>
+          <span class="badge badge-warning">Pending</span>
+          <span class="badge badge-error">Overdue</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- EMPTY STATES -->
+    <section class="section" id="empty" data-lockable="empty">
+      <div class="section-title">
+        <span class="section-title-text">Empty States</span>
+        <button class="lock-toggle" onclick="toggleLock('empty')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <div class="component-preview">
+        <div class="empty-state">
+          <div class="empty-title" style="font-family: var(--display-font, 'Inter');">No tasks yet.</div>
+          <div class="empty-desc" style="font-family: var(--body-font, 'Inter');">Tasks appear here as Crosby picks them up from your emails, calendar, and conversations. Or just tell me what needs doing.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== BORDERS & DIVIDERS ==================== -->
+    <section class="section" id="borders" data-lockable="borders">
+      <div class="section-title">
+        <span class="section-title-text">Borders & Dividers</span>
+        <button class="lock-toggle" onclick="toggleLock('borders')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <div class="section-subtitle">Border Opacity</div>
+      <div class="slider-group">
+        <div class="slider-row">
+          <label>Card Border</label>
+          <input type="range" min="0" max="25" value="0" id="border-opacity" oninput="updateBorders()">
+          <span class="slider-value" id="border-opacity-val">0%</span>
+        </div>
+        <div class="slider-row">
+          <label>Divider</label>
+          <input type="range" min="0" max="25" value="5" id="divider-opacity" oninput="updateBorders()">
+          <span class="slider-value" id="divider-opacity-val">5%</span>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 32px;">
+        <div>
+          <div class="component-label">No border (luminance only)</div>
+          <div id="border-demo-none" style="background: var(--bg-card); border-radius: 12px; padding: 24px;">
+            <div style="font-family: var(--display-font, 'Fraunces'); font-size: 24px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">$32,398</div>
+            <div style="font-size: 13px; color: var(--text-secondary); font-family: var(--body-font, 'Plus Jakarta Sans');">Total revenue this month</div>
+            <div style="height: 1px; background: rgba(255,255,255,0.06); margin: 16px 0;" class="demo-divider"></div>
+            <div style="font-size: 12px; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace;">&uarr; +10.8% VS LAST MONTH</div>
+          </div>
+        </div>
+        <div>
+          <div class="component-label">Hairline border (current)</div>
+          <div id="border-demo-hairline" style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 24px;">
+            <div style="font-family: var(--display-font, 'Fraunces'); font-size: 24px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">$32,398</div>
+            <div style="font-size: 13px; color: var(--text-secondary); font-family: var(--body-font, 'Plus Jakarta Sans');">Total revenue this month</div>
+            <div style="height: 1px; background: rgba(255,255,255,0.08); margin: 16px 0;" class="demo-divider"></div>
+            <div style="font-size: 12px; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace;">&uarr; +10.8% VS LAST MONTH</div>
+          </div>
+        </div>
+        <div>
+          <div class="component-label">Stronger border</div>
+          <div id="border-demo-strong" style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.14); border-radius: 12px; padding: 24px;">
+            <div style="font-family: var(--display-font, 'Fraunces'); font-size: 24px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">$32,398</div>
+            <div style="font-size: 13px; color: var(--text-secondary); font-family: var(--body-font, 'Plus Jakarta Sans');">Total revenue this month</div>
+            <div style="height: 1px; background: rgba(255,255,255,0.14); margin: 16px 0;" class="demo-divider"></div>
+            <div style="font-size: 12px; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace;">&uarr; +10.8% VS LAST MONTH</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-subtitle">Live Preview -- Adjust and see across all components</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 32px;">
+        <div id="border-live-card" style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 24px;">
+          <div style="font-size: 14px; color: var(--text-primary); font-family: var(--body-font, 'Plus Jakarta Sans'); margin-bottom: 12px;">A card with internal dividers</div>
+          <div style="height: 1px; margin: 12px 0;" class="live-divider" id="live-divider-1"></div>
+          <div style="font-size: 13px; color: var(--text-secondary); font-family: var(--body-font, 'Plus Jakarta Sans');">First section content</div>
+          <div style="height: 1px; margin: 12px 0;" class="live-divider" id="live-divider-2"></div>
+          <div style="font-size: 13px; color: var(--text-secondary); font-family: var(--body-font, 'Plus Jakarta Sans');">Second section content</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div id="border-live-item1" style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 14px; color: var(--text-primary); font-family: var(--body-font, 'Plus Jakarta Sans');">Inbox scan</span>
+            <span style="font-size: 11px; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace;">2M AGO</span>
+          </div>
+          <div id="border-live-item2" style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 14px; color: var(--text-primary); font-family: var(--body-font, 'Plus Jakarta Sans');">Calendar sync</span>
+            <span style="font-size: 11px; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace;">5M AGO</span>
+          </div>
+          <div id="border-live-item3" style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 14px; color: var(--text-primary); font-family: var(--body-font, 'Plus Jakarta Sans');">Morning briefing</span>
+            <span style="font-size: 11px; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace;">6:30 AM</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- BORDER EFFECTS COMPARISON -->
+      <div class="section-subtitle">Border Effects Comparison -- Hover each card</div>
+      <div class="border-effects-grid" style="margin-bottom: 24px;">
+        <div>
+          <div class="component-label">Accent border on hover</div>
+          <div class="border-effect-card" id="border-effect-1" onmouseenter="this.style.borderColor=getAccentWithOpacity(borderEffect1Opacity)" onmouseleave="this.style.borderColor='var(--border-subtle)'">
+            <div style="font-family: var(--display-font, 'Fraunces'); font-size: 22px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">$32,398</div>
+            <div style="font-size: 12px; color: var(--text-secondary);">Revenue</div>
+          </div>
+          <div style="margin-top: 8px;">
+            <input type="range" min="0.2" max="1.0" step="0.05" value="0.6" id="border-effect-1-slider" oninput="borderEffect1Opacity=this.value;document.getElementById('be1-val').textContent=this.value" style="width: 100%; height: 4px; -webkit-appearance: none; appearance: none; background: var(--bg-elevated); border-radius: 2px;">
+            <span id="be1-val" style="font-size: 10px; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace;">0.6</span>
+          </div>
+        </div>
+        <div>
+          <div class="component-label">Glow on hover</div>
+          <div class="border-effect-card" id="border-effect-2" onmouseenter="this.style.boxShadow='0 0 '+Math.round(borderEffect2Opacity*20)+'px '+getAccentWithOpacity(borderEffect2Opacity*0.5)" onmouseleave="this.style.boxShadow='none'">
+            <div style="font-family: var(--display-font, 'Fraunces'); font-size: 22px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">$32,398</div>
+            <div style="font-size: 12px; color: var(--text-secondary);">Revenue</div>
+          </div>
+          <div style="margin-top: 8px;">
+            <input type="range" min="0.2" max="1.0" step="0.05" value="0.5" id="border-effect-2-slider" oninput="borderEffect2Opacity=this.value;document.getElementById('be2-val').textContent=this.value" style="width: 100%; height: 4px; -webkit-appearance: none; appearance: none; background: var(--bg-elevated); border-radius: 2px;">
+            <span id="be2-val" style="font-size: 10px; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace;">0.5</span>
+          </div>
+        </div>
+        <div>
+          <div class="component-label">Accent top-bar on hover</div>
+          <div class="border-effect-card" id="border-effect-3" style="padding-top: 28px;" onmouseenter="this.querySelector('.top-bar').style.opacity=borderEffect3Opacity" onmouseleave="this.querySelector('.top-bar').style.opacity='0'">
+            <div class="top-bar" style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--accent); opacity: 0; transition: opacity 0.25s ease;"></div>
+            <div style="font-family: var(--display-font, 'Fraunces'); font-size: 22px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">$32,398</div>
+            <div style="font-size: 12px; color: var(--text-secondary);">Revenue</div>
+          </div>
+          <div style="margin-top: 8px;">
+            <input type="range" min="0.2" max="1.0" step="0.05" value="0.8" id="border-effect-3-slider" oninput="borderEffect3Opacity=this.value;document.getElementById('be3-val').textContent=this.value" style="width: 100%; height: 4px; -webkit-appearance: none; appearance: none; background: var(--bg-elevated); border-radius: 2px;">
+            <span id="be3-val" style="font-size: 10px; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace;">0.8</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TEXT OPACITY ==================== -->
+    <section class="section" id="text-opacity" data-lockable="text-opacity">
+      <div class="section-title">
+        <span class="section-title-text">Text Opacity Scale -- Three-Tier Hierarchy</span>
+        <button class="lock-toggle" onclick="toggleLock('text-opacity')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-row">
+          <label>Primary</label>
+          <input type="range" min="70" max="100" value="80" id="text-primary-opacity" oninput="updateTextOpacity()">
+          <span class="slider-value" id="text-primary-opacity-val">80%</span>
+        </div>
+        <div class="slider-row">
+          <label>Secondary</label>
+          <input type="range" min="30" max="80" value="65" id="text-secondary-opacity" oninput="updateTextOpacity()">
+          <span class="slider-value" id="text-secondary-opacity-val">65%</span>
+        </div>
+        <div class="slider-row">
+          <label>Tertiary</label>
+          <input type="range" min="15" max="50" value="30" id="text-tertiary-opacity" oninput="updateTextOpacity()">
+          <span class="slider-value" id="text-tertiary-opacity-val">30%</span>
+        </div>
+      </div>
+
+      <div class="component-preview">
+        <div style="max-width: 500px;">
+          <div id="opacity-demo-primary" style="font-family: var(--display-font, 'Fraunces'); font-size: 28px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px;">
+            Morning. Three meetings today.
+          </div>
+          <div id="opacity-demo-secondary" style="font-family: var(--body-font, 'Plus Jakarta Sans'); font-size: 15px; line-height: 1.6; color: var(--text-secondary); margin-bottom: 16px;">
+            The landlord replied last night on the lease -- countered at $4,200. That's probably your first move today. Your 10am with the franchise attorney is confirmed.
+          </div>
+          <div id="opacity-demo-tertiary" style="font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-tertiary);">
+            UPDATED 2 MINUTES AGO &middot; 3 TASKS &middot; 7 EMAILS
+          </div>
+        </div>
+      </div>
+
+      <div class="section-subtitle">Presets</div>
+      <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
+        <button class="btn btn-secondary opacity-preset" onclick="setOpacityPreset(100, 55, 30, this)" style="font-size: 12px; padding: 6px 14px;">Default (100/55/30)</button>
+        <button class="btn btn-secondary opacity-preset" onclick="setOpacityPreset(95, 60, 35, this)" style="font-size: 12px; padding: 6px 14px;">Softer (95/60/35)</button>
+        <button class="btn btn-secondary opacity-preset" onclick="setOpacityPreset(100, 50, 25, this)" style="font-size: 12px; padding: 6px 14px;">Higher Contrast (100/50/25)</button>
+        <button class="btn btn-secondary opacity-preset" onclick="setOpacityPreset(90, 55, 30, this)" style="font-size: 12px; padding: 6px 14px;">Muted Primary (90/55/30)</button>
+        <button class="btn btn-secondary opacity-preset selected" onclick="setOpacityPreset(80, 65, 30, this)" style="font-size: 12px; padding: 6px 14px;">Locked (80/65/30)</button>
+      </div>
+
+      <div class="component-preview">
+        <div class="component-label">Applied to a chat exchange</div>
+        <div class="chat-demo">
+          <div class="chat-msg ai" style="font-family: var(--body-font, 'Plus Jakarta Sans');">
+            <div class="opacity-primary" style="font-size: 15px; line-height: 1.55;">Revenue is up 10.8% across all 10 locations -- $32,398 total this month.</div>
+            <div class="opacity-tertiary" style="font-size: 11px; margin-top: 8px; font-family: 'JetBrains Mono', monospace;">12:41 PM</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SPACING ==================== -->
+    <section class="section" id="spacing" data-lockable="spacing">
+      <div class="section-title">
+        <span class="section-title-text">Spacing Scale</span>
+        <button class="lock-toggle" onclick="toggleLock('spacing')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <div class="section-subtitle">Base Unit</div>
+      <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
+        <button class="btn btn-secondary spacing-preset selected" onclick="setSpacingBase(4, this)" style="font-size: 12px; padding: 6px 14px;">4px base</button>
+        <button class="btn btn-secondary spacing-preset" onclick="setSpacingBase(8, this)" style="font-size: 12px; padding: 6px 14px;">8px base</button>
+      </div>
+
+      <div class="component-preview">
+        <div class="component-label">Spacing scale visualization</div>
+        <div id="spacing-scale" style="display: flex; flex-direction: column; gap: 8px;">
+        </div>
+      </div>
+
+      <div class="section-subtitle" style="margin-top: 32px;">Card Padding</div>
+      <div class="slider-group">
+        <div class="slider-row">
+          <label>Card padding</label>
+          <input type="range" min="8" max="40" step="4" value="16" id="spacing-card-padding" oninput="updateSpacingDemo()">
+          <span class="slider-value" id="spacing-card-padding-val">16px</span>
+        </div>
+        <div class="slider-row">
+          <label>Card gap</label>
+          <input type="range" min="4" max="32" step="4" value="12" id="spacing-card-gap" oninput="updateSpacingDemo()">
+          <span class="slider-value" id="spacing-card-gap-val">12px</span>
+        </div>
+        <div class="slider-row">
+          <label>Section gap</label>
+          <input type="range" min="16" max="64" step="4" value="20" id="spacing-section-gap" oninput="updateSpacingDemo()">
+          <span class="slider-value" id="spacing-section-gap-val">20px</span>
+        </div>
+      </div>
+
+      <div class="component-preview">
+        <div class="component-label">Live preview -- card density</div>
+        <div id="spacing-demo-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+          <div class="spacing-demo-card" style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 16px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-tertiary); margin-bottom: 8px;">Total Revenue</div>
+            <div style="font-family: var(--body-font, 'Plus Jakarta Sans'); font-size: 28px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">$32,398</div>
+            <div style="font-size: 12px; font-family: 'JetBrains Mono', monospace; color: hsl(145, 60%, 50%);">&uarr; +10.8%</div>
+          </div>
+          <div class="spacing-demo-card" style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 16px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-tertiary); margin-bottom: 8px;">Open Tasks</div>
+            <div style="font-family: var(--body-font, 'Plus Jakarta Sans'); font-size: 28px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">12</div>
+            <div style="font-size: 12px; font-family: 'JetBrains Mono', monospace; color: hsl(0, 60%, 55%);">3 overdue</div>
+          </div>
+          <div class="spacing-demo-card" style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 16px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-tertiary); margin-bottom: 8px;">Emails</div>
+            <div style="font-family: var(--body-font, 'Plus Jakarta Sans'); font-size: 28px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">7</div>
+            <div style="font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--text-tertiary);">2 flagged</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== MOTION ==================== -->
+    <section class="section" id="motion" data-lockable="motion">
+      <div class="section-title">
+        <span class="section-title-text">Motion Previews</span>
+        <button class="lock-toggle" onclick="toggleLock('motion')"><span class="lock-icon">&#128275;</span><span class="lock-badge">LOCKED</span></button>
+      </div>
+
+      <!-- BUTTON PRESS -->
+      <div class="section-subtitle">Button Press Feedback</div>
+      <div class="component-preview">
+        <div class="component-label">Quick presets</div>
+        <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+          <button class="btn btn-secondary motion-press-preset selected" onclick="applyPressPreset('translate', this)" style="font-size: 12px; padding: 6px 14px;">Translate Y</button>
+          <button class="btn btn-secondary motion-press-preset" onclick="applyPressPreset('scale-down', this)" style="font-size: 12px; padding: 6px 14px;">Scale Down</button>
+          <button class="btn btn-secondary motion-press-preset" onclick="applyPressPreset('opacity', this)" style="font-size: 12px; padding: 6px 14px;">Opacity</button>
+          <button class="btn btn-secondary motion-press-preset" onclick="applyPressPreset('glow', this)" style="font-size: 12px; padding: 6px 14px;">Glow</button>
+          <button class="btn btn-secondary motion-press-preset" onclick="applyPressPreset('combined', this)" style="font-size: 12px; padding: 6px 14px;">Scale + Glow</button>
+        </div>
+
+        <div class="component-label">Combinable effects (check to enable, slider to tune)</div>
+        <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+          <div class="motion-control-row">
+            <input type="checkbox" id="press-translateY" checked onchange="updatePressEffects()">
+            <label for="press-translateY">Translate Y</label>
+            <input type="range" min="0" max="4" step="0.5" value="1" id="press-translateY-val" oninput="updatePressEffects()">
+            <span class="motion-val" id="press-translateY-display">1px</span>
+          </div>
+          <div class="motion-control-row">
+            <input type="checkbox" id="press-scale" onchange="updatePressEffects()">
+            <label for="press-scale">Scale</label>
+            <input type="range" min="0.90" max="1.00" step="0.01" value="0.97" id="press-scale-val" oninput="updatePressEffects()">
+            <span class="motion-val" id="press-scale-display">0.97</span>
+          </div>
+          <div class="motion-control-row">
+            <input type="checkbox" id="press-opacity" onchange="updatePressEffects()">
+            <label for="press-opacity">Opacity</label>
+            <input type="range" min="0.5" max="1.0" step="0.05" value="0.70" id="press-opacity-val" oninput="updatePressEffects()">
+            <span class="motion-val" id="press-opacity-display">0.70</span>
+          </div>
+          <div class="motion-control-row">
+            <input type="checkbox" id="press-glow" onchange="updatePressEffects()">
+            <label for="press-glow">Glow</label>
+            <span class="motion-val" style="flex: 1; text-align: left; width: auto;">accent color</span>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 16px; align-items: center;">
+          <button class="motion-btn" id="press-demo-btn" style="font-family: var(--body-font, 'Plus Jakarta Sans');">Press me</button>
+          <span style="font-size: 11px; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace;" id="press-css-hint">active:translate-y-[1px]</span>
+        </div>
+      </div>
+
+      <!-- HOVER -->
+      <div class="section-subtitle">Hover Effects</div>
+      <div class="component-preview">
+        <div class="component-label">Quick presets</div>
+        <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+          <button class="btn btn-secondary motion-hover-preset selected" onclick="applyHoverPreset('lift', this)" style="font-size: 12px; padding: 6px 14px;">Lift (translateY)</button>
+          <button class="btn btn-secondary motion-hover-preset" onclick="applyHoverPreset('scale', this)" style="font-size: 12px; padding: 6px 14px;">Scale Up</button>
+          <button class="btn btn-secondary motion-hover-preset" onclick="applyHoverPreset('brighten', this)" style="font-size: 12px; padding: 6px 14px;">Brighten</button>
+          <button class="btn btn-secondary motion-hover-preset" onclick="applyHoverPreset('border-glow', this)" style="font-size: 12px; padding: 6px 14px;">Border Glow</button>
+          <button class="btn btn-secondary motion-hover-preset" onclick="applyHoverPreset('bg-shift', this)" style="font-size: 12px; padding: 6px 14px;">Background Shift</button>
+          <button class="btn btn-secondary motion-hover-preset" onclick="applyHoverPreset('none', this)" style="font-size: 12px; padding: 6px 14px;">None</button>
+        </div>
+
+        <div class="component-label">Combinable effects (check to enable, slider to tune)</div>
+        <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+          <div class="motion-control-row">
+            <input type="checkbox" id="hover-lift" checked onchange="updateHoverEffects()">
+            <label for="hover-lift">Lift (Y)</label>
+            <input type="range" min="0" max="6" step="0.5" value="2" id="hover-lift-val" oninput="updateHoverEffects()">
+            <span class="motion-val" id="hover-lift-display">2px</span>
+          </div>
+          <div class="motion-control-row">
+            <input type="checkbox" id="hover-scale" onchange="updateHoverEffects()">
+            <label for="hover-scale">Scale</label>
+            <input type="range" min="1.00" max="1.08" step="0.01" value="1.02" id="hover-scale-val" oninput="updateHoverEffects()">
+            <span class="motion-val" id="hover-scale-display">1.02</span>
+          </div>
+          <div class="motion-control-row">
+            <input type="checkbox" id="hover-brightness" onchange="updateHoverEffects()">
+            <label for="hover-brightness">Brightness</label>
+            <input type="range" min="1.0" max="1.3" step="0.05" value="1.15" id="hover-brightness-val" oninput="updateHoverEffects()">
+            <span class="motion-val" id="hover-brightness-display">1.15</span>
+          </div>
+          <div class="motion-control-row">
+            <input type="checkbox" id="hover-border-glow" onchange="updateHoverEffects()">
+            <label for="hover-border-glow">Border Glow</label>
+            <span class="motion-val" style="flex: 1; text-align: left; width: auto;">accent ring</span>
+          </div>
+          <div class="motion-control-row">
+            <input type="checkbox" id="hover-bg-shift" onchange="updateHoverEffects()">
+            <label for="hover-bg-shift">BG Shift</label>
+            <span class="motion-val" style="flex: 1; text-align: left; width: auto;">elevated</span>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+          <div class="hover-demo-card" id="hover-card-1" style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.2s cubic-bezier(0, 0, 0.34, 1);">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-tertiary); margin-bottom: 8px;">Revenue</div>
+            <div style="font-family: var(--body-font, 'Plus Jakarta Sans'); font-size: 24px; font-weight: 700; color: var(--text-primary);">$32,398</div>
+          </div>
+          <div class="hover-demo-card" id="hover-card-2" style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.2s cubic-bezier(0, 0, 0.34, 1);">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-tertiary); margin-bottom: 8px;">Tasks</div>
+            <div style="font-family: var(--body-font, 'Plus Jakarta Sans'); font-size: 24px; font-weight: 700; color: var(--text-primary);">12</div>
+          </div>
+          <div class="hover-demo-card" id="hover-card-3" style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.2s cubic-bezier(0, 0, 0.34, 1);">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-tertiary); margin-bottom: 8px;">Emails</div>
+            <div style="font-family: var(--body-font, 'Plus Jakarta Sans'); font-size: 24px; font-weight: 700; color: var(--text-primary);">7</div>
+          </div>
+        </div>
+        <div style="margin-top: 12px; font-size: 11px; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace;" id="hover-css-hint">hover:translate-y-[-2px]</div>
+      </div>
+
+      <!-- ENTRANCE -->
+      <div class="section-subtitle">Entrance Animations</div>
+      <div class="component-preview">
+        <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+          <button class="btn btn-secondary motion-entrance-preset selected" onclick="setEntranceStyle('fade-up', this)" style="font-size: 12px; padding: 6px 14px;">Fade Up</button>
+          <button class="btn btn-secondary motion-entrance-preset" onclick="setEntranceStyle('fade-in', this)" style="font-size: 12px; padding: 6px 14px;">Fade In</button>
+          <button class="btn btn-secondary motion-entrance-preset" onclick="setEntranceStyle('fade-scale', this)" style="font-size: 12px; padding: 6px 14px;">Fade + Scale</button>
+          <button class="btn btn-secondary motion-entrance-preset" onclick="setEntranceStyle('slide-right', this)" style="font-size: 12px; padding: 6px 14px;">Slide from Left</button>
+          <button class="btn btn-secondary motion-entrance-preset" onclick="setEntranceStyle('stagger', this)" style="font-size: 12px; padding: 6px 14px;">Staggered List</button>
+        </div>
+        <div class="slider-group" style="margin-bottom: 16px;">
+          <div class="slider-row">
+            <label>Duration</label>
+            <input type="range" min="100" max="600" step="10" value="250" id="entrance-duration" oninput="document.getElementById('entrance-duration-val').textContent = this.value + 'ms'">
+            <span class="slider-value" id="entrance-duration-val">250ms</span>
+          </div>
+          <div class="slider-row">
+            <label>Distance</label>
+            <input type="range" min="4" max="40" value="12" id="entrance-distance" oninput="document.getElementById('entrance-distance-val').textContent = this.value + 'px'">
+            <span class="slider-value" id="entrance-distance-val">12px</span>
+          </div>
+          <div class="slider-row">
+            <label>Stagger</label>
+            <input type="range" min="0" max="100" step="5" value="40" id="entrance-stagger" oninput="document.getElementById('entrance-stagger-val').textContent = this.value + 'ms'">
+            <span class="slider-value" id="entrance-stagger-val">40ms</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: flex-start;">
+          <button class="btn btn-secondary" onclick="replayEntranceNew()" style="font-size: 12px; padding: 6px 14px;">Replay</button>
+          <div id="entrance-demo-container" style="display: flex; flex-direction: column; gap: 8px; flex: 1;">
+            <div class="entrance-item" style="background: var(--bg-card); border-radius: 10px; padding: 14px 18px; display: flex; justify-content: space-between; opacity: 0;">
+              <span style="font-size: 14px; color: var(--text-primary); font-family: var(--body-font, 'Plus Jakarta Sans');">Inbox scan completed</span>
+              <span style="font-size: 11px; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace;">2M AGO</span>
+            </div>
+            <div class="entrance-item" style="background: var(--bg-card); border-radius: 10px; padding: 14px 18px; display: flex; justify-content: space-between; opacity: 0;">
+              <span style="font-size: 14px; color: var(--text-primary); font-family: var(--body-font, 'Plus Jakarta Sans');">Calendar sync -- 3 new events</span>
+              <span style="font-size: 11px; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace;">5M AGO</span>
+            </div>
+            <div class="entrance-item" style="background: var(--bg-card); border-radius: 10px; padding: 14px 18px; display: flex; justify-content: space-between; opacity: 0;">
+              <span style="font-size: 14px; color: var(--text-primary); font-family: var(--body-font, 'Plus Jakarta Sans');">Morning briefing generated</span>
+              <span style="font-size: 11px; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace;">6:30 AM</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SKELETON -->
+      <div class="section-subtitle">Loading / Skeleton</div>
+      <div class="component-preview">
+        <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+          <button class="btn btn-secondary skeleton-preset selected" onclick="setSkeletonStyle('shimmer', this)" style="font-size: 12px; padding: 6px 14px;">Shimmer</button>
+          <button class="btn btn-secondary skeleton-preset" onclick="setSkeletonStyle('pulse', this)" style="font-size: 12px; padding: 6px 14px;">Pulse</button>
+          <button class="btn btn-secondary skeleton-preset" onclick="setSkeletonStyle('wave', this)" style="font-size: 12px; padding: 6px 14px;">Wave</button>
+        </div>
+        <div class="slider-group" style="margin-bottom: 16px;">
+          <div class="slider-row">
+            <label>Speed</label>
+            <input type="range" min="800" max="3000" step="100" value="1500" id="skeleton-speed" oninput="updateSkeletonSpeed()">
+            <span class="slider-value" id="skeleton-speed-val">1.5s</span>
+          </div>
+        </div>
+        <div style="max-width: 400px; display: flex; flex-direction: column; gap: 10px;" id="skeleton-container">
+          <div class="skeleton-demo-bar" style="width: 40%; height: 10px; border-radius: 5px;"></div>
+          <div class="skeleton-demo-bar" style="width: 100%; height: 14px; border-radius: 7px;"></div>
+          <div class="skeleton-demo-bar" style="width: 100%; height: 14px; border-radius: 7px;"></div>
+          <div class="skeleton-demo-bar" style="width: 65%; height: 14px; border-radius: 7px;"></div>
+          <div style="height: 8px;"></div>
+          <div class="skeleton-demo-bar" style="width: 30%; height: 10px; border-radius: 5px;"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  // ===== STATE =====
+  const STORAGE_KEY = 'crosby-design-lab';
+
+  const defaultState = {
+    displayFont: "'Fraunces', serif",
+    bodyFont: "'Plus Jakarta Sans', sans-serif",
+    monoFont: "'JetBrains Mono', monospace",
+    displayWeight: 600,
+    bodyWeight: 400,
+    monoWeight: 400,
+    accentH: 38,
+    accentS: 90,
+    accentL: 55,
+    palette: 'c',
+    radiusCards: 16,
+    radiusButtons: 10,
+    radiusChat: 20,
+    radiusInput: 999,
+    radiusKpi: 12,
+    radiusBadges: 100,
+    radiusNav: 8,
+    radiusPreview: 16,
+    borderOpacity: 0,
+    dividerOpacity: 5,
+    textPrimary: 80,
+    textSecondary: 65,
+    textTertiary: 30,
+    spacingCardPadding: 16,
+    spacingCardGap: 12,
+    spacingSectionGap: 20,
+    kpiFont: 'body-bold',
+    locks: {},
+    // Motion - press
+    pressTranslateY: true,
+    pressTranslateYVal: 1,
+    pressScale: false,
+    pressScaleVal: 0.97,
+    pressOpacity: false,
+    pressOpacityVal: 0.70,
+    pressGlow: false,
+    // Motion - hover
+    hoverLift: true,
+    hoverLiftVal: 2,
+    hoverScale: false,
+    hoverScaleVal: 1.02,
+    hoverBrightness: false,
+    hoverBrightnessVal: 1.15,
+    hoverBorderGlow: false,
+    hoverBgShift: false,
+    // Focus ring
+    focusRingWidth: 2,
+    focusRingOffset: 2,
+    focusRingOpacity: 0.6,
+    focusRingColor: 'accent',
+  };
+
+  let state = JSON.parse(JSON.stringify(defaultState));
+
+  function saveState() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function resetAll() {
+    localStorage.removeItem(STORAGE_KEY);
+    location.reload();
+  }
+
+  // ===== FONT SELECTION =====
+  const selected = { display: null, body: null, mono: null };
+
+  function toggleSelect(card) {
+    const type = card.dataset.fontType;
+    const font = card.dataset.font;
+
+    document.querySelectorAll('.font-card[data-font-type="' + type + '"]').forEach(function(c) { c.classList.remove('selected'); });
+    card.classList.add('selected');
+    selected[type] = font;
+
+    if (type === 'display') {
+      state.displayFont = font;
+      document.documentElement.style.setProperty('--display-font', font);
+      document.querySelectorAll('.pair-display, .kpi-value, .empty-title').forEach(function(el) {
+        el.style.fontFamily = font;
+      });
+    }
+
+    if (type === 'body') {
+      state.bodyFont = font;
+      document.documentElement.style.setProperty('--body-font', font);
+      document.querySelectorAll('.pair-body, .chat-msg, .empty-desc, .btn, .input-bar input').forEach(function(el) {
+        el.style.fontFamily = font;
+      });
+    }
+
+    if (type === 'mono') {
+      state.monoFont = font;
+      document.documentElement.style.setProperty('--mono-font', font);
+      document.querySelectorAll('.pair-mono, .kpi-label, .badge').forEach(function(el) {
+        el.style.fontFamily = font;
+      });
+    }
+
+    saveState();
+  }
+
+  // ===== ACCENT COLOR =====
+  function setAccent(h, s, l, el) {
+    state.accentH = h;
+    state.accentS = s;
+    state.accentL = l;
+
+    document.documentElement.style.setProperty('--accent-h', h);
+    document.documentElement.style.setProperty('--accent-s', s + '%');
+    document.documentElement.style.setProperty('--accent-l', l + '%');
+
+    document.getElementById('hue-slider').value = h;
+    document.getElementById('sat-slider').value = s;
+    document.getElementById('lit-slider').value = l;
+    document.getElementById('hue-value').textContent = h + '\u00B0';
+    document.getElementById('sat-value').textContent = s + '%';
+    document.getElementById('lit-value').textContent = l + '%';
+
+    document.querySelectorAll('.accent-option').forEach(function(o) { o.classList.remove('selected'); });
+    if (el) el.classList.add('selected');
+
+    updateColorScope();
+    updateFocusRing();
+    saveState();
+  }
+
+  function updateAccentFromSliders() {
+    var h = parseInt(document.getElementById('hue-slider').value);
+    var s = parseInt(document.getElementById('sat-slider').value);
+    var l = parseInt(document.getElementById('lit-slider').value);
+    document.getElementById('hue-value').textContent = h + '\u00B0';
+    document.getElementById('sat-value').textContent = s + '%';
+    document.getElementById('lit-value').textContent = l + '%';
+
+    state.accentH = h;
+    state.accentS = s;
+    state.accentL = l;
+
+    document.documentElement.style.setProperty('--accent-h', h);
+    document.documentElement.style.setProperty('--accent-s', s + '%');
+    document.documentElement.style.setProperty('--accent-l', l + '%');
+
+    document.querySelectorAll('.accent-option').forEach(function(o) { o.classList.remove('selected'); });
+    updateColorScope();
+    updateFocusRing();
+    saveState();
+  }
+
+  // ===== PALETTE =====
+  var palettes = {
+    'v1': { nav: 'hsl(30, 7%, 10%)', root: 'hsl(30, 6%, 12%)', card: 'hsl(30, 6%, 14%)', elevated: 'hsl(30, 5%, 18%)', overlay: 'hsl(30, 4%, 24%)' },
+    'a':  { nav: 'hsl(25, 10%, 8%)', root: 'hsl(25, 8%, 11%)', card: 'hsl(25, 7%, 14%)', elevated: 'hsl(25, 6%, 18%)', overlay: 'hsl(25, 5%, 23%)' },
+    'b':  { nav: 'hsl(220, 5%, 8%)', root: 'hsl(220, 4%, 11%)', card: 'hsl(220, 4%, 14%)', elevated: 'hsl(220, 3%, 18%)', overlay: 'hsl(220, 3%, 23%)' },
+    'c':  { nav: 'hsl(35, 12%, 8%)', root: 'hsl(35, 10%, 11%)', card: 'hsl(35, 8%, 14%)', elevated: 'hsl(35, 7%, 18%)', overlay: 'hsl(35, 6%, 23%)' }
+  };
+
+  function setPalette(key, el) {
+    state.palette = key;
+    var p = palettes[key];
+    document.documentElement.style.setProperty('--lab-nav', p.nav);
+    document.documentElement.style.setProperty('--bg-root', p.root);
+    document.documentElement.style.setProperty('--bg-card', p.card);
+    document.documentElement.style.setProperty('--bg-elevated', p.elevated);
+    document.documentElement.style.setProperty('--bg-overlay', p.overlay);
+
+    document.querySelectorAll('.palette-option').forEach(function(o) {
+      o.classList.remove('selected');
+      o.querySelector('.palette-check').textContent = '';
+    });
+    el.classList.add('selected');
+    el.querySelector('.palette-check').textContent = '\u2713 Active';
+
+    updateColorScope();
+    saveState();
+  }
+
+  // ===== BORDERS =====
+  function updateBorders() {
+    var borderOp = parseInt(document.getElementById('border-opacity').value);
+    var dividerOp = parseInt(document.getElementById('divider-opacity').value);
+    state.borderOpacity = borderOp;
+    state.dividerOpacity = dividerOp;
+    document.getElementById('border-opacity-val').textContent = borderOp + '%';
+    document.getElementById('divider-opacity-val').textContent = dividerOp + '%';
+
+    var borderColor = 'rgba(255,255,255,' + (borderOp / 100) + ')';
+    var dividerColor = 'rgba(255,255,255,' + (dividerOp / 100) + ')';
+
+    document.getElementById('border-live-card').style.borderColor = borderColor;
+    ['border-live-item1','border-live-item2','border-live-item3'].forEach(function(id) {
+      document.getElementById(id).style.borderColor = borderColor;
+    });
+    document.getElementById('live-divider-1').style.background = dividerColor;
+    document.getElementById('live-divider-2').style.background = dividerColor;
+
+    document.documentElement.style.setProperty('--border-subtle', borderColor);
+    saveState();
+  }
+
+  // ===== TEXT OPACITY =====
+  function updateTextOpacity() {
+    var p = parseInt(document.getElementById('text-primary-opacity').value);
+    var s = parseInt(document.getElementById('text-secondary-opacity').value);
+    var t = parseInt(document.getElementById('text-tertiary-opacity').value);
+    state.textPrimary = p;
+    state.textSecondary = s;
+    state.textTertiary = t;
+    document.getElementById('text-primary-opacity-val').textContent = p + '%';
+    document.getElementById('text-secondary-opacity-val').textContent = s + '%';
+    document.getElementById('text-tertiary-opacity-val').textContent = t + '%';
+
+    document.documentElement.style.setProperty('--text-primary', 'hsla(40, 10%, 90%, ' + (p / 100) + ')');
+    document.documentElement.style.setProperty('--text-secondary', 'hsla(40, 10%, 90%, ' + (s / 100) + ')');
+    document.documentElement.style.setProperty('--text-tertiary', 'hsla(40, 10%, 90%, ' + (t / 100) + ')');
+
+    document.querySelectorAll('.opacity-primary').forEach(function(el) { el.style.color = 'hsla(40, 10%, 90%, ' + (p / 100) + ')'; });
+    document.querySelectorAll('.opacity-secondary').forEach(function(el) { el.style.color = 'hsla(40, 10%, 90%, ' + (s / 100) + ')'; });
+    document.querySelectorAll('.opacity-tertiary').forEach(function(el) { el.style.color = 'hsla(40, 10%, 90%, ' + (t / 100) + ')'; });
+
+    document.querySelectorAll('.opacity-preset').forEach(function(b) { b.classList.remove('selected'); });
+    updateColorScope();
+    saveState();
+  }
+
+  function setOpacityPreset(p, s, t, btn) {
+    document.getElementById('text-primary-opacity').value = p;
+    document.getElementById('text-secondary-opacity').value = s;
+    document.getElementById('text-tertiary-opacity').value = t;
+    updateTextOpacity();
+    document.querySelectorAll('.opacity-preset').forEach(function(b) { b.classList.remove('selected'); });
+    btn.classList.add('selected');
+  }
+
+  // ===== SPACING =====
+  function setSpacingBase(base, btn) {
+    document.querySelectorAll('.spacing-preset').forEach(function(b) { b.classList.remove('selected'); });
+    btn.classList.add('selected');
+    renderSpacingScale(base);
+  }
+
+  function renderSpacingScale(base) {
+    var container = document.getElementById('spacing-scale');
+    var multipliers = [1, 2, 3, 4, 6, 8, 10, 12, 16];
+    container.innerHTML = multipliers.map(function(m) {
+      var px = base * m;
+      return '<div style="display: flex; align-items: center; gap: 16px;">' +
+        '<div style="width: 60px; font-family: \'JetBrains Mono\', monospace; font-size: 11px; color: var(--text-tertiary); text-align: right;">' + px + 'px</div>' +
+        '<div style="height: 8px; width: ' + px + 'px; background: var(--accent); border-radius: 4px; opacity: 0.6;"></div>' +
+        '<div style="font-family: \'JetBrains Mono\', monospace; font-size: 10px; color: var(--text-tertiary);">' + base + '\u00D7' + m + '</div>' +
+        '</div>';
+    }).join('');
+  }
+
+  function updateSpacingDemo() {
+    var padding = parseInt(document.getElementById('spacing-card-padding').value);
+    var gap = parseInt(document.getElementById('spacing-card-gap').value);
+    var sectionGap = parseInt(document.getElementById('spacing-section-gap').value);
+    state.spacingCardPadding = padding;
+    state.spacingCardGap = gap;
+    state.spacingSectionGap = sectionGap;
+    document.getElementById('spacing-card-padding-val').textContent = padding + 'px';
+    document.getElementById('spacing-card-gap-val').textContent = gap + 'px';
+    document.getElementById('spacing-section-gap-val').textContent = sectionGap + 'px';
+
+    document.getElementById('spacing-demo-grid').style.gap = gap + 'px';
+    document.querySelectorAll('.spacing-demo-card').forEach(function(card) {
+      card.style.padding = padding + 'px';
+    });
+    saveState();
+  }
+
+  // ===== COMPLEMENTARY RADIUS =====
+  function updateCompRadius() {
+    var outer = parseInt(document.getElementById('comp-outer').value);
+    var padding = parseInt(document.getElementById('comp-padding').value);
+    var inner = Math.max(0, outer - padding + 4);
+
+    document.getElementById('comp-outer-val').textContent = outer + 'px';
+    document.getElementById('comp-padding-val').textContent = padding + 'px';
+    document.getElementById('comp-inner-val').textContent = inner + 'px';
+    document.getElementById('comp-inner').value = inner;
+
+    document.getElementById('comp-demo').style.borderRadius = outer + 'px';
+    document.getElementById('comp-demo').style.padding = padding + 'px';
+    document.getElementById('comp-demo-inner').style.borderRadius = inner + 'px';
+  }
+
+  // ===== BORDER RADIUS =====
+  var radiusPresets = {
+    'sharp':   { cards: 0, buttons: 2, chat: 2, input: 4, kpi: 0, badges: 2, nav: 2, preview: 4 },
+    'subtle':  { cards: 8, buttons: 6, chat: 10, input: 10, kpi: 8, badges: 100, nav: 6, preview: 10 },
+    'medium':  { cards: 16, buttons: 10, chat: 18, input: 14, kpi: 14, badges: 100, nav: 8, preview: 16 },
+    'rounded': { cards: 24, buttons: 16, chat: 24, input: 24, kpi: 20, badges: 100, nav: 12, preview: 24 },
+    'pill':    { cards: 28, buttons: 999, chat: 28, input: 999, kpi: 24, badges: 999, nav: 999, preview: 28 },
+    'mixed':   { cards: 16, buttons: 10, chat: 20, input: 999, kpi: 12, badges: 100, nav: 8, preview: 16 },
+  };
+
+  function setRadiusPreset(key, btn) {
+    var p = radiusPresets[key];
+    document.getElementById('radius-cards').value = Math.min(p.cards, 32);
+    document.getElementById('radius-buttons').value = Math.min(p.buttons, 999);
+    document.getElementById('radius-chat').value = Math.min(p.chat, 32);
+    document.getElementById('radius-input').value = Math.min(p.input, 999);
+    document.getElementById('radius-kpi').value = Math.min(p.kpi, 32);
+    document.getElementById('radius-badges').value = Math.min(p.badges, 999);
+    document.getElementById('radius-nav').value = Math.min(p.nav, 24);
+    document.getElementById('radius-preview').value = Math.min(p.preview, 32);
+
+    state.radiusCards = p.cards;
+    state.radiusButtons = p.buttons;
+    state.radiusChat = p.chat;
+    state.radiusInput = p.input;
+    state.radiusKpi = p.kpi;
+    state.radiusBadges = p.badges;
+    state.radiusNav = p.nav;
+    state.radiusPreview = p.preview;
+
+    applyRadii(p.cards, p.buttons, p.chat, p.input, p.kpi, p.badges, p.nav, p.preview);
+
+    document.querySelectorAll('.radius-preset').forEach(function(b) { b.classList.remove('selected'); });
+    btn.classList.add('selected');
+
+    document.getElementById('radius-cards-val').textContent = p.cards + 'px';
+    document.getElementById('radius-buttons-val').textContent = p.buttons >= 999 ? 'pill' : p.buttons + 'px';
+    document.getElementById('radius-chat-val').textContent = p.chat + 'px';
+    document.getElementById('radius-input-val').textContent = p.input >= 999 ? 'pill' : p.input + 'px';
+    document.getElementById('radius-kpi-val').textContent = p.kpi + 'px';
+    document.getElementById('radius-badges-val').textContent = p.badges >= 100 ? 'pill' : p.badges + 'px';
+    document.getElementById('radius-nav-val').textContent = p.nav + 'px';
+    document.getElementById('radius-preview-val').textContent = p.preview + 'px';
+    saveState();
+  }
+
+  function updateRadii() {
+    var cards = parseInt(document.getElementById('radius-cards').value);
+    var buttons = parseInt(document.getElementById('radius-buttons').value);
+    var chat = parseInt(document.getElementById('radius-chat').value);
+    var input = parseInt(document.getElementById('radius-input').value);
+    var kpi = parseInt(document.getElementById('radius-kpi').value);
+    var badges = parseInt(document.getElementById('radius-badges').value);
+    var nav = parseInt(document.getElementById('radius-nav').value);
+    var preview = parseInt(document.getElementById('radius-preview').value);
+
+    state.radiusCards = cards;
+    state.radiusButtons = buttons;
+    state.radiusChat = chat;
+    state.radiusInput = input;
+    state.radiusKpi = kpi;
+    state.radiusBadges = badges;
+    state.radiusNav = nav;
+    state.radiusPreview = preview;
+
+    document.getElementById('radius-cards-val').textContent = cards + 'px';
+    document.getElementById('radius-buttons-val').textContent = buttons >= 999 ? 'pill' : buttons + 'px';
+    document.getElementById('radius-chat-val').textContent = chat + 'px';
+    document.getElementById('radius-input-val').textContent = input >= 999 ? 'pill' : input + 'px';
+    document.getElementById('radius-kpi-val').textContent = kpi + 'px';
+    document.getElementById('radius-badges-val').textContent = badges >= 100 ? 'pill' : badges + 'px';
+    document.getElementById('radius-nav-val').textContent = nav + 'px';
+    document.getElementById('radius-preview-val').textContent = preview + 'px';
+
+    applyRadii(cards, buttons, chat, input, kpi, badges, nav, preview);
+    document.querySelectorAll('.radius-preset').forEach(function(b) { b.classList.remove('selected'); });
+    saveState();
+  }
+
+  function applyRadii(cards, buttons, chat, input, kpi, badges, nav, preview) {
+    document.querySelectorAll('.font-card, .pairing-card, .slider-group').forEach(function(el) { el.style.borderRadius = cards + 'px'; });
+    document.querySelectorAll('.btn, .motion-btn').forEach(function(el) { el.style.borderRadius = buttons + 'px'; });
+    document.querySelectorAll('.chat-msg').forEach(function(el) { el.style.borderRadius = chat + 'px'; });
+    document.querySelectorAll('.input-bar').forEach(function(el) { el.style.borderRadius = input + 'px'; });
+    document.querySelectorAll('.kpi-card').forEach(function(el) { el.style.borderRadius = kpi + 'px'; });
+    document.querySelectorAll('.badge').forEach(function(el) { el.style.borderRadius = badges + 'px'; });
+    document.querySelectorAll('.nav-demo-item').forEach(function(el) { el.style.borderRadius = nav + 'px'; });
+    document.querySelectorAll('.component-preview, .surface-demo, .nav-demo, .motion-box').forEach(function(el) { el.style.borderRadius = preview + 'px'; });
+    document.querySelectorAll('.send-btn').forEach(function(el) { el.style.borderRadius = '50%'; });
+  }
+
+  // ===== KPI FONT =====
+  var kpiFontMap = {
+    'display': { family: "var(--display-font, 'Fraunces', serif)", weight: 600 },
+    'body-bold': { family: "'Plus Jakarta Sans', sans-serif", weight: 700 },
+    'mono-bold': { family: "'JetBrains Mono', monospace", weight: 700 },
+    'outfit': { family: "'Outfit', sans-serif", weight: 700 },
+    'space': { family: "'Space Grotesk', sans-serif", weight: 600 },
+    'sora': { family: "'Sora', sans-serif", weight: 700 },
+  };
+
+  function setKpiFont(key, btn) {
+    state.kpiFont = key;
+    var config = kpiFontMap[key];
+    document.querySelectorAll('.kpi-num').forEach(function(el) {
+      el.style.fontFamily = config.family;
+      el.style.fontWeight = config.weight;
+    });
+    document.querySelectorAll('.kpi-font-toggle').forEach(function(b) { b.classList.remove('selected'); });
+    btn.classList.add('selected');
+    saveState();
+  }
+
+  // ===== WEIGHT CONTROLS =====
+  function updateWeights() {
+    var dw = parseInt(document.getElementById('weight-display').value);
+    var bw = parseInt(document.getElementById('weight-body').value);
+    var mw = parseInt(document.getElementById('weight-mono').value);
+    state.displayWeight = dw;
+    state.bodyWeight = bw;
+    state.monoWeight = mw;
+
+    document.getElementById('weight-display-val').textContent = dw;
+    document.getElementById('weight-body-val').textContent = bw;
+    document.getElementById('weight-mono-val').textContent = mw;
+
+    document.getElementById('pair-display').style.fontWeight = dw;
+    document.getElementById('pair-body').style.fontWeight = bw;
+    document.getElementById('pair-mono').style.fontWeight = mw;
+
+    document.querySelectorAll('.kpi-value, .empty-title').forEach(function(el) { el.style.fontWeight = dw; });
+    document.querySelectorAll('.chat-msg, .empty-desc, .btn, .input-bar input').forEach(function(el) { el.style.fontWeight = bw; });
+    document.querySelectorAll('.kpi-label, .badge').forEach(function(el) { el.style.fontWeight = mw; });
+    saveState();
+  }
+
+  // ===== LOCK SYSTEM =====
+  function toggleLock(sectionId) {
+    var section = document.querySelector('[data-lockable="' + sectionId + '"]');
+    if (!section) return;
+
+    if (state.locks[sectionId]) {
+      delete state.locks[sectionId];
+      section.classList.remove('locked');
+      section.querySelector('.lock-icon').innerHTML = '&#128275;';
+    } else {
+      state.locks[sectionId] = true;
+      section.classList.add('locked');
+      section.querySelector('.lock-icon').innerHTML = '&#128274;';
+    }
+    updateNavDots();
+    saveState();
+  }
+
+  function applyLocks() {
+    Object.keys(state.locks).forEach(function(id) {
+      var section = document.querySelector('[data-lockable="' + id + '"]');
+      if (section && state.locks[id]) {
+        section.classList.add('locked');
+        section.querySelector('.lock-icon').innerHTML = '&#128274;';
+      }
+    });
+    updateNavDots();
+  }
+
+  function updateNavDots() {
+    document.querySelectorAll('.lab-nav a[data-section]').forEach(function(link) {
+      var sectionId = link.dataset.section;
+      var dot = link.querySelector('.nav-dot');
+      if (state.locks[sectionId]) {
+        if (!dot) {
+          var span = document.createElement('span');
+          span.className = 'nav-dot';
+          span.textContent = '\u25CF';
+          link.insertBefore(span, link.firstChild);
+        }
+      } else {
+        if (dot) dot.remove();
+      }
+    });
+  }
+
+  // ===== COLOR SCOPE CIRCLES =====
+  function updateColorScope() {
+    var row = document.getElementById('color-scope-row');
+    if (!row) return;
+
+    var p = palettes[state.palette] || palettes.c;
+    var accentColor = 'hsl(' + state.accentH + ', ' + state.accentS + '%, ' + state.accentL + '%)';
+    var accentMuted = 'hsla(' + state.accentH + ', ' + state.accentS + '%, ' + state.accentL + '%, 0.15)';
+    var tp = state.textPrimary / 100;
+    var ts = state.textSecondary / 100;
+    var tt = state.textTertiary / 100;
+
+    var items = [
+      { color: p.nav, label: 'Sidebar' },
+      { color: p.root, label: 'Root' },
+      { color: p.card, label: 'Card' },
+      { color: p.elevated, label: 'Elevated' },
+      { color: p.overlay, label: 'Overlay' },
+      { color: 'hsla(40,10%,90%,' + tp + ')', label: 'Primary' },
+      { color: 'hsla(40,10%,90%,' + ts + ')', label: 'Secondary' },
+      { color: 'hsla(40,10%,90%,' + tt + ')', label: 'Tertiary' },
+      { color: accentColor, label: 'Accent' },
+      { color: accentMuted, label: 'Acc Muted' },
+      { color: 'hsl(145, 60%, 50%)', label: 'Success' },
+      { color: 'hsl(38, 90%, 55%)', label: 'Warning' },
+      { color: 'hsl(0, 60%, 55%)', label: 'Error' },
+    ];
+
+    row.innerHTML = items.map(function(item) {
+      return '<div class="color-scope-item">' +
+        '<div class="color-scope-circle" style="background: ' + item.color + ';"></div>' +
+        '<div class="color-scope-label">' + item.label + '</div>' +
+        '</div>';
+    }).join('');
+  }
+
+  // ===== FOCUS RING =====
+  var focusRingColor = 'accent';
+
+  function updateFocusRing() {
+    var w = parseFloat(document.getElementById('focus-ring-width').value);
+    var o = parseFloat(document.getElementById('focus-ring-offset').value);
+    var op = parseFloat(document.getElementById('focus-ring-opacity').value);
+    state.focusRingWidth = w;
+    state.focusRingOffset = o;
+    state.focusRingOpacity = op;
+    document.getElementById('focus-ring-width-val').textContent = w + 'px';
+    document.getElementById('focus-ring-offset-val').textContent = o + 'px';
+    document.getElementById('focus-ring-opacity-val').textContent = op;
+
+    var color;
+    if (focusRingColor === 'accent') {
+      color = 'hsla(' + state.accentH + ',' + state.accentS + '%,' + state.accentL + '%,' + op + ')';
+    } else if (focusRingColor === 'white') {
+      color = 'rgba(255,255,255,' + op + ')';
+    } else {
+      color = 'rgba(255,255,255,' + (op * 0.3) + ')';
+    }
+
+    var styleEl = document.getElementById('focus-ring-style');
+    styleEl.textContent = '.focus-ring-demo-input:focus-visible, .focus-ring-demo-btn:focus-visible { outline: ' + w + 'px solid ' + color + '; outline-offset: ' + o + 'px; }';
+    saveState();
+  }
+
+  function setFocusColor(colorKey, btn) {
+    focusRingColor = colorKey;
+    state.focusRingColor = colorKey;
+    document.querySelectorAll('.focus-preset').forEach(function(b) { b.classList.remove('selected'); });
+    btn.classList.add('selected');
+    updateFocusRing();
+  }
+
+  // ===== BORDER EFFECTS =====
+  var borderEffect1Opacity = 0.6;
+  var borderEffect2Opacity = 0.5;
+  var borderEffect3Opacity = 0.8;
+
+  function getAccentWithOpacity(op) {
+    return 'hsla(' + state.accentH + ',' + state.accentS + '%,' + state.accentL + '%,' + op + ')';
+  }
+
+  // ===== MOTION: PRESS (combinable) =====
+  function updatePressEffects() {
+    state.pressTranslateY = document.getElementById('press-translateY').checked;
+    state.pressTranslateYVal = parseFloat(document.getElementById('press-translateY-val').value);
+    state.pressScale = document.getElementById('press-scale').checked;
+    state.pressScaleVal = parseFloat(document.getElementById('press-scale-val').value);
+    state.pressOpacity = document.getElementById('press-opacity').checked;
+    state.pressOpacityVal = parseFloat(document.getElementById('press-opacity-val').value);
+    state.pressGlow = document.getElementById('press-glow').checked;
+
+    document.getElementById('press-translateY-display').textContent = state.pressTranslateYVal + 'px';
+    document.getElementById('press-scale-display').textContent = state.pressScaleVal.toFixed(2);
+    document.getElementById('press-opacity-display').textContent = state.pressOpacityVal.toFixed(2);
+
+    applyPressDemo();
+    saveState();
+  }
+
+  function applyPressDemo() {
+    var btn = document.getElementById('press-demo-btn');
+    var hints = [];
+
+    btn.onmousedown = function() {
+      var transforms = [];
+      if (state.pressTranslateY) transforms.push('translateY(' + state.pressTranslateYVal + 'px)');
+      if (state.pressScale) transforms.push('scale(' + state.pressScaleVal + ')');
+      btn.style.transform = transforms.length ? transforms.join(' ') : 'none';
+      if (state.pressOpacity) btn.style.opacity = state.pressOpacityVal;
+      if (state.pressGlow) btn.style.boxShadow = '0 0 20px var(--accent)';
+    };
+
+    btn.onmouseup = btn.onmouseleave = function() {
+      btn.style.transform = 'none';
+      btn.style.opacity = '1';
+      btn.style.boxShadow = 'none';
+    };
+
+    if (state.pressTranslateY) hints.push('translateY(' + state.pressTranslateYVal + 'px)');
+    if (state.pressScale) hints.push('scale(' + state.pressScaleVal + ')');
+    if (state.pressOpacity) hints.push('opacity(' + state.pressOpacityVal + ')');
+    if (state.pressGlow) hints.push('glow');
+    document.getElementById('press-css-hint').textContent = hints.length ? 'active: ' + hints.join(' + ') : 'no effects';
+  }
+
+  function applyPressPreset(key, btn) {
+    document.querySelectorAll('.motion-press-preset').forEach(function(b) { b.classList.remove('selected'); });
+    btn.classList.add('selected');
+
+    // Reset all
+    document.getElementById('press-translateY').checked = false;
+    document.getElementById('press-scale').checked = false;
+    document.getElementById('press-opacity').checked = false;
+    document.getElementById('press-glow').checked = false;
+
+    if (key === 'translate') {
+      document.getElementById('press-translateY').checked = true;
+      document.getElementById('press-translateY-val').value = 1;
+    } else if (key === 'scale-down') {
+      document.getElementById('press-scale').checked = true;
+      document.getElementById('press-scale-val').value = 0.96;
+    } else if (key === 'opacity') {
+      document.getElementById('press-opacity').checked = true;
+      document.getElementById('press-opacity-val').value = 0.70;
+    } else if (key === 'glow') {
+      document.getElementById('press-glow').checked = true;
+    } else if (key === 'combined') {
+      document.getElementById('press-scale').checked = true;
+      document.getElementById('press-scale-val').value = 0.97;
+      document.getElementById('press-glow').checked = true;
+    }
+    updatePressEffects();
+  }
+
+  // ===== MOTION: HOVER (combinable) =====
+  function updateHoverEffects() {
+    state.hoverLift = document.getElementById('hover-lift').checked;
+    state.hoverLiftVal = parseFloat(document.getElementById('hover-lift-val').value);
+    state.hoverScale = document.getElementById('hover-scale').checked;
+    state.hoverScaleVal = parseFloat(document.getElementById('hover-scale-val').value);
+    state.hoverBrightness = document.getElementById('hover-brightness').checked;
+    state.hoverBrightnessVal = parseFloat(document.getElementById('hover-brightness-val').value);
+    state.hoverBorderGlow = document.getElementById('hover-border-glow').checked;
+    state.hoverBgShift = document.getElementById('hover-bg-shift').checked;
+
+    document.getElementById('hover-lift-display').textContent = state.hoverLiftVal + 'px';
+    document.getElementById('hover-scale-display').textContent = state.hoverScaleVal.toFixed(2);
+    document.getElementById('hover-brightness-display').textContent = state.hoverBrightnessVal.toFixed(2);
+
+    applyHoverDemo();
+    saveState();
+  }
+
+  function applyHoverDemo() {
+    var hints = [];
+    if (state.hoverLift) hints.push('translateY(-' + state.hoverLiftVal + 'px)');
+    if (state.hoverScale) hints.push('scale(' + state.hoverScaleVal + ')');
+    if (state.hoverBrightness) hints.push('brightness(' + state.hoverBrightnessVal + ')');
+    if (state.hoverBorderGlow) hints.push('border-glow');
+    if (state.hoverBgShift) hints.push('bg-shift');
+    document.getElementById('hover-css-hint').textContent = hints.length ? 'hover: ' + hints.join(' + ') : 'no effects';
+
+    document.querySelectorAll('.hover-demo-card').forEach(function(card) {
+      card.onmouseenter = function() {
+        var transforms = [];
+        if (state.hoverLift) transforms.push('translateY(-' + state.hoverLiftVal + 'px)');
+        if (state.hoverScale) transforms.push('scale(' + state.hoverScaleVal + ')');
+        if (transforms.length) card.style.transform = transforms.join(' ');
+        if (state.hoverBrightness) card.style.filter = 'brightness(' + state.hoverBrightnessVal + ')';
+        if (state.hoverBorderGlow) card.style.boxShadow = '0 0 0 1px var(--accent), 0 0 12px var(--accent-muted)';
+        if (state.hoverBgShift) card.style.background = 'var(--bg-elevated)';
+      };
+      card.onmouseleave = function() {
+        card.style.transform = '';
+        card.style.filter = '';
+        card.style.boxShadow = '';
+        card.style.background = 'var(--bg-card)';
+      };
+    });
+  }
+
+  function applyHoverPreset(key, btn) {
+    document.querySelectorAll('.motion-hover-preset').forEach(function(b) { b.classList.remove('selected'); });
+    btn.classList.add('selected');
+
+    document.getElementById('hover-lift').checked = false;
+    document.getElementById('hover-scale').checked = false;
+    document.getElementById('hover-brightness').checked = false;
+    document.getElementById('hover-border-glow').checked = false;
+    document.getElementById('hover-bg-shift').checked = false;
+
+    if (key === 'lift') {
+      document.getElementById('hover-lift').checked = true;
+      document.getElementById('hover-lift-val').value = 2;
+    } else if (key === 'scale') {
+      document.getElementById('hover-scale').checked = true;
+      document.getElementById('hover-scale-val').value = 1.02;
+    } else if (key === 'brighten') {
+      document.getElementById('hover-brightness').checked = true;
+      document.getElementById('hover-brightness-val').value = 1.15;
+    } else if (key === 'border-glow') {
+      document.getElementById('hover-border-glow').checked = true;
+    } else if (key === 'bg-shift') {
+      document.getElementById('hover-bg-shift').checked = true;
+    }
+    // 'none' leaves all unchecked
+    updateHoverEffects();
+  }
+
+  // ===== ENTRANCE ANIMATIONS =====
+  var currentEntranceStyle = 'fade-up';
+
+  function setEntranceStyle(key, btn) {
+    currentEntranceStyle = key;
+    document.querySelectorAll('.motion-entrance-preset').forEach(function(b) { b.classList.remove('selected'); });
+    btn.classList.add('selected');
+    replayEntranceNew();
+  }
+
+  function replayEntranceNew() {
+    var items = document.querySelectorAll('.entrance-item');
+    var duration = parseInt(document.getElementById('entrance-duration').value);
+    var distance = parseInt(document.getElementById('entrance-distance').value);
+    var stagger = parseInt(document.getElementById('entrance-stagger').value);
+    var style = currentEntranceStyle;
+
+    items.forEach(function(item) {
+      item.style.transition = 'none';
+      item.style.opacity = '0';
+      item.style.transform = 'none';
+    });
+
+    void items[0].offsetWidth;
+
+    items.forEach(function(item, i) {
+      var delay = style === 'stagger' ? i * stagger : (style === 'fade-in' ? 0 : i * Math.min(stagger, 30));
+
+      setTimeout(function() {
+        if (style === 'fade-up' || style === 'stagger') {
+          item.style.transform = 'translateY(' + distance + 'px)';
+        } else if (style === 'fade-scale') {
+          item.style.transform = 'scale(0.95)';
+        } else if (style === 'slide-right') {
+          item.style.transform = 'translateX(-' + distance + 'px)';
+        }
+
+        void item.offsetWidth;
+
+        item.style.transition = 'all ' + duration + 'ms cubic-bezier(0, 0, 0.34, 1)';
+        item.style.opacity = '1';
+        item.style.transform = 'none';
+      }, delay);
+    });
+  }
+
+  // ===== SKELETON =====
+  function setSkeletonStyle(key, btn) {
+    document.querySelectorAll('.skeleton-preset').forEach(function(b) { b.classList.remove('selected'); });
+    btn.classList.add('selected');
+
+    document.querySelectorAll('.skeleton-demo-bar').forEach(function(bar) {
+      bar.classList.remove('pulse-mode', 'wave-mode');
+      if (key === 'pulse') bar.classList.add('pulse-mode');
+      if (key === 'wave') bar.classList.add('wave-mode');
+    });
+  }
+
+  function updateSkeletonSpeed() {
+    var speed = document.getElementById('skeleton-speed').value;
+    document.getElementById('skeleton-speed-val').textContent = (speed / 1000).toFixed(1) + 's';
+    document.querySelectorAll('.skeleton-demo-bar').forEach(function(bar) {
+      bar.style.animationDuration = speed + 'ms';
+    });
+  }
+
+  // ===== NAV SCROLL TRACKING =====
+  function setupScrollTracking() {
+    var sections = document.querySelectorAll('.section[id]');
+    var navLinks = document.querySelectorAll('.lab-nav a[data-section]');
+
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          var id = entry.target.id;
+          navLinks.forEach(function(link) {
+            link.classList.remove('active');
+            if (link.dataset.section === id) {
+              link.classList.add('active');
+            }
+          });
+        }
+      });
+    }, {
+      rootMargin: '-20% 0px -70% 0px',
+      threshold: 0
+    });
+
+    sections.forEach(function(section) { observer.observe(section); });
+  }
+
+  // ===== SMOOTH SCROLL =====
+  document.querySelectorAll('.lab-nav a[data-section]').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      var target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  // ===== LOAD STATE =====
+  function loadState() {
+    var saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        var parsed = JSON.parse(saved);
+        // Merge with defaults so new keys are always present
+        for (var key in defaultState) {
+          if (parsed[key] !== undefined) {
+            state[key] = parsed[key];
+          }
+        }
+      } catch(e) {
+        // bad data, use defaults
+      }
+    }
+
+    // Apply fonts
+    if (state.displayFont) {
+      document.documentElement.style.setProperty('--display-font', state.displayFont);
+      var displayCard = document.querySelector('.font-card[data-font-type="display"][data-font="' + state.displayFont + '"]');
+      if (displayCard) displayCard.classList.add('selected');
+      selected.display = state.displayFont;
+      document.querySelectorAll('.pair-display, .kpi-value, .empty-title').forEach(function(el) {
+        el.style.fontFamily = state.displayFont;
+      });
+    }
+    if (state.bodyFont) {
+      document.documentElement.style.setProperty('--body-font', state.bodyFont);
+      var bodyCard = document.querySelector('.font-card[data-font-type="body"][data-font="' + state.bodyFont + '"]');
+      if (bodyCard) bodyCard.classList.add('selected');
+      selected.body = state.bodyFont;
+      document.querySelectorAll('.pair-body, .chat-msg, .empty-desc, .btn, .input-bar input').forEach(function(el) {
+        el.style.fontFamily = state.bodyFont;
+      });
+    }
+    if (state.monoFont) {
+      document.documentElement.style.setProperty('--mono-font', state.monoFont);
+      var monoCard = document.querySelector('.font-card[data-font-type="mono"][data-font="' + state.monoFont + '"]');
+      if (monoCard) monoCard.classList.add('selected');
+      selected.mono = state.monoFont;
+      document.querySelectorAll('.pair-mono, .kpi-label, .badge').forEach(function(el) {
+        el.style.fontFamily = state.monoFont;
+      });
+    }
+
+    // Weights
+    document.getElementById('weight-display').value = state.displayWeight;
+    document.getElementById('weight-body').value = state.bodyWeight;
+    document.getElementById('weight-mono').value = state.monoWeight;
+    document.getElementById('weight-display-val').textContent = state.displayWeight;
+    document.getElementById('weight-body-val').textContent = state.bodyWeight;
+    document.getElementById('weight-mono-val').textContent = state.monoWeight;
+    document.getElementById('pair-display').style.fontWeight = state.displayWeight;
+    document.getElementById('pair-body').style.fontWeight = state.bodyWeight;
+    document.getElementById('pair-mono').style.fontWeight = state.monoWeight;
+
+    // Accent
+    document.documentElement.style.setProperty('--accent-h', state.accentH);
+    document.documentElement.style.setProperty('--accent-s', state.accentS + '%');
+    document.documentElement.style.setProperty('--accent-l', state.accentL + '%');
+    document.getElementById('hue-slider').value = state.accentH;
+    document.getElementById('sat-slider').value = state.accentS;
+    document.getElementById('lit-slider').value = state.accentL;
+    document.getElementById('hue-value').textContent = state.accentH + '\u00B0';
+    document.getElementById('sat-value').textContent = state.accentS + '%';
+    document.getElementById('lit-value').textContent = state.accentL + '%';
+
+    // Palette
+    var paletteEl = document.querySelector('.palette-option[data-palette="' + state.palette + '"]');
+    if (paletteEl) {
+      setPalette(state.palette, paletteEl);
+    }
+
+    // Radius
+    document.getElementById('radius-cards').value = Math.min(state.radiusCards, 32);
+    document.getElementById('radius-buttons').value = Math.min(state.radiusButtons, 999);
+    document.getElementById('radius-chat').value = Math.min(state.radiusChat, 32);
+    document.getElementById('radius-input').value = Math.min(state.radiusInput, 999);
+    document.getElementById('radius-kpi').value = Math.min(state.radiusKpi, 32);
+    document.getElementById('radius-badges').value = Math.min(state.radiusBadges, 999);
+    document.getElementById('radius-nav').value = Math.min(state.radiusNav, 24);
+    document.getElementById('radius-preview').value = Math.min(state.radiusPreview, 32);
+    document.getElementById('radius-cards-val').textContent = state.radiusCards + 'px';
+    document.getElementById('radius-buttons-val').textContent = state.radiusButtons >= 999 ? 'pill' : state.radiusButtons + 'px';
+    document.getElementById('radius-chat-val').textContent = state.radiusChat + 'px';
+    document.getElementById('radius-input-val').textContent = state.radiusInput >= 999 ? 'pill' : state.radiusInput + 'px';
+    document.getElementById('radius-kpi-val').textContent = state.radiusKpi + 'px';
+    document.getElementById('radius-badges-val').textContent = state.radiusBadges >= 100 ? 'pill' : state.radiusBadges + 'px';
+    document.getElementById('radius-nav-val').textContent = state.radiusNav + 'px';
+    document.getElementById('radius-preview-val').textContent = state.radiusPreview + 'px';
+    applyRadii(state.radiusCards, state.radiusButtons, state.radiusChat, state.radiusInput, state.radiusKpi, state.radiusBadges, state.radiusNav, state.radiusPreview);
+
+    // Borders
+    document.getElementById('border-opacity').value = state.borderOpacity;
+    document.getElementById('divider-opacity').value = state.dividerOpacity;
+    document.getElementById('border-opacity-val').textContent = state.borderOpacity + '%';
+    document.getElementById('divider-opacity-val').textContent = state.dividerOpacity + '%';
+    var borderColor = 'rgba(255,255,255,' + (state.borderOpacity / 100) + ')';
+    var dividerColor = 'rgba(255,255,255,' + (state.dividerOpacity / 100) + ')';
+    document.documentElement.style.setProperty('--border-subtle', borderColor);
+    document.getElementById('border-live-card').style.borderColor = borderColor;
+    ['border-live-item1','border-live-item2','border-live-item3'].forEach(function(id) {
+      document.getElementById(id).style.borderColor = borderColor;
+    });
+    document.getElementById('live-divider-1').style.background = dividerColor;
+    document.getElementById('live-divider-2').style.background = dividerColor;
+
+    // Text opacity
+    document.getElementById('text-primary-opacity').value = state.textPrimary;
+    document.getElementById('text-secondary-opacity').value = state.textSecondary;
+    document.getElementById('text-tertiary-opacity').value = state.textTertiary;
+    document.getElementById('text-primary-opacity-val').textContent = state.textPrimary + '%';
+    document.getElementById('text-secondary-opacity-val').textContent = state.textSecondary + '%';
+    document.getElementById('text-tertiary-opacity-val').textContent = state.textTertiary + '%';
+    document.documentElement.style.setProperty('--text-primary', 'hsla(40, 10%, 90%, ' + (state.textPrimary / 100) + ')');
+    document.documentElement.style.setProperty('--text-secondary', 'hsla(40, 10%, 90%, ' + (state.textSecondary / 100) + ')');
+    document.documentElement.style.setProperty('--text-tertiary', 'hsla(40, 10%, 90%, ' + (state.textTertiary / 100) + ')');
+
+    // Spacing
+    document.getElementById('spacing-card-padding').value = state.spacingCardPadding;
+    document.getElementById('spacing-card-gap').value = state.spacingCardGap;
+    document.getElementById('spacing-section-gap').value = state.spacingSectionGap;
+    document.getElementById('spacing-card-padding-val').textContent = state.spacingCardPadding + 'px';
+    document.getElementById('spacing-card-gap-val').textContent = state.spacingCardGap + 'px';
+    document.getElementById('spacing-section-gap-val').textContent = state.spacingSectionGap + 'px';
+    document.getElementById('spacing-demo-grid').style.gap = state.spacingCardGap + 'px';
+    document.querySelectorAll('.spacing-demo-card').forEach(function(card) {
+      card.style.padding = state.spacingCardPadding + 'px';
+    });
+
+    // KPI font
+    var kpiBtn = document.querySelector('.kpi-font-toggle');
+    document.querySelectorAll('.kpi-font-toggle').forEach(function(b) { b.classList.remove('selected'); });
+    // Find and select the right KPI button
+    var kpiBtns = document.querySelectorAll('.kpi-font-toggle');
+    var kpiKeys = ['display', 'body-bold', 'mono-bold', 'outfit', 'space', 'sora'];
+    kpiKeys.forEach(function(key, i) {
+      if (key === state.kpiFont && kpiBtns[i]) {
+        kpiBtns[i].classList.add('selected');
+      }
+    });
+    if (kpiFontMap[state.kpiFont]) {
+      var config = kpiFontMap[state.kpiFont];
+      document.querySelectorAll('.kpi-num').forEach(function(el) {
+        el.style.fontFamily = config.family;
+        el.style.fontWeight = config.weight;
+      });
+    }
+
+    // Motion - press
+    document.getElementById('press-translateY').checked = state.pressTranslateY;
+    document.getElementById('press-translateY-val').value = state.pressTranslateYVal;
+    document.getElementById('press-translateY-display').textContent = state.pressTranslateYVal + 'px';
+    document.getElementById('press-scale').checked = state.pressScale;
+    document.getElementById('press-scale-val').value = state.pressScaleVal;
+    document.getElementById('press-scale-display').textContent = state.pressScaleVal.toFixed(2);
+    document.getElementById('press-opacity').checked = state.pressOpacity;
+    document.getElementById('press-opacity-val').value = state.pressOpacityVal;
+    document.getElementById('press-opacity-display').textContent = state.pressOpacityVal.toFixed(2);
+    document.getElementById('press-glow').checked = state.pressGlow;
+    applyPressDemo();
+
+    // Motion - hover
+    document.getElementById('hover-lift').checked = state.hoverLift;
+    document.getElementById('hover-lift-val').value = state.hoverLiftVal;
+    document.getElementById('hover-lift-display').textContent = state.hoverLiftVal + 'px';
+    document.getElementById('hover-scale').checked = state.hoverScale;
+    document.getElementById('hover-scale-val').value = state.hoverScaleVal;
+    document.getElementById('hover-scale-display').textContent = state.hoverScaleVal.toFixed(2);
+    document.getElementById('hover-brightness').checked = state.hoverBrightness;
+    document.getElementById('hover-brightness-val').value = state.hoverBrightnessVal;
+    document.getElementById('hover-brightness-display').textContent = state.hoverBrightnessVal.toFixed(2);
+    document.getElementById('hover-border-glow').checked = state.hoverBorderGlow;
+    document.getElementById('hover-bg-shift').checked = state.hoverBgShift;
+    applyHoverDemo();
+
+    // Focus ring
+    focusRingColor = state.focusRingColor || 'accent';
+    document.getElementById('focus-ring-width').value = state.focusRingWidth;
+    document.getElementById('focus-ring-offset').value = state.focusRingOffset;
+    document.getElementById('focus-ring-opacity').value = state.focusRingOpacity;
+    document.querySelectorAll('.focus-preset').forEach(function(b) { b.classList.remove('selected'); });
+    var focusBtns = document.querySelectorAll('.focus-preset');
+    if (focusRingColor === 'accent') focusBtns[0].classList.add('selected');
+    else if (focusRingColor === 'white') focusBtns[1].classList.add('selected');
+    else focusBtns[2].classList.add('selected');
+    updateFocusRing();
+
+    // Locks
+    applyLocks();
+
+    // Color scope
+    updateColorScope();
+  }
+
+  // ===== INIT =====
+  document.addEventListener('DOMContentLoaded', function() {
+    loadState();
+    renderSpacingScale(4);
+    setupScrollTracking();
+
+    // Auto-play entrance
+    setTimeout(function() { replayEntranceNew(); }, 500);
+  });
+</script>
+</body>
+</html>

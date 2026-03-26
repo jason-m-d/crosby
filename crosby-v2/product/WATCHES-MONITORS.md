@@ -76,6 +76,12 @@ These are **persistent** — they don't resolve after one match. They keep watch
 
 ---
 
+## v1 → v2 Migration Note
+
+In v1, there is a separate `notification_rules` system that lets users configure rule-based alerts (e.g., "notify me when X emails"). In v2, this functionality is fully absorbed into the watches & monitors system. Monitors are the replacement — they're more powerful (AI-driven pattern matching, not just keyword rules), more flexible (natural language creation via chat), and integrated with the full notification delivery pipeline (delivery tiers, quiet hours, batching). There is no separate `notification_rules` concept in v2.
+
+---
+
 ## Open Questions
 
 - [ ] Is there a UI to see all active watches, or is it purely surfaced through chat/nudges/briefings?

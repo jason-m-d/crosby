@@ -18,7 +18,7 @@ There is no notification center or inbox. The chat timeline IS the notification 
 |---|---|
 | Chat timeline | Always. Every notification, proactive message, briefing, nudge, and alert lands inline in the chat. This is the primary record. |
 | Push notification (iOS) | When the user is not actively in the app. Delivered via APNs through Expo. |
-| Browser notification (web) | When the user is not actively on the web app tab. Secondary to push. |
+| Browser notification (web) | When the user is not actively on the web app tab. Secondary to push. Web push (via Push API / service worker) is the fallback for users who haven't installed the native app. Same content and delivery tier rules as iOS push, but lower reliability (browser must be open or have service worker registered). Not a primary channel — native push via the iOS app is the target experience. |
 
 No badge counts on the app icon — too noisy.
 

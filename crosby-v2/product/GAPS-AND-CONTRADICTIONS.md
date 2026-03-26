@@ -1,7 +1,8 @@
 # Product Discovery — Gaps, Contradictions & Open Items
 
-*Last updated: 2026-03-24*
+*Last updated: 2026-03-25*
 *Generated from a full audit of all 21+ product specs.*
+*All items resolved. Zero deferred items remain. Gap-closing specs added during product discovery (CONVERSATION-CONTINUITY.md, ACTIVITY-LOG.md) and architecture phase (PROCEDURAL-MEMORIES.md, CONTRADICTION-DETECTION.md, ROUTER-EVAL-PLAN.md, importance scoring in BACKGROUND-JOBS.md).*
 
 ---
 
@@ -20,16 +21,16 @@ Work through items top-to-bottom. When an item is resolved, mark it with the res
 - **Action needed:** Decide if silos get a full product spec now, or if the existing product vision coverage is sufficient and the spec comes during architecture phase.
 
 ### 2. Data deletion / privacy model missing
-- **Status:** OPEN
+- **Status:** RESOLVED (2026-03-25)
 - **Issue:** No spec covers what happens when you delete an Expert, contact, memory, artifact, or your entire account. No GDPR-style right-to-be-forgotten handling. No policy on how long superseded memories are retained.
 - **Files affected:** All specs — deletion touches every system.
-- **Action needed:** Dedicated spec or a section added to Settings/Account covering deletion cascades, data retention policy, and account deletion flow.
+- **Resolution:** Full spec created at features/DATA-DELETION-PRIVACY.md. Covers per-entity deletion cascades, retention policies, account deletion with 24h grace period, procedural memory deletion = prompt removal.
 
 ### 3. Multi-device sync undefined
-- **Status:** OPEN
+- **Status:** RESOLVED (2026-03-25)
 - **Issue:** Mobile spec says "both platforms talk to the same backend" but doesn't address: real-time sync between web and mobile, local state persistence (sidebar tab, dashboard collapsed/expanded), offline handling, or conflict resolution if actions happen on both devices.
 - **Files affected:** MOBILE-EXPERIENCE.md, SETTINGS.md
-- **Action needed:** Define sync model — is it purely server-side (both clients just read from the same DB) or is there local state that needs syncing?
+- **Resolution:** Purely server-side. Both clients read/write to the same Supabase DB — all meaningful state (messages, memories, experts, settings) lives server-side. UI-local state (sidebar tab, dashboard collapsed, scroll position) is per-device, no cross-device sync needed. No offline mode for v2.
 
 ---
 
@@ -86,10 +87,10 @@ Work through items top-to-bottom. When an item is resolved, mark it with the res
 - **Action needed:** This is likely an architecture/implementation spec, not a product spec. But the product spec should at least enumerate the block types available.
 
 ### 11. Importance scoring cron algorithm
-- **Status:** DEFERRED TO ARCHITECTURE
+- **Status:** RESOLVED IN ARCHITECTURE (2026-03-25)
 - **Issue:** EXPERTS.md and ARTIFACTS.md reference a background cron that assigns importance scores to Expert content, but the algorithm is never specified. What triggers it? How often? What factors determine importance?
 - **Files affected:** EXPERTS.md, ARTIFACTS.md
-- **Action needed:** Define at product level: what signals feed importance scoring? User engagement, recency, explicit pinning? The exact algorithm is implementation, but the inputs and outputs should be product-defined.
+- **Resolution:** Algorithm defined in architecture/BACKGROUND-JOBS.md. Formula: `(recency * 0.3) + (access * 0.3) + (pin * 0.2) + (engagement * 0.2)`. Runs nightly as part of overnight cron. Pinned docs never drop below 0.2. Docs below 0.1 = archive suggestion candidates.
 
 ### 12. Artifact conflict resolution
 - **Status:** RESOLVED (2026-03-24)
@@ -126,9 +127,9 @@ Work through items top-to-bottom. When an item is resolved, mark it with the res
 - **Resolution:** Expert artifacts start as Tier 1 when the Expert is active (high-signal — created specifically for this Expert). Can demote to Tier 2 via importance scoring cron if old and never retrieved. Fresh artifacts stay Tier 1; stale ones sink.
 
 ### 18. Procedural memory trigger pattern format
-- **Status:** DEFERRED TO ARCHITECTURE
+- **Status:** RESOLVED IN ARCHITECTURE (2026-03-25)
 - **Issue:** PERSISTENT-MEMORY.md says procedural memories use "trigger/keyword-based lookup" but never defines what a trigger pattern looks like or how they're created from behavioral signals.
-- **Action needed:** Implementation detail, but worth noting.
+- **Resolution:** Full spec at architecture/PROCEDURAL-MEMORIES.md. Triggers are natural language (not regex). Two-stage matching: (1) embedding similarity pre-filter against example_invocations, (2) inject matched triggers into system prompt for LLM to follow. Confidence scoring 0-1 with behavioral thresholds. Extraction via async post-response analysis.
 
 ### 19. Nudge escalation levels
 - **Status:** RESOLVED (2026-03-24)
@@ -141,9 +142,9 @@ Work through items top-to-bottom. When an item is resolved, mark it with the res
 - **Action needed:** Quick decision — likely open-ended with common defaults.
 
 ### 21. Router / tool selection logic
-- **Status:** DEFERRED TO ARCHITECTURE
+- **Status:** RESOLVED IN ARCHITECTURE (2026-03-25)
 - **Issue:** How Crosby chooses which tool to call is never defined at the product level. Mostly a prompt engineering / architecture concern, but product should define the intent.
-- **Action needed:** Likely covered during architecture phase.
+- **Resolution:** Fully addressed in architecture/AI-PIPELINE.md (Stage 1 Router + Stage 4 Tool Executor). Router returns toolsNeeded[], confidence-based data loading (<0.5 = tools only, 0.5-0.8 = lightweight, 0.8+ = full). Map-based tool executor registry. Router eval plan with 100+ test cases at architecture/ROUTER-EVAL-PLAN.md.
 
 ### 22. "Something else" input location for structured questions
 - **Status:** RESOLVED (2026-03-24)
@@ -151,9 +152,9 @@ Work through items top-to-bottom. When an item is resolved, mark it with the res
 - **Action needed:** UX decision.
 
 ### 23. Contradiction detection algorithm
-- **Status:** DEFERRED TO ARCHITECTURE
+- **Status:** RESOLVED IN ARCHITECTURE (2026-03-25)
 - **Issue:** PERSISTENT-MEMORY.md describes contradiction handling (supersession chains, weekly cron) but never defines how contradictions are detected algorithmically.
-- **Action needed:** Implementation detail, but the detection approach (semantic similarity? entity matching? LLM comparison?) should be product-informed.
+- **Resolution:** Full spec at architecture/CONTRADICTION-DETECTION.md. Three-step process: (1) candidate identification via entity overlap + embedding similarity + topic overlap, (2) LLM contradiction check on Gemini Flash Lite with structured JSON, (3) supersession with confidence thresholds (>0.7 = auto-supersede, 0.5-0.7 = flag for review, <0.5 = no action). Inline detection for real-time catches. Weekly cron for subtler contradictions.
 
 ---
 
@@ -171,16 +172,18 @@ Work through items top-to-bottom. When an item is resolved, mark it with the res
 | 8 | Experts vs. Projects vs. Silos | "Experts" = user-facing context workspaces. "Silos" = capability modules (tools, data, sync). "Projects" = retired, absorbed into Experts. Terms are distinct, not interchangeable. | 2026-03-24 |
 | 9 | Expert navigation location | Web: left sidebar below 3 main pages (Home, Documents, Settings) with color-coded dots and + button. Mobile: bottom nav tab. Updated APP-STRUCTURE.md. | 2026-03-24 |
 | 10 | Component library | Use an existing dashboard component library (Tremor or similar) instead of building custom blocks. Crosby composes from the library's components. Updated DASHBOARD-OVERNIGHT-BUILDER.md. | 2026-03-24 |
-| 11 | Importance scoring cron | Deferred to architecture. Product inputs: retrieval frequency, recency, explicit pins, engagement signals. Exact algorithm is build-time. | 2026-03-24 |
+| 11 | Importance scoring cron | Algorithm defined in architecture/BACKGROUND-JOBS.md. Formula: (recency * 0.3) + (access * 0.3) + (pin * 0.2) + (engagement * 0.2). Runs nightly. | 2026-03-25 |
 | 12 | Artifact conflict resolution | User always wins. Behavioral editing lock — user editing = Crosby can't write. Queued updates presented when user stops: [Apply] [Show me first] [Skip]. Mid-generation holds as proposed update. Updated ARTIFACTS.md. | 2026-03-24 |
 | 13 | Background job concurrency | Max ~3 concurrent background jobs. Extras queued. Crosby tells user: "I've got 3 running — I'll queue the rest." | 2026-03-24 |
 | 14 | Contact promotion cascades | Silent retroactive linking. On promotion: scan existing memories and tag with contact entity, backfill interaction metadata from email history. No user notification. | 2026-03-24 |
 | 15 | Email attachment storage | Not auto-stored. Crosby reads all for context but doesn't persist. User can explicitly save. Crosby extracts key info to memory/notepad. Metadata reference kept for recall. | 2026-03-24 |
 | 16 | Artifact hierarchy | Artifacts are documents Crosby created. Not memory, not notes. Sidebar + Documents page (Artifacts tab) + Expert context + RAG. | 2026-03-24 |
 | 17 | Expert artifact context tier | Starts Tier 1 when Expert active. Can demote to Tier 2 via importance scoring if old and never retrieved. | 2026-03-24 |
-| 18 | Procedural memory triggers | Deferred to architecture. | 2026-03-24 |
+| 18 | Procedural memory triggers | Full spec at architecture/PROCEDURAL-MEMORIES.md. Natural language triggers, two-stage matching, confidence scoring. | 2026-03-25 |
 | 19 | Nudge escalation levels | 3 levels, then stop for non-commitments. Commitments never stop — user promised someone. | 2026-03-24 |
 | 20 | Contact relationship types | Open-ended with common defaults (client, vendor, employee, friend, family, lawyer, etc.). Any label valid. | 2026-03-24 |
-| 21 | Router / tool selection | Deferred to architecture. | 2026-03-24 |
+| 21 | Router / tool selection | Fully addressed in AI-PIPELINE.md + ROUTER-EVAL-PLAN.md. Router returns toolsNeeded[], confidence-based activation. | 2026-03-25 |
 | 22 | "Something else" input | Tapping "something else" focuses the main chat input. No inline text field in the card. | 2026-03-24 |
-| 23 | Contradiction detection | Deferred to architecture. | 2026-03-24 |
+| 23 | Contradiction detection | Full spec at architecture/CONTRADICTION-DETECTION.md. Three-step: candidate ID, LLM check, supersession with confidence thresholds. | 2026-03-25 |
+| 2 | Data deletion / privacy model | Full spec created (features/DATA-DELETION-PRIVACY.md). Per-entity deletion cascades, retention policies, account deletion with 24h grace, procedural memory = prompt removal. | 2026-03-25 |
+| 3 | Multi-device sync | Purely server-side. Both clients hit the same Supabase DB. UI-local state is per-device. No offline mode for v2. | 2026-03-25 |

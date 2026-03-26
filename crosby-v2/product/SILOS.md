@@ -168,7 +168,7 @@ When a silo breaks (API changes, credentials expire, sync fails), Crosby handles
 - **Router** — Must read silo definitions from the database, not hardcoded. Trigger rule evaluation needs to scale to many silos without latency degradation.
 - **Database** — Silo schema needs to be flexible enough for arbitrary tool definitions, data tables, and sync configurations.
 - **Background jobs** — Silo sync jobs run on the shared infrastructure. Need isolation — one silo's failure shouldn't affect others.
-- **Security** — User-created silos execute generated code (tool functions, sync jobs). Needs sandboxing. A malicious or broken silo shouldn't be able to access other silos' data or credentials.
+- **Security** — User-created silos execute generated code (tool functions, sync jobs). Needs sandboxing. A malicious or broken silo shouldn't be able to access other silos' data or credentials. **Deferred to post-v2.0.** All v2.0 silos are system-authored and run in-process. Sandboxing architecture (V8 isolates, permission model, credential scoping) will be designed when custom silo creation is enabled.
 - **Credential storage** — Needs encryption at rest, secure token vault. OAuth refresh token handling.
 - **Settings** — Connections section needs to dynamically list all active silos with status.
 - **Marketplace infrastructure** — Template storage, install flow, review process (future).

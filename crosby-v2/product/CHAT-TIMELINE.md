@@ -20,13 +20,18 @@ This is intentional. Keeping everything in the timeline preserves context — yo
 |---|---|---|
 | Regular message (user) | Standard chat bubble | No |
 | Regular response (Crosby) | Standard chat bubble | No |
-| Morning briefing | Card — dashboard-like, structured sections | Yes |
-| Proactive nudge | Card — compact, list of items | Yes |
-| Watch alert | Card — single item, action buttons | Yes |
-| Research report | Card — expandable, sections | Yes |
-| Action item list | Card — checkable items | Yes |
-| Commitment reminder | Card — single commitment, action buttons | Yes |
-| Structured question | Card — option chips (single/multi-select), yes/no confirms | Yes |
+| Morning briefing | Proactive card — dashboard-like, structured sections | Yes |
+| Proactive nudge | Proactive card — compact, list of items | Yes |
+| Heads-up alert | Proactive card — single item, action buttons | Yes |
+| Living greeting | Proactive card — greeting + structured sections, mutates until responded to | Yes |
+| Receipt card | Compact confirmation — icon + label + detail, shrinks after 2 min | Mostly no (task + artifact are tappable) |
+| Progress card | Pulsing indicator + topic, transitions to receipt on completion | No |
+| Structured question | Interactive card — option chips (single/multi-select) | Yes |
+| Quick confirm | Input area chips (above input, not in timeline) | Yes |
+
+Full component specs for all card types: **INLINE-CARDS.md**
+
+**Dropped from v2:** Suggested action buttons (v1 pattern — cost per tap, not worth it). Card tracks / horizontal scroll (replaced by grid/list layout within cards).
 
 ---
 

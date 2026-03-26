@@ -3,6 +3,25 @@
 ## Engineering Standards
 - Never apply band-aid fixes. Always fix the root cause of an issue — not just the symptom. If a root cause fix requires more digging or a larger change, say so instead of patching over it.
 
+## Superpowers (Global Plugin)
+Superpowers is installed globally (`~/.claude/skills/` and `~/.claude/commands/`). It provides a structured development workflow that triggers automatically during implementation work:
+- **Brainstorm first** — before writing code, tease out a spec, present it for approval, then plan
+- **Implementation plan** — break work into small tasks a junior dev could follow; emphasizes TDD, YAGNI, DRY
+- **Subagent-driven execution** — once you say "go", agents work through tasks autonomously with review loops
+- **Slash commands:** `/brainstorm`, `/write-plan`, `/execute-plan`
+
+This is most valuable during the v2 build phase. During product discovery/planning (the current phase), it stays out of the way.
+
+## Agent Orchestrator (Install When Ready to Build v2)
+When the v2 plan is fully locked and we're ready to one-shot the build, use **Agent Orchestrator** (`@composio/ao`) to run parallel Claude Code agents — one per major chunk (router, data model, silo system, etc.) — each in its own git worktree, each making its own PR.
+
+**Don't install until we're ready to execute.** At that point:
+```bash
+npm install -g @composio/ao
+cd ~/Development/jdrg && ao start
+```
+Repo: `github.com/ComposioHQ/agent-orchestrator`
+
 ## Dev Server
 - Claude is responsible for starting, stopping, and restarting the dev server as needed.
 - The dev server runs on port 3010: `npm run dev` (which runs `next dev -p 3010`)
@@ -27,6 +46,44 @@
 - Use shadcn/ui components from `src/components/ui/` — don't reinvent them
 - Use Lucide React for all icons
 - Dark, minimal, utilitarian aesthetic — no gradients, no glassmorphism, no decorative elements
+
+## v2 Design System (When Building v2)
+The full v2 design direction lives at `crosby-v2/architecture/DESIGN-DIRECTION.md`. The interactive design lab is at `crosby-v2/design-lab.html`. All v2 design decisions are documented there with rationale.
+
+### v2 Component & Animation Stack
+- **shadcn/ui** — base component library (copy-paste, Radix primitives). Already in v1, carries forward.
+- **AI Elements** (Vercel) — shadcn registry for AI chat interfaces (conversation, message, prompt-input, code-block, reasoning, tool visualization, streaming response, citations, suggestions). Install specific components: `npx ai-elements@latest add <component>`. Restyle to match Crosby's design tokens. Site: `elements.ai-sdk.dev`
+- **Motion** (ex-Framer Motion) — primary animation library for springs, AnimatePresence, shared element transitions, scroll-linked effects. npm: `motion`
+- **Tailwind CSS Motion** — CSS-only animation utilities for simple micro-interactions (hover, press, basic transitions). Zero JS runtime. npm: `tailwindcss-motion`. Add to tailwind.config plugins array.
+- **Lucide React** — icons (carried forward from v1)
+
+### v2 MCP Servers for Build Phase
+Install these before starting the v2 build:
+- **Playwright MCP** — visual QA, screenshot dev server at different viewports, interact with pages. `claude mcp add playwright -- npx @playwright/mcp@latest`
+- **shadcn/ui MCP** — live access to component registry (props, variants, install commands). `claude mcp add shadcn-ui -- npx -y @nicepkg/shadcn-ui-mcp@latest`
+- **Motion Dev MCP** — offline Motion.dev docs + code generation. Not on npm — clone and build: `git clone https://github.com/Abhishekrajpurohit/motion-dev-mcp.git ~/motion-dev-mcp && cd ~/motion-dev-mcp && npm install && npm run build && claude mcp add motion-dev node ~/motion-dev-mcp/dist/index.js`
+- **UX MCP** (optional) — WCAG analysis, contrast checking, dark mode guidance. `claude mcp add ux -- npx -y @elsahafy/ux-mcp-server`
+
+### v2 Key Design Decisions (Quick Reference)
+| Decision | Choice |
+|----------|--------|
+| Display font | Fraunces 600 (variable serif) |
+| Data display | Plus Jakarta Sans 700 |
+| Body font | Plus Jakarta Sans 400 |
+| Mono font | JetBrains Mono 400 |
+| Accent | Amber `hsl(38, 90%, 55%)` |
+| Surfaces | Warm sepia, 35° hue, 5 luminance layers |
+| Borders | No card borders (0%), dividers at 5% white |
+| Radius | Mixed/contextual + complementary scaling |
+| Text opacity | 80% / 65% / 30% |
+| Spacing | 4px grid, 16px card padding, 12px gap, 20px section gap |
+| Focus ring | 2px width, 4px offset, accent at 0.4 opacity |
+| Button press | translateY 1px + opacity 0.9 |
+| Hover | lift 4px + brightness 1.15 |
+| Entrance | fade up, 600ms, 40px, 100ms stagger |
+| Loading | pulse, 3s cycle |
+
+For full details, rationale, and design philosophy, see `crosby-v2/architecture/DESIGN-DIRECTION.md`.
 
 ## AI Routing (OpenRouter)
 All AI calls go through OpenRouter (`ANTHROPIC_BASE_URL`). Do not call Anthropic directly.

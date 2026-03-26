@@ -1,6 +1,6 @@
 # Settings Page — Product Discovery Notes
 
-*Last updated: 2026-03-24*
+*Last updated: 2026-03-25*
 
 ---
 
@@ -62,6 +62,15 @@ Within Settings, content is organized into tabbed groups.
 - **Dashboard:** Overnight builder on/off toggle (default: on). Whether Crosby autonomously builds dashboard widgets.
 - **Quiz sessions:** Enable/disable Crosby's weekly teaching sessions (default: on).
 
+### Activity Log
+
+- **Full diagnostic log** of everything Crosby does behind the scenes. Reverse-chronological, filterable, searchable, read-only.
+- **Filter by type:** Cron jobs, background jobs, router decisions, errors, proactive message decisions, integration health
+- **Filter by status:** Success, failed, skipped, degraded
+- **Filter by date range**
+- Each entry is a compact row that expands on tap to show full details. Color-coded: green (success), yellow (skipped/degraded), red (failed/error).
+- See ACTIVITY-LOG.md for the full spec.
+
 ---
 
 ## Design Principles
@@ -103,6 +112,7 @@ Within Settings, content is organized into tabbed groups.
 | Dashboard | Overnight builder toggle in Settings. |
 | Quiz sessions | Enable/disable in Settings. |
 | App manual | Manual should document all settings and what they do. |
+| Activity log | Diagnostic log tab in Settings. Full spec in ACTIVITY-LOG.md. |
 
 ---
 

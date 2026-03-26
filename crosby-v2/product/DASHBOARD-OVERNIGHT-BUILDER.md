@@ -141,10 +141,37 @@ Every night (or on a configurable schedule), Crosby runs an autonomous review cy
 
 ---
 
+## Widget Data Refresh
+
+**No realtime for widgets.** Widgets refresh on a schedule, not via WebSocket. The chat timeline handles real-time events (watch resolutions, heads-ups). The dashboard shows persistent summaries that don't need second-by-second updates.
+
+### Refresh intervals by data source
+
+| Data source | Refresh interval | Rationale |
+|---|---|---|
+| Calendar events | Every 15 minutes | Events rarely change mid-day |
+| Email / watch status | Every 5 minutes | Watches resolve when emails arrive — needs to be fairly current |
+| Silo data (external APIs) | Defined by the silo's sync schedule (5 min, 15 min, or hourly) | Respects the external API's rate limits |
+| Internal data (tasks, commitments, memory stats) | Every 10 minutes | Low-frequency changes |
+
+### Additional refresh triggers
+- **Dashboard expanded:** When the user opens/expands the dashboard, all widgets refresh immediately (pull-to-refresh on mobile, auto-refresh on page load on web)
+- **Manual refresh:** Each widget has a subtle refresh button for on-demand update
+- **Staggered refresh:** Widgets don't all refresh simultaneously — offset by a few seconds to avoid a burst of API calls
+
+### When the dashboard is collapsed
+Widgets **pause refreshing** while the dashboard is collapsed (hidden below the chat). They resume when expanded. This saves API calls and compute for a surface the user isn't looking at.
+
+### Staleness display
+- Each widget shows a subtle "Updated 3 min ago" timestamp
+- If a widget's data source is down (integration failure): widget shows a muted state with "Can't reach [source] — showing last known data" instead of going blank
+- If a widget's data source has been down for 1+ hours: widget shows a reconnect prompt or suggests checking Settings → Connections
+
+---
+
 ## Open Questions
 
 - [ ] Should the dashboard have a "grid" layout (fixed columns) or a "stack" layout (full-width cards stacked vertically)? Grid is more dashboard-like, stack is simpler on mobile.
-- [ ] How do widgets refresh? Real-time (websocket), polling interval (per widget), or on-demand (user pulls to refresh)?
 - [ ] Can widgets link to deeper views? E.g., tapping a sales chart opens a detailed breakdown — where does that open? Side panel? Full page? Inline expansion?
 - [ ] Should there be a "widget gallery" where the user can browse available widget types and request one? Or is chat the only way to request?
 - [ ] How does the component library get extended? Only by developers, or can the overnight builder propose new block types?

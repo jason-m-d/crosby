@@ -43,10 +43,10 @@ Silence is worse than an error. Crosby is a relationship — if something is bro
 - Actionable when possible (reconnect button for auth expiry, nothing to do for a temporary API outage)
 
 **Reconnection → Backfill:**
-- When a flaky integration comes back, Crosby backfills what it missed
-- Email: scan the gap period, process new messages
-- Calendar: re-sync events that changed during the outage
-- The backfill happens silently — no "catching up on 47 emails" banner unless the user asks
+- When a flaky integration comes back, Crosby backfills what it missed (see Error Recovery Flows section below for full details)
+- Email: scan the gap period (capped at 7 days), process new messages
+- Calendar: re-sync events via syncToken (near-instant)
+- Crosby mentions the backfill naturally in conversation — no system banner, but the user knows it's happening
 
 ---
 
@@ -132,8 +132,52 @@ Transitions:
 
 ---
 
+## Error Recovery Flows
+
+What the user does to fix a problem, and what happens during and after the fix.
+
+### Gmail / Calendar Reconnection
+
+1. User sees the issue: status banner, timeline notification, or Crosby mentions stale data
+2. User taps **[Reconnect]** (in the banner, in Settings → Connections, or tells Crosby "reconnect my email")
+3. Bottom sheet OAuth opens (stays in-app, per ONBOARDING.md)
+4. User re-authorizes → connection re-established → health state goes to `healthy`
+5. Backfill scan starts immediately as a background job
+
+### Backfill After Reconnection
+
+- Crosby scans everything it missed during the outage, **capped at 7 days.** Beyond 7 days, the volume is too high and the relevance drops. If the outage was longer, Crosby notes: "I caught up on the last week of emails. Anything older than that you'll want to check directly."
+- Backfill runs as a **background job** — never blocks the chat
+- While backfilling, Crosby mentions it naturally in conversation: "I'm catching up on emails I missed while disconnected. Give me a few minutes."
+- When done: "All caught up. 23 emails scanned, 2 need your attention." Woven into conversation, not a system alert.
+- If backfill fails partway: retry once, then report honestly: "I couldn't scan some older emails from the outage period. Recent stuff is all synced."
+- Calendar backfill is simpler — re-sync events from the Google Calendar syncToken. This is near-instant.
+
+### AI Outage Recovery (OpenRouter)
+
+- **No replay of failed messages.** If the user sent a message during the outage and got "I'm having trouble connecting," that error message is NOT stored as conversation history (per CLAUDE.md error response rule).
+- When connectivity returns, Crosby offers to pick up: "I wasn't able to respond earlier — want me to pick up where we left off?" Only if the user's last message went unanswered.
+- Queued background jobs (briefings, nudges, memory extraction) that were blocked **resume automatically.** No user action needed.
+- No special announcement — Crosby just starts working again. The status banner auto-dismisses.
+
+### iMessage Helper Offline → Back Online
+
+- Covered in TEXT-SMS.md (graceful degradation). When the Mac reconnects, the helper app sends queued messages.
+- Crosby processes them as a batch — extracts context, checks against watches, updates commitments.
+- No special UX. Texts just start flowing again.
+- If the Mac was off for an extended period (7+ days), Crosby processes recent texts and notes: "Your Mac was offline for a while — I've caught up on recent texts."
+
+### User-Initiated Recovery via Chat
+
+The user can always tell Crosby to fix things:
+- "Reconnect my email" → triggers OAuth reconnection flow
+- "Try again" (after a failed response) → Crosby retries the last message
+- "What's broken?" → Crosby checks integration health and reports status
+- "Why didn't I get a briefing?" → Crosby queries the activity log (see ACTIVITY-LOG.md)
+
+---
+
 ## Open Questions
 
-- **Health dashboard in Settings?** Should the Settings > Connections page show real-time health status for each integration? Probably yes — gives the user a place to go when something feels off.
-- **Backfill limits:** If email was down for 24 hours, do we backfill all 24 hours of email? Or cap it? (Probably cap at some reasonable window to avoid overwhelming the system.)
+- **Health dashboard in Settings?** Should the Settings → Connections page show real-time health status for each integration? Probably yes — gives the user a place to go when something feels off.
 - **Status banner design:** Exact visual treatment TBD — needs to be visible but not alarming. Maybe a thin bar above the input area rather than a full-width banner at the top.

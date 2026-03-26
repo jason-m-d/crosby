@@ -35,17 +35,30 @@ The process: structured interview, one feature area at a time, going deep on eac
 | Self-aware app manual | APP-MANUAL.md | Deep pass complete (RAG-embedded internal docs, one doc per feature, auto-generated on deploy, source of truth for all capability questions, system prompt defers to manual) |
 | Notifications system | NOTIFICATIONS.md | Deep pass complete (no notification center — timeline is inbox, 3 delivery tiers, 3-min batching, quiet hours with breakthrough rules, rich contextual push content) |
 | Text / SMS integration | TEXT-SMS.md | Deep pass complete (optional power-user feature, macOS helper app, guided setup wizard, read-only, graceful degradation, manual fallback for non-Mac users) |
-| Onboarding / cold start | ONBOARDING.md | Deep pass complete (conversational onboard, email-first "wow" moment, invisible completeness score, bottom sheet OAuth, silent graduation, context-driven integration suggestions) |
+| Onboarding / cold start | ONBOARDING.md | Deep pass complete (amber threshold screen, progressive UI reveal, two-path first message, pre-auth OAuth offer, conversational onboard, email-first "wow" moment, invisible completeness score, bottom sheet OAuth, silent graduation) |
 | Settings page | SETTINGS.md | Deep pass complete (5 tab groups: Account, Connections, Notifications, Memory & Learning, Preferences. Everything also configurable via chat.) |
 | Silos | SILOS.md | Deep pass complete (three tiers: core/marketplace/custom, agentic builder pipeline, cross-silo tunnels, self-healing, credential management, router integration) |
 | Data deletion & privacy | DATA-DELETION-PRIVACY.md | Deep pass complete (per-entity deletion rules, account deletion with 24h grace, retention policies, procedural memory = prompt removal) |
 | Error handling & graceful degradation | ERROR-HANDLING-GRACEFUL-DEGRADATION.md | Deep pass complete (status banner for AI, per-integration health model, 2-retry policy, stale data mentions issue not just timestamp, backfill on reconnect) |
+| Conversation continuity & history | CONVERSATION-CONTINUITY.md | Deep pass complete (three-layer context: rolling summary + message RAG + memory system, system prompt routing rules, session-transparent continuity) |
+| Activity log & diagnostics | ACTIVITY-LOG.md | Deep pass complete (user-visible log in Settings, cron/background/router/error/proactive/integration health entries, Crosby self-query via tool, 90-day retention) |
+| Background jobs | BACKGROUND-JOBS.md | Deep pass complete (heavy vs lightweight split, max 3 concurrent heavy, timeouts, queue with user-over-system priority, pause/cancel mechanics) |
+| Router | ROUTER.md | Deep pass complete (fast cheap LLM classification, confidence scoring, specialist/Expert activation, 3-tier fallback, self-correction logging, performance targets, router prompt as highest-leverage prompt engineering) |
+| Expert context loading | EXPERT-CONTEXT-LOADING.md | Deep pass complete (percentage-based budgets, priority stack, Tier 1/Tier 2 mechanics, direct/ambient/transition/deactivation modes, multi-Expert, overnight self-improvement research) |
+| Authentication & account management | AUTH-ACCOUNT.md | Deep pass complete (Supabase Auth, Google OAuth preferred, progressive scopes, biometric mobile unlock, persistent sessions, single-user only) |
+| Inline cards | INLINE-CARDS.md | Deep pass complete (4 card categories: receipt/proactive/interactive/progress. Receipt shrink-after-time, proactive grid mode, structured question chips, progress-to-receipt transition. Suggested actions dropped. Horizontal scroll replaced with grid/list.) |
 
 ---
 
 ## Currently Discussing
 
-**Ready for next feature area.** All cross-cutting concerns now covered including error handling & graceful degradation (completed 2026-03-25).
+**Product discovery complete.** All feature areas specced, all gaps resolved or deferred to architecture (23/23 items closed — 2026-03-25). Two additional specs added post-audit: CONVERSATION-CONTINUITY.md (three-layer context system for infinite conversation) and ACTIVITY-LOG.md (user-visible diagnostics in Settings).
+
+**Architecture phase complete.** All architecture docs written (monorepo structure, database schema, auth/session, API routes, AI pipeline, system prompt, background jobs, realtime/notifications, shared types, build plan).
+
+**Design phase complete (2026-03-25).** Full visual design system locked via interactive design lab. Typography (Fraunces + Plus Jakarta Sans + JetBrains Mono), colors (warm sepia + amber accent), spacing, motion, borders, radius, components — all decided and documented. Style guide written. CLAUDE.md updated with design constitution. Component stack selected (shadcn/ui + AI Elements + Motion + Tailwind CSS Motion).
+
+**Status: Ready for build.**
 
 ---
 
@@ -61,7 +74,7 @@ The process: structured interview, one feature area at a time, going deep on eac
 - [x] ~~Training & learning~~ → all-signal observation (engagement, edits, tone, corrections, behavior), stored as procedural memory with confidence levels. Weekly quiz sessions (structured question cards, uncertainty-driven, deferrable). Quiet changes by default, announces significant ones. Read-only "What Crosby has learned" section in settings. Feeds dashboard/overnight builder (separate spec)
 - [x] ~~Push notifications~~ → covered in MOBILE-EXPERIENCE.md (APNs via Expo) and NOTIFICATIONS.md (delivery tiers, batching, quiet hours, content design)
 - [x] ~~Settings page~~ → 5 tab groups: Account (profile, billing), Connections (Gmail, Calendar, iMessage, silos), Notifications (quiet hours, breakthrough rules, per-category toggles), Memory & Learning (memory browser + read-only learned behaviors), Preferences (tone, response length, language, briefing cadence, overnight builder toggle, quiz sessions toggle). Everything also configurable via chat.
-- [x] ~~Onboarding / cold start~~ → conversational onboard (no wizard, no forms). Email is the killer first connection — scans last week, synthesizes "wow" summary. Bottom sheet OAuth (stays in-app). Invisible completeness score tracks coverage not duration. Can complete in one session or over a week. Silent graduation — Crosby just stops asking setup questions. Context-driven integration suggestions (one ask per integration, no nagging).
+- [x] ~~Onboarding / cold start~~ → amber threshold screen (full-bleed accent color, single "Enter" button) between auth and chat. Optional Google OAuth offer before amber screen enables pre-loaded data. Progressive UI reveal: chat-only on first load, chrome appears as relevant (sidebar on connect, nav on tool use, dashboard when mentioned). Two-path first message: connected path references real email data, skipped path is confident without data. Conversational onboard after greeting. Email "wow" moment. Bottom sheet OAuth for mid-conversation connections. Invisible completeness score. Silent graduation with `has_completed_onboarding` flag. One ask per integration, no nagging.
 - [x] ~~Mobile experience~~ → React Native + Expo (native iOS app, not PWA). Monorepo with Next.js web app, shared backend. Bottom nav (Chat, Documents, Experts, Settings). Sidebar slides from right as split-view (top half panel, bottom half chat). Push notifications via APNs — rich, contextual, conversational ("messages from a person"). Deep linking: notification tap → specific message. Ignored notifications handled by catch-up/greeting system.
 - [x] ~~Text/SMS integration~~ → optional power-user feature, off by default. macOS menu bar helper app monitors iMessage SQLite DB, forwards to Crosby API. Guided setup wizard. Read-only (can't send). Context + commitment extraction + watch creation from texts. Graceful degradation when Mac is off. Manual fallback (tell Crosby about texts) always available for non-Mac users.
 - [x] ~~Dashboard & overnight builder~~ → collapsible canvas above chat, component library (not freeform), Expert-aware reordering, 3 creation paths (overnight autonomous / conversational offer / on-demand request), 2-week pattern threshold for autonomous builds, max 2 per night, always-approve model, soft-delete with 1-month holding bay + spec retained indefinitely, on-demand builds run as background jobs with contextual notification

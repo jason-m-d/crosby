@@ -28,14 +28,15 @@ A personal AI executive assistant. One continuous conversation. Knows everything
 
 ---
 
-## What We're Figuring Out
+## What We've Figured Out
 
-*(This section grows as research and decisions are made)*
+All major questions have been answered across three completed phases:
 
-- What does the right data model look like for a modular capability system?
-- How should the AI pipeline be structured so routing + tool use is reliable?
-- What's the right way to architect background jobs so they're not bolted on?
-- How do we build for the consumer product direction (silos users create) without over-engineering v2?
+- **Product discovery** — 23 feature areas fully specced with detailed PRDs, edge cases, and ripple effects
+- **Architecture** — monorepo structure, database schema, auth, API routes, AI pipeline, system prompt, background jobs, realtime/notifications, shared types, build plan — all documented
+- **Design system** — visual identity locked via interactive design lab. Typography (Fraunces + Plus Jakarta Sans + JetBrains Mono), colors (warm sepia + amber), spacing, motion, borders, radius, component stack (shadcn/ui + AI Elements + Motion + Tailwind CSS Motion) — all decided
+
+**Status: Ready for build.**
 
 ---
 
@@ -46,3 +47,9 @@ A personal AI executive assistant. One continuous conversation. Knows everything
 3. **Reliability over features.** If routing and tool use aren't rock solid, nothing else matters.
 4. **Design for the product direction.** User-created silos are the future — the architecture should make that natural, not a retrofit.
 5. **Don't rebuild what works.** RAG, memory extraction, the basic chat loop — these work. Rebuild the structure, not everything.
+6. **Accessible by default.** WCAG 2.1 AA compliance. All interactive elements keyboard-navigable, proper ARIA labels, screen reader support, sufficient color contrast. Not a separate effort — baked into implementation standards from day one.
+
+### Scope Decisions
+- **Single-user only for v2.** Multi-user (household, team) is a future consideration.
+- **English-only for v2.** Internationalization deferred.
+- **No billing system at launch.** Monetization strategy TBD — v2 launches invite-only or free initially.

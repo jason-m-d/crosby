@@ -45,6 +45,8 @@ The goal: once the user decides they want it, setup is as painless as possible. 
 
 ### The helper app
 
+> **Deferred to post-v2.0.** The macOS helper app is not part of the v2.0 launch. Text monitoring in v2.0 uses the manual fallback (users tell Crosby about texts). The helper app will be designed and built as a follow-up, including tech stack selection, code signing, and distribution model.
+
 - Lightweight macOS menu bar app — runs in the background, invisible after setup.
 - Monitors the local iMessage SQLite database for new messages.
 - Forwards new messages to Crosby's API (encrypted in transit).
