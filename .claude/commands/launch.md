@@ -46,11 +46,12 @@ Jason already made every product decision. The specs are complete. The architect
 - [ ] v2 Supabase project URL (`SUPABASE_URL`)
 - [ ] v2 Supabase anon key (`SUPABASE_ANON_KEY`)
 - [ ] v2 Supabase service role key (`SUPABASE_SERVICE_ROLE_KEY`)
-- [ ] v2 Vercel project name (so deploys have a target)
 - [ ] Google OAuth client ID (`GOOGLE_CLIENT_ID`) — may be same as v1
 - [ ] Google OAuth client secret (`GOOGLE_CLIENT_SECRET`) — may be same as v1
 - [ ] Confirmation that OpenRouter has credit balance for the build
-- [ ] Any env vars or credentials not listed above that Jason wants pre-loaded
+
+GitHub repo is already set: `https://github.com/jason-m-d/crosbyv2.git`
+Vercel project is deferred — not needed until deployment.
 
 ### How to ask:
 Present Jason with a single, clear checklist of what you need. For each item, explain what it is in one sentence. If some auto-checks failed, include those too ("I also need X installed — should I install it or will you?").
@@ -63,7 +64,7 @@ Once Jason provides the credentials and confirms the checklist, proceed to Step 
 ## Step 3 — Bootstrap + Phase 0
 
 ```bash
-mkdir -p ~/Development/crosby-v2 && cd ~/Development/crosby-v2 && git init
+mkdir -p ~/Development/crosby-v2 && cd ~/Development/crosby-v2 && git init && git remote add origin https://github.com/jason-m-d/crosbyv2.git
 ```
 
 Read these docs before starting:
